@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1007747882513",
+    "project_id": "vocabtree-b91f2",
+    "storage_bucket": "vocabtree-b91f2.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1007747882513:android:4f612636657c99f4625bb0",
+        "android_client_info": {
+          "package_name": "com.example.vocabtree"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBZwrbsI499YM82he9wSYkJ1_jvvaJO_D4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

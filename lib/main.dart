@@ -1,8 +1,9 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:vocabtree/pages/account/account_success_screen.dart';
 import 'package:vocabtree/pages/login/login_screen.dart';
-import 'package:vocabtree/pages/otp/otp_verification_screen.dart'; // import OTPVerificationScreen
+import 'package:vocabtree/pages/otp/otp_verification_screen.dart';
 import 'package:vocabtree/pages/register/register_screen.dart';
 import 'package:vocabtree/pages/reset_password/forget_password_screen.dart';
 import 'package:vocabtree/pages/reset_password/reset_password_screen.dart';
@@ -29,17 +30,13 @@ class MyApp extends StatelessWidget {
         '/': (context) => const LoginScreen(),
         '/reset-password': (context) => const ForgetPasswordScreen(),
         '/register': (context) => const RegisterScreen(),
-        '/otp-verification': (context) {
-          final args = ModalRoute.of(context)!.settings.arguments
-              as Map<String, dynamic>;
-          return OTPVerificationScreen(
-            user: args['user'],
-            profileImageUrl: args['profileImageUrl'],
-          );
-        },
+        '/otp-verification': (context) => OTPVerificationScreen(
+          user: ModalRoute.of(context)!.settings.arguments as User,
+          profileImageUrl: '', // Provide the profileImageUrl here
+          username: '', // Provide the username here
+        ),
         '/reset-password-form': (context) => const ResetPasswordScreen(),
-        '/reset-password-success': (context) =>
-            const ResetPasswordSuccessScreen(),
+        '/reset-password-success': (context) => const ResetPasswordSuccessScreen(),
         '/account-success': (context) => const AccountSuccessScreen(),
         '/login': (context) => const LoginScreen(),
       },

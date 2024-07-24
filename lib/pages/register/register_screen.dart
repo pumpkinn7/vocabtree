@@ -1,4 +1,4 @@
-// ignore_for_file: library_private_types_in_public_api, use_build_context_synchronously, unused_local_variable, deprecated_member_use
+// ignore_for_file: prefer_const_constructors, use_build_context_synchronously, library_private_types_in_public_api, avoid_print
 
 import 'dart:io';
 
@@ -9,7 +9,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:vocabtree/pages/login/login_screen.dart';
-
+import 'package:vocabtree/pages/otp/otp_verification_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -24,14 +24,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
 
-  bool _obscureText = true;
+  bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
   File? _imageFile;
 
   final ImagePicker _picker = ImagePicker();
 
-  void _toggleObscureText() {
+  void _toggleObscurePassword() {
     setState(() {
-      _obscureText = !_obscureText;
+      _obscurePassword = !_obscurePassword;
+    });
+  }
+
+  void _toggleObscureConfirmPassword() {
+    setState(() {
+      _obscureConfirmPassword = !_obscureConfirmPassword;
     });
   }
 
@@ -65,16 +72,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
 
     try {
-      // ตรวจสอบว่าอีเมลถูกใช้งานแล้วหรือไม่
-      final List<String> signInMethods = await FirebaseAuth.instance
-          .fetchSignInMethodsForEmail(_emailController.text.trim());
-      if (signInMethods.isNotEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('อีเมลนี้ถูกใช้งานไปแล้ว')),
-        );
-        return;
-      }
-
       // สร้างผู้ใช้ด้วย Firebase Authentication
       UserCredential userCredential =
           await FirebaseAuth.instance.createUserWithEmailAndPassword(
@@ -82,39 +79,62 @@ class _RegisterScreenState extends State<RegisterScreen> {
         password: _passwordController.text.trim(),
       );
 
-      // อัปโหลดรูปภาพโปรไฟล์ไปยัง Firebase Storage
-      final ref = FirebaseStorage.instance
-          .ref()
-          .child('user_profiles')
-          .child('${userCredential.user!.uid}.jpg');
-      await ref.putFile(_imageFile!);
-      final profileImageUrl = await ref.getDownloadURL();
+      User user = userCredential.user!;
+      await user.sendEmailVerification();
+
+      // อัปโหลดรูปภาพโปรไฟล์ไปที่ Firebase Storage
+      String profileImageUrl = await _uploadProfileImage(user.uid);
 
       // บันทึกข้อมูลผู้ใช้เพิ่มเติมใน Firestore
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(userCredential.user!.uid)
-          .set({
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
         'username': _usernameController.text.trim(),
         'email': _emailController.text.trim(),
         'profileImageUrl': profileImageUrl,
       });
 
-      // ส่งอีเมลยืนยันการสมัครสมาชิก
-      await userCredential.user!.sendEmailVerification();
-
-      Navigator.pushNamed(
+      Navigator.push(
         context,
-        '/otp-verification',
-        arguments: {
-          'user': userCredential.user!,
-          'profileImageUrl': profileImageUrl,
-        },
+        MaterialPageRoute(
+          builder: (context) => OTPVerificationScreen(
+            user: user,
+            profileImageUrl: profileImageUrl,
+            username: _usernameController.text.trim(),
+          ),
+        ),
       );
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'email-already-in-use') {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+                'อีเมลนี้ถูกใช้งานแล้ว คุณสามารถรีเซตรหัสผ่าน หรือใช้เมลใหม่แทน'),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: ${e.message}')),
+        );
+      }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: ${e.toString()}')),
       );
+    }
+  }
+
+  Future<String> _uploadProfileImage(String userId) async {
+    try {
+      Reference storageReference = FirebaseStorage.instance
+          .ref()
+          .child('profile_images')
+          .child('$userId.jpg');
+      UploadTask uploadTask = storageReference.putFile(_imageFile!);
+      TaskSnapshot storageTaskSnapshot = await uploadTask;
+      String downloadUrl = await storageTaskSnapshot.ref.getDownloadURL();
+      return downloadUrl;
+    } catch (e) {
+      print('Error uploading profile image: $e');
+      rethrow;
     }
   }
 
@@ -210,7 +230,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               const SizedBox(height: 30),
               TextField(
                 controller: _passwordController,
-                obscureText: _obscureText,
+                obscureText: _obscurePassword,
                 decoration: InputDecoration(
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
@@ -222,10 +242,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     padding: const EdgeInsets.only(right: 5),
                     child: IconButton(
                       icon: Icon(
-                        _obscureText ? Icons.visibility_off : Icons.visibility,
+                        _obscurePassword
+                            ? Icons.visibility_off
+                            : Icons.visibility,
                         color: Colors.grey[700],
                       ),
-                      onPressed: _toggleObscureText,
+                      onPressed: _toggleObscurePassword,
                     ),
                   ),
                 ),
@@ -233,7 +255,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               const SizedBox(height: 20),
               TextField(
                 controller: _confirmPasswordController,
-                obscureText: _obscureText,
+                obscureText: _obscureConfirmPassword,
                 decoration: InputDecoration(
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
@@ -245,10 +267,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     padding: const EdgeInsets.only(right: 5),
                     child: IconButton(
                       icon: Icon(
-                        _obscureText ? Icons.visibility_off : Icons.visibility,
+                        _obscureConfirmPassword
+                            ? Icons.visibility_off
+                            : Icons.visibility,
                         color: Colors.grey[700],
                       ),
-                      onPressed: _toggleObscureText,
+                      onPressed: _toggleObscureConfirmPassword,
                     ),
                   ),
                 ),

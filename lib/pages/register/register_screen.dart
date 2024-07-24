@@ -1,14 +1,15 @@
-// ignore_for_file: library_private_types_in_public_api, unnecessary_const, use_build_context_synchronously
+// ignore_for_file: library_private_types_in_public_api, use_build_context_synchronously, unused_local_variable, deprecated_member_use
 
 import 'dart:io';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:vocabtree/pages/login/login_screen.dart';
 
-import '../login/login_screen.dart';
-import '../otp/otp_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -23,21 +24,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
 
-  bool _obscurePassword = true;
-  bool _obscureConfirmPassword = true;
+  bool _obscureText = true;
   File? _imageFile;
 
   final ImagePicker _picker = ImagePicker();
 
-  void _toggleObscurePassword() {
+  void _toggleObscureText() {
     setState(() {
-      _obscurePassword = !_obscurePassword;
-    });
-  }
-
-  void _toggleObscureConfirmPassword() {
-    setState(() {
-      _obscureConfirmPassword = !_obscureConfirmPassword;
+      _obscureText = !_obscureText;
     });
   }
 
@@ -71,13 +65,51 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
 
     try {
-      await FirebaseAuth.instance.createUserWithEmailAndPassword(
+      // ตรวจสอบว่าอีเมลถูกใช้งานแล้วหรือไม่
+      final List<String> signInMethods = await FirebaseAuth.instance
+          .fetchSignInMethodsForEmail(_emailController.text.trim());
+      if (signInMethods.isNotEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('อีเมลนี้ถูกใช้งานไปแล้ว')),
+        );
+        return;
+      }
+
+      // สร้างผู้ใช้ด้วย Firebase Authentication
+      UserCredential userCredential =
+          await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
-      Navigator.push(
+
+      // อัปโหลดรูปภาพโปรไฟล์ไปยัง Firebase Storage
+      final ref = FirebaseStorage.instance
+          .ref()
+          .child('user_profiles')
+          .child('${userCredential.user!.uid}.jpg');
+      await ref.putFile(_imageFile!);
+      final profileImageUrl = await ref.getDownloadURL();
+
+      // บันทึกข้อมูลผู้ใช้เพิ่มเติมใน Firestore
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userCredential.user!.uid)
+          .set({
+        'username': _usernameController.text.trim(),
+        'email': _emailController.text.trim(),
+        'profileImageUrl': profileImageUrl,
+      });
+
+      // ส่งอีเมลยืนยันการสมัครสมาชิก
+      await userCredential.user!.sendEmailVerification();
+
+      Navigator.pushNamed(
         context,
-        MaterialPageRoute(builder: (context) => const OTPVerificationScreen()),
+        '/otp-verification',
+        arguments: {
+          'user': userCredential.user!,
+          'profileImageUrl': profileImageUrl,
+        },
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -178,7 +210,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               const SizedBox(height: 30),
               TextField(
                 controller: _passwordController,
-                obscureText: _obscurePassword,
+                obscureText: _obscureText,
                 decoration: InputDecoration(
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
@@ -190,12 +222,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     padding: const EdgeInsets.only(right: 5),
                     child: IconButton(
                       icon: Icon(
-                        _obscurePassword
-                            ? Icons.visibility_off
-                            : Icons.visibility,
+                        _obscureText ? Icons.visibility_off : Icons.visibility,
                         color: Colors.grey[700],
                       ),
-                      onPressed: _toggleObscurePassword,
+                      onPressed: _toggleObscureText,
                     ),
                   ),
                 ),
@@ -203,7 +233,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               const SizedBox(height: 20),
               TextField(
                 controller: _confirmPasswordController,
-                obscureText: _obscureConfirmPassword,
+                obscureText: _obscureText,
                 decoration: InputDecoration(
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
@@ -215,12 +245,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     padding: const EdgeInsets.only(right: 5),
                     child: IconButton(
                       icon: Icon(
-                        _obscureConfirmPassword
-                            ? Icons.visibility_off
-                            : Icons.visibility,
+                        _obscureText ? Icons.visibility_off : Icons.visibility,
                         color: Colors.grey[700],
                       ),
-                      onPressed: _toggleObscureConfirmPassword,
+                      onPressed: _toggleObscureText,
                     ),
                   ),
                 ),
@@ -248,12 +276,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 child: Text.rich(
                   TextSpan(
                     text: 'มีบัญชีผู้ใช้งานอยู่แล้ว? ',
-                    style: const TextStyle(color: Colors.black54, fontSize: 14),
                     children: [
                       TextSpan(
                         text: 'เข้าสู่ระบบเลย',
-                        style:
-                            const TextStyle(color: Colors.teal, fontSize: 14),
+                        style: const TextStyle(color: Colors.teal),
                         recognizer: TapGestureRecognizer()
                           ..onTap = () {
                             Navigator.push(
@@ -265,6 +291,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                     ],
                   ),
+                  style: const TextStyle(color: Colors.black54),
                 ),
               ),
               const SizedBox(height: 20),

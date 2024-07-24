@@ -1,11 +1,90 @@
+// ignore_for_file: library_private_types_in_public_api, unnecessary_const, use_build_context_synchronously
+
+import 'dart:io';
+
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:vocabtree/pages/otp_screen.dart';
+import 'package:image_picker/image_picker.dart';
 
-import 'login_screen.dart';
+import '../login/login_screen.dart';
+import '../otp/otp_screen.dart';
 
-class RegisterScreen extends StatelessWidget {
+class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
+
+  @override
+  _RegisterScreenState createState() => _RegisterScreenState();
+}
+
+class _RegisterScreenState extends State<RegisterScreen> {
+  final _usernameController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
+
+  bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
+  File? _imageFile;
+
+  final ImagePicker _picker = ImagePicker();
+
+  void _toggleObscurePassword() {
+    setState(() {
+      _obscurePassword = !_obscurePassword;
+    });
+  }
+
+  void _toggleObscureConfirmPassword() {
+    setState(() {
+      _obscureConfirmPassword = !_obscureConfirmPassword;
+    });
+  }
+
+  Future<void> _pickImage() async {
+    final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
+    if (pickedFile != null) {
+      setState(() {
+        _imageFile = File(pickedFile.path);
+      });
+    }
+  }
+
+  Future<void> _register() async {
+    if (_usernameController.text.isEmpty ||
+        _emailController.text.isEmpty ||
+        _passwordController.text.isEmpty ||
+        _confirmPasswordController.text.isEmpty ||
+        _imageFile == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('กรุณากรอกข้อมูลให้ครบทุกช่องและอัปโหลดรูปภาพ')),
+      );
+      return;
+    }
+
+    if (_passwordController.text != _confirmPasswordController.text) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('รหัสผ่านไม่ตรงกัน')),
+      );
+      return;
+    }
+
+    try {
+      await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const OTPVerificationScreen()),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: ${e.toString()}')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -33,8 +112,7 @@ class RegisterScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(
-                  height: 100), // เพิ่มระยะห่างให้เนื้อหาอยู่ใต้ AppBar
+              const SizedBox(height: 100),
               const Text(
                 'สวัสดี!\nสมัครสมาชิกเพื่อเข้าใช้งาน',
                 style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
@@ -44,6 +122,7 @@ class RegisterScreen extends StatelessWidget {
                 children: [
                   Expanded(
                     child: TextField(
+                      controller: _usernameController,
                       decoration: InputDecoration(
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
@@ -58,10 +137,14 @@ class RegisterScreen extends StatelessWidget {
                   Stack(
                     children: [
                       CircleAvatar(
-                        radius: 50, // ขนาดใหญ่ขึ้น
+                        radius: 50,
                         backgroundColor: Colors.grey[300],
-                        child: const Icon(Icons.person,
-                            size: 50, color: Colors.white),
+                        backgroundImage:
+                            _imageFile != null ? FileImage(_imageFile!) : null,
+                        child: _imageFile == null
+                            ? const Icon(Icons.person,
+                                size: 50, color: Colors.white)
+                            : null,
                       ),
                       Positioned(
                         bottom: 0,
@@ -69,8 +152,11 @@ class RegisterScreen extends StatelessWidget {
                         child: CircleAvatar(
                           backgroundColor: Colors.grey[700],
                           radius: 15,
-                          child: const Icon(Icons.camera_alt,
-                              size: 15, color: Colors.white),
+                          child: IconButton(
+                            icon: const Icon(Icons.camera_alt,
+                                size: 15, color: Colors.white),
+                            onPressed: _pickImage,
+                          ),
                         ),
                       ),
                     ],
@@ -79,6 +165,7 @@ class RegisterScreen extends StatelessWidget {
               ),
               const SizedBox(height: 20),
               TextField(
+                controller: _emailController,
                 decoration: InputDecoration(
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
@@ -88,9 +175,10 @@ class RegisterScreen extends StatelessWidget {
                       const EdgeInsets.symmetric(vertical: 15, horizontal: 10),
                 ),
               ),
-              const SizedBox(height: 30), // ระยะห่างระหว่างช่องกรอกข้อมูล
+              const SizedBox(height: 30),
               TextField(
-                obscureText: true,
+                controller: _passwordController,
+                obscureText: _obscurePassword,
                 decoration: InputDecoration(
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
@@ -98,11 +186,24 @@ class RegisterScreen extends StatelessWidget {
                   labelText: 'รหัสผ่าน',
                   contentPadding:
                       const EdgeInsets.symmetric(vertical: 15, horizontal: 10),
+                  suffixIcon: Padding(
+                    padding: const EdgeInsets.only(right: 5),
+                    child: IconButton(
+                      icon: Icon(
+                        _obscurePassword
+                            ? Icons.visibility_off
+                            : Icons.visibility,
+                        color: Colors.grey[700],
+                      ),
+                      onPressed: _toggleObscurePassword,
+                    ),
+                  ),
                 ),
               ),
-              const SizedBox(height: 20), // ระยะห่างระหว่างช่องกรอกข้อมูล
+              const SizedBox(height: 20),
               TextField(
-                obscureText: true,
+                controller: _confirmPasswordController,
+                obscureText: _obscureConfirmPassword,
                 decoration: InputDecoration(
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
@@ -110,19 +211,25 @@ class RegisterScreen extends StatelessWidget {
                   labelText: 'ยืนยัน รหัสผ่าน',
                   contentPadding:
                       const EdgeInsets.symmetric(vertical: 15, horizontal: 10),
+                  suffixIcon: Padding(
+                    padding: const EdgeInsets.only(right: 5),
+                    child: IconButton(
+                      icon: Icon(
+                        _obscureConfirmPassword
+                            ? Icons.visibility_off
+                            : Icons.visibility,
+                        color: Colors.grey[700],
+                      ),
+                      onPressed: _toggleObscureConfirmPassword,
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(height: 30),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => const OTPVerificationScreen()),
-                    );
-                  },
+                  onPressed: _register,
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     backgroundColor: Colors.black,
@@ -141,10 +248,12 @@ class RegisterScreen extends StatelessWidget {
                 child: Text.rich(
                   TextSpan(
                     text: 'มีบัญชีผู้ใช้งานอยู่แล้ว? ',
+                    style: const TextStyle(color: Colors.black54, fontSize: 14),
                     children: [
                       TextSpan(
                         text: 'เข้าสู่ระบบเลย',
-                        style: const TextStyle(color: Colors.teal),
+                        style:
+                            const TextStyle(color: Colors.teal, fontSize: 14),
                         recognizer: TapGestureRecognizer()
                           ..onTap = () {
                             Navigator.push(
@@ -156,7 +265,6 @@ class RegisterScreen extends StatelessWidget {
                       ),
                     ],
                   ),
-                  style: const TextStyle(color: Colors.black54),
                 ),
               ),
               const SizedBox(height: 20),

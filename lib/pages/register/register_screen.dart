@@ -1,3 +1,5 @@
+// lib/pages/register/register_screen.dart
+
 // ignore_for_file: prefer_const_constructors, use_build_context_synchronously, library_private_types_in_public_api, avoid_print
 
 import 'dart:io';
@@ -24,21 +26,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
 
-  bool _obscurePassword = true;
-  bool _obscureConfirmPassword = true;
+  bool _obscureText = true;
+  bool _obscureConfirmText = true;
   File? _imageFile;
 
   final ImagePicker _picker = ImagePicker();
 
-  void _toggleObscurePassword() {
+  void _toggleObscureText() {
     setState(() {
-      _obscurePassword = !_obscurePassword;
+      _obscureText = !_obscureText;
     });
   }
 
-  void _toggleObscureConfirmPassword() {
+  void _toggleObscureConfirmText() {
     setState(() {
-      _obscureConfirmPassword = !_obscureConfirmPassword;
+      _obscureConfirmText = !_obscureConfirmText;
     });
   }
 
@@ -64,6 +66,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
 
+    if (_passwordController.text.length < 6) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('รหัสผ่านอย่างน้อยควรมี 6 ตัว')),
+      );
+      return;
+    }
+
     if (_passwordController.text != _confirmPasswordController.text) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('รหัสผ่านไม่ตรงกัน')),
@@ -72,6 +81,35 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
 
     try {
+      // ตรวจสอบว่า username ซ้ำหรือไม่
+      QuerySnapshot usernameQuery = await FirebaseFirestore.instance
+          .collection('users')
+          .where('username', isEqualTo: _usernameController.text.trim())
+          .get();
+
+      if (usernameQuery.docs.isNotEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('ชื่อผู้ใช้งานนี้ถูกใช้ไปแล้ว กรุณาใช้ชื่ออื่น')),
+        );
+        return;
+      }
+
+      // ตรวจสอบว่า email ซ้ำหรือไม่ใน Firestore
+      QuerySnapshot emailQuery = await FirebaseFirestore.instance
+          .collection('users')
+          .where('email', isEqualTo: _emailController.text.trim())
+          .get();
+
+      if (emailQuery.docs.isNotEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text(
+                  'อีเมลนี้ถูกใช้งานแล้ว คุณสามารถรีเซตรหัสผ่าน หรือใช้เมลใหม่แทน')),
+        );
+        return;
+      }
+
       // สร้างผู้ใช้ด้วย Firebase Authentication
       UserCredential userCredential =
           await FirebaseAuth.instance.createUserWithEmailAndPassword(
@@ -96,9 +134,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
         context,
         MaterialPageRoute(
           builder: (context) => OTPVerificationScreen(
-            user: user,
-            profileImageUrl: profileImageUrl,
+            email: _emailController.text.trim(),
+            password: _passwordController.text.trim(),
             username: _usernameController.text.trim(),
+            profileImageFile: _imageFile,
+            user: user, // ส่งค่า user ที่ถูกต้อง
+            profileImageUrl: profileImageUrl,
           ),
         ),
       );
@@ -230,7 +271,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               const SizedBox(height: 30),
               TextField(
                 controller: _passwordController,
-                obscureText: _obscurePassword,
+                obscureText: _obscureText,
                 decoration: InputDecoration(
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
@@ -242,12 +283,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     padding: const EdgeInsets.only(right: 5),
                     child: IconButton(
                       icon: Icon(
-                        _obscurePassword
-                            ? Icons.visibility_off
-                            : Icons.visibility,
+                        _obscureText ? Icons.visibility_off : Icons.visibility,
                         color: Colors.grey[700],
                       ),
-                      onPressed: _toggleObscurePassword,
+                      onPressed: _toggleObscureText,
                     ),
                   ),
                 ),
@@ -255,7 +294,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               const SizedBox(height: 20),
               TextField(
                 controller: _confirmPasswordController,
-                obscureText: _obscureConfirmPassword,
+                obscureText: _obscureConfirmText,
                 decoration: InputDecoration(
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
@@ -267,12 +306,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     padding: const EdgeInsets.only(right: 5),
                     child: IconButton(
                       icon: Icon(
-                        _obscureConfirmPassword
+                        _obscureConfirmText
                             ? Icons.visibility_off
                             : Icons.visibility,
                         color: Colors.grey[700],
                       ),
-                      onPressed: _toggleObscureConfirmPassword,
+                      onPressed: _toggleObscureConfirmText,
                     ),
                   ),
                 ),

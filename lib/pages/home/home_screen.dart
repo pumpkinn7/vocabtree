@@ -9,14 +9,10 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('หน้าหลัก'),
-        backgroundColor: Colors.black,
+        title: const Text('Home Screen'),
       ),
       body: const Center(
-        child: Text(
-          'ยินดีต้อนรับสู่หน้าหลัก!',
-          style: TextStyle(fontSize: 24),
-        ),
+        child: Text('This is the Home Screen'),
       ),
     );
   }

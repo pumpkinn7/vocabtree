@@ -35,41 +35,60 @@ class _BottomNavBarState extends State<BottomNavBar> {
     return Scaffold(
       body: _pages[_selectedIndex],
       bottomNavigationBar: Container(
-        color: Colors.white,
+        decoration: BoxDecoration(
+          color: const Color(0xFFD2D2D2).withOpacity(0.5),
+          borderRadius: BorderRadius.circular(30),
+        ),
+        margin: const EdgeInsets.only(left: 10, right: 10, bottom: 10),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 10.0),
+          padding: const EdgeInsets.symmetric(
+              horizontal: 15.0, vertical: 15.0), // เพิ่ม padding ให้ใหญ่ขึ้น
           child: GNav(
-            gap: 8,
-            activeColor: Colors.black,
-            iconSize: 24,
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 5),
+            gap: 10, // เพิ่ม gap ระหว่างไอคอนและข้อความ
+            activeColor: const Color(0xFF6D7278), // สีตัวหนังสือเมื่อ active
+            iconSize: 30, // เพิ่มขนาดของไอคอน
+            padding: const EdgeInsets.symmetric(
+                horizontal: 20, vertical: 12), // เพิ่ม padding ภายในปุ่ม
             duration: const Duration(milliseconds: 800),
-            tabBackgroundColor: Colors.grey[300]!,
+            tabBackgroundColor: const Color(0xFFD2D2D2).withOpacity(
+                0.8), // สีพื้นหลังเมื่อ active เป็นสี D2D2D2 โปร่งแสง 80%
             color: Colors.black,
             tabs: [
               GButton(
                 icon: Icons.home,
                 text: 'Home',
-                leading: Image.asset('assets/icons/home_icon.png',
-                    width: 24, height: 24), // เพิ่มไฟล์รูปภาพ
+                leading: Image.asset(
+                  'assets/icons/home_icon.png',
+                  width: 30, // เพิ่มขนาดของรูปภาพ
+                  height: 30, // เพิ่มขนาดของรูปภาพ
+                ),
               ),
               GButton(
                 icon: Icons.quiz,
                 text: 'Quiz',
-                leading: Image.asset('assets/icons/quiz_icon.png',
-                    width: 24, height: 24), // เพิ่มไฟล์รูปภาพ
+                leading: Image.asset(
+                  'assets/icons/quiz_icon.png',
+                  width: 30, // เพิ่มขนาดของรูปภาพ
+                  height: 30, // เพิ่มขนาดของรูปภาพ
+                ),
               ),
               GButton(
                 icon: Icons.book,
                 text: 'Vocab',
-                leading: Image.asset('assets/icons/vocab_icon.png',
-                    width: 24, height: 24), // เพิ่มไฟล์รูปภาพ
+                leading: Image.asset(
+                  'assets/icons/vocab_icon.png',
+                  width: 30, // เพิ่มขนาดของรูปภาพ
+                  height: 30, // เพิ่มขนาดของรูปภาพ
+                ),
               ),
               GButton(
                 icon: Icons.person,
                 text: 'Profile',
-                leading: Image.asset('assets/icons/profile_icon.png',
-                    width: 24, height: 24), // เพิ่มไฟล์รูปภาพ
+                leading: Image.asset(
+                  'assets/icons/profile_icon.png',
+                  width: 30, // เพิ่มขนาดของรูปภาพ
+                  height: 30, // เพิ่มขนาดของรูปภาพ
+                ),
               ),
             ],
             selectedIndex: _selectedIndex,

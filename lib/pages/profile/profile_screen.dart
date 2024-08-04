@@ -9,6 +9,9 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:provider/provider.dart';
+import 'package:vocabtree/theme/text_styles.dart';
+import 'package:vocabtree/theme/theme_provider.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -92,22 +95,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
       );
     }
 
+    Timestamp? joinDateTimestamp = userData?['joinDate'] as Timestamp?;
+    String joinDate = joinDateTimestamp != null
+        ? '${joinDateTimestamp.toDate().day}/${joinDateTimestamp.toDate().month}/${joinDateTimestamp.toDate().year}'
+        : 'ไม่ทราบ';
+
+    final themeProvider = Provider.of<ThemeProvider>(context);
+
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SingleChildScrollView(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 35),
-              const Align(
+              const SizedBox(height: 30),
+              Align(
                 alignment: Alignment.topRight,
-                child: Text(
-                  'รายงานปัญหา',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.orange,
+                child: TextButton(
+                  onPressed: () {},
+                  child: Text(
+                    'รายงานปัญหา',
+                    style: AppTextStyles.label.copyWith(color: Colors.orange),
                   ),
                 ),
               ),
@@ -120,7 +130,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         alignment: Alignment.center,
                         children: [
                           CircleAvatar(
-                            radius: 65, // เปลี่ยนขนาดรูปโปรไฟล์
+                            radius: 60,
                             backgroundImage: userData != null &&
                                     userData!['profileImageUrl'] != null
                                 ? NetworkImage(userData!['profileImageUrl'])
@@ -134,40 +144,36 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     color: Colors.grey,
                                   ),
                           ),
-                          CircleAvatar(
-                            radius: 67,
-                            backgroundColor: Colors.transparent,
-                            child: Container(
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: const Color(0xFFFE960D),
-                                  width: 2,
+                          Positioned(
+                            bottom: 0,
+                            right: 0,
+                            child: CircleAvatar(
+                              backgroundColor: Colors.grey[700],
+                              radius: 20,
+                              child: IconButton(
+                                icon: const Icon(
+                                  Icons.camera_alt,
+                                  size: 20,
+                                  color: Colors.white,
                                 ),
+                                onPressed: _changeProfilePicture,
                               ),
                             ),
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 10),
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 5),
                       child: Text(
                         userData?['username'] ??
                             'ดูเหมือนจะเกิดข้อผิดพลาดในการดึงข้อมูล!',
-                        style: const TextStyle(
-                          fontSize: 30,
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: AppTextStyles.headline,
                       ),
                     ),
                     Text(
-                      'เข้าร่วมเมื่อ: ${userData?['joinDate'] ?? 'ดูเหมือนจะเกิดข้อผิดพลาดในการดึงข้อมูล!'}',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[600],
-                      ),
+                      'เข้าร่วมเมื่อ: $joinDate',
+                      style: AppTextStyles.caption,
                     ),
                   ],
                 ),
@@ -186,14 +192,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  const Text('การแสดงผลหน้าจอ'),
+                  Text(
+                    'การแสดงผลหน้าจอ',
+                    style: AppTextStyles.label,
+                  ),
                   const SizedBox(width: 10),
                   SizedBox(
                     width: 65,
                     child: DayNightSwitcher(
-                      isDarkModeEnabled: false,
+                      isDarkModeEnabled:
+                          themeProvider.themeMode == ThemeMode.dark,
                       onStateChanged: (isDarkModeEnabled) {
-                        // Handle switch state
+                        themeProvider.toggleTheme(isDarkModeEnabled);
                       },
                     ),
                   ),
@@ -228,16 +238,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
               Center(
                 child: TextButton(
                   onPressed: _signOut,
-                  child: const Text(
+                  child: Text(
                     'ออกจากระบบ',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.red,
-                    ),
+                    style: AppTextStyles.label.copyWith(color: Colors.red),
                   ),
                 ),
               ),
-              const SizedBox(height: 10),
             ],
           ),
         ),
@@ -250,19 +256,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding:
-              const EdgeInsets.only(left: 20, top: 5), // เพิ่ม padding 5 pixel
+          padding: const EdgeInsets.only(left: 23, top: 5),
           child: Text(
             label,
-            style: const TextStyle(
-              fontSize: 14,
-              color: Color(0xFF6D7278), // สี 6D7278
-            ),
+            style: AppTextStyles.label,
           ),
         ),
         Container(
-          width: double.infinity, // ทำให้เต็มความกว้างของหน้าจอ
-          height: 50, // กำหนดความสูงให้เท่ากัน และใหญ่ขึ้น 20 pixel
+          width: double.infinity,
+          height: 50,
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
           decoration: BoxDecoration(
             border: Border.all(color: Colors.grey),
@@ -272,10 +274,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             alignment: Alignment.centerLeft,
             child: Text(
               text,
-              style: const TextStyle(
-                fontSize: 14,
-                color: Color(0xBF6D7278), // สี #6D7278 และมี opacity 75%
-              ),
+              style: AppTextStyles.inputText,
             ),
           ),
         ),

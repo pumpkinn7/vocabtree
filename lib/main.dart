@@ -1,11 +1,13 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:vocabtree/pages/login/login_screen.dart';
 import 'package:vocabtree/pages/otp/otp_verification_screen.dart';
 import 'package:vocabtree/pages/register/account_success_screen.dart';
 import 'package:vocabtree/pages/register/register_screen.dart';
 import 'package:vocabtree/pages/reset_password/forget_password_screen.dart';
+import 'package:vocabtree/theme/theme_provider.dart';
 import 'package:vocabtree/widgets/bottom_navbar.dart';
 
 import 'firebase_options.dart';
@@ -23,25 +25,36 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      initialRoute: '/',
-      routes: {
-        '/': (context) => const LoginScreen(),
-        '/reset-password': (context) => const ForgetPasswordScreen(),
-        '/register': (context) => const RegisterScreen(),
-        '/otp-verification': (context) => OTPVerificationScreen(
-              email: '',
-              password: '',
-              username: '',
-              profileImageFile: null,
-              user: FirebaseAuth.instance.currentUser!, // ปรับตามความต้องการ
-              profileImageUrl: '', // ปรับตามความต้องการ
-            ),
-        '/account-success': (context) => const AccountSuccessScreen(),
-        '/login': (context) => const LoginScreen(),
-        '/home': (context) =>
-            const BottomNavBar(), // เปลี่ยนหน้า home ให้ใช้ BottomNavBar
-      },
+    return ChangeNotifierProvider(
+      create: (_) => ThemeProvider(),
+      child: Consumer<ThemeProvider>(
+        builder: (context, themeProvider, child) {
+          return MaterialApp(
+            themeMode: themeProvider.themeMode,
+            theme: ThemeData.light(), // ธีมกลางวัน
+            darkTheme: ThemeData.dark(), // ธีมกลางคืน
+            initialRoute: '/',
+            routes: {
+              '/': (context) => const LoginScreen(),
+              '/reset-password': (context) => const ForgetPasswordScreen(),
+              '/register': (context) => const RegisterScreen(),
+              '/otp-verification': (context) => OTPVerificationScreen(
+                    email: '',
+                    password: '',
+                    username: '',
+                    profileImageFile: null,
+                    user: FirebaseAuth
+                        .instance.currentUser!, // ปรับตามความต้องการ
+                    profileImageUrl: '', // ปรับตามความต้องการ
+                  ),
+              '/account-success': (context) => const AccountSuccessScreen(),
+              '/login': (context) => const LoginScreen(),
+              '/home': (context) =>
+                  const BottomNavBar(), // เปลี่ยนหน้า home ให้ใช้ BottomNavBar
+            },
+          );
+        },
+      ),
     );
   }
 }

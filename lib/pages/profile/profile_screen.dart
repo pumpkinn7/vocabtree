@@ -94,6 +94,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  Future<void> _toggleDisplayMode(bool isDarkModeEnabled) async {
+    if (user != null) {
+      await FirebaseFirestore.instance
+          .collection('profiles')
+          .doc(user!.uid)
+          .update({
+        'settings.displayMode': isDarkModeEnabled ? 'dark' : 'light',
+      });
+      setState(() {
+        profileData?['settings']['displayMode'] =
+            isDarkModeEnabled ? 'dark' : 'light';
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (user == null) {
@@ -209,6 +224,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           themeProvider.themeMode == ThemeMode.dark,
                       onStateChanged: (isDarkModeEnabled) {
                         themeProvider.toggleTheme(isDarkModeEnabled);
+                        _toggleDisplayMode(isDarkModeEnabled);
                       },
                     ),
                   ),

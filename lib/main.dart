@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
@@ -17,16 +18,36 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  runApp(const MyApp());
+  final themeMode = await _getInitialThemeMode();
+  runApp(MyApp(initialThemeMode: themeMode));
+}
+
+Future<ThemeMode> _getInitialThemeMode() async {
+  User? user = FirebaseAuth.instance.currentUser;
+  if (user != null) {
+    DocumentSnapshot<Map<String, dynamic>> profileSnapshot =
+        await FirebaseFirestore.instance
+            .collection('profiles')
+            .doc(user.uid)
+            .get();
+    if (profileSnapshot.exists) {
+      String displayMode =
+          profileSnapshot.data()?['settings']['displayMode'] ?? 'light';
+      return displayMode == 'dark' ? ThemeMode.dark : ThemeMode.light;
+    }
+  }
+  return ThemeMode.light;
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final ThemeMode initialThemeMode;
+
+  const MyApp({super.key, required this.initialThemeMode});
 
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
-      create: (_) => ThemeProvider(),
+      create: (_) => ThemeProvider(initialThemeMode),
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, child) {
           return MaterialApp(

@@ -1,12 +1,11 @@
-// lib/pages/register/register_screen.dart
-
-// ignore_for_file: prefer_const_constructors, use_build_context_synchronously, library_private_types_in_public_api, avoid_print
+// ignore_for_file: library_private_types_in_public_api, use_build_context_synchronously
 
 import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -84,7 +83,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     try {
       // ตรวจสอบว่า username ซ้ำหรือไม่
       QuerySnapshot usernameQuery = await FirebaseFirestore.instance
-          .collection('users')
+          .collection('profiles')
           .where('username', isEqualTo: _usernameController.text.trim())
           .get();
 
@@ -122,15 +121,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
       await user.sendEmailVerification();
 
       // อัปโหลดรูปภาพโปรไฟล์ไปที่ Firebase Storage
-      String profileImageUrl = await _uploadProfileImage(user.uid);
+      String profilePicture = await _uploadProfileImage(user.uid);
 
       // บันทึกข้อมูลผู้ใช้เพิ่มเติมใน Firestore
-      await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
-        'username': _usernameController.text.trim(),
-        'email': _emailController.text.trim(),
-        'profileImageUrl': profileImageUrl,
-        'createdAt': FieldValue.serverTimestamp(),
-      });
+      await _createUserCollections(user.uid, profilePicture);
 
       Navigator.push(
         context,
@@ -141,7 +135,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             username: _usernameController.text.trim(),
             profileImageFile: _imageFile,
             user: user, // ส่งค่า user ที่ถูกต้อง
-            profileImageUrl: profileImageUrl,
+            profileImageUrl: profilePicture,
           ),
         ),
       );
@@ -176,9 +170,29 @@ class _RegisterScreenState extends State<RegisterScreen> {
       String downloadUrl = await storageTaskSnapshot.ref.getDownloadURL();
       return downloadUrl;
     } catch (e) {
-      print('Error uploading profile image: $e');
+      if (kDebugMode) {
+        print('Error uploading profile image: $e');
+      }
       rethrow;
     }
+  }
+
+  Future<void> _createUserCollections(
+      String userId, String profilePicture) async {
+    await FirebaseFirestore.instance.collection('users').doc(userId).set({
+      'email': _emailController.text.trim(),
+      'profilePicture': profilePicture,
+    });
+
+    await FirebaseFirestore.instance.collection('profiles').doc(userId).set({
+      'username': _usernameController.text.trim(),
+      'userId': userId,
+      'friends': [],
+      'achievements': [],
+      'settings': {'displayMode': 'light'},
+      'createdAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
   }
 
   @override

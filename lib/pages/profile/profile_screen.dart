@@ -23,6 +23,7 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   User? user;
   Map<String, dynamic>? userData;
+  Map<String, dynamic>? profileData;
 
   @override
   void initState() {
@@ -34,13 +35,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
     user = FirebaseAuth.instance.currentUser;
 
     if (user != null) {
-      DocumentSnapshot<Map<String, dynamic>> snapshot = await FirebaseFirestore
-          .instance
-          .collection('users')
-          .doc(user!.uid)
-          .get();
+      DocumentSnapshot<Map<String, dynamic>> userSnapshot =
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user!.uid)
+              .get();
+
+      DocumentSnapshot<Map<String, dynamic>> profileSnapshot =
+          await FirebaseFirestore.instance
+              .collection('profiles')
+              .doc(user!.uid)
+              .get();
+
       setState(() {
-        userData = snapshot.data();
+        userData = userSnapshot.data();
+        profileData = profileSnapshot.data();
       });
     }
   }
@@ -95,9 +104,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
       );
     }
 
-    Timestamp? joinDateTimestamp = userData?['createdAt'] as Timestamp?;
-    String joinDate = joinDateTimestamp != null
-        ? '${joinDateTimestamp.toDate().day}/${joinDateTimestamp.toDate().month}/${joinDateTimestamp.toDate().year}'
+    String joinDate = profileData?['createdAt'] != null
+        ? (profileData?['createdAt'] as Timestamp)
+            .toDate()
+            .toString()
+            .split(' ')[0]
         : 'ไม่ทราบ';
 
     final themeProvider = Provider.of<ThemeProvider>(context);
@@ -131,19 +142,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         children: [
                           CircleAvatar(
                             radius: 60,
-                            backgroundImage: userData != null &&
-                                    userData!['profileImageUrl'] != null
-                                ? NetworkImage(userData!['profileImageUrl'])
-                                : null,
-                            child: userData != null &&
-                                    userData!['profileImageUrl'] != null
-                                ? null
-                                : const Icon(
-                                    Icons.account_circle,
-                                    size: 130,
-                                    color: Colors.grey,
-                                  ),
+                            backgroundColor: Colors.grey[300],
+                            backgroundImage:
+                                userData?['profileImageUrl'] != null
+                                    ? NetworkImage(userData!['profileImageUrl'])
+                                    : null,
                           ),
+                          if (userData?['profileImageUrl'] == null)
+                            CircleAvatar(
+                              radius: 60,
+                              backgroundColor: Colors.grey[300],
+                            ),
                           Positioned(
                             bottom: 0,
                             right: 0,
@@ -166,8 +175,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 5),
                       child: Text(
-                        userData?['username'] ??
-                            'ดูเหมือนจะเกิดข้อผิดพลาดในการดึงข้อมูล!',
+                        profileData?['username'] ??
+                            'เกิดข้อผิดพลาดในการดึงข้อมูล!',
                         style: AppTextStyles.headline,
                       ),
                     ),
@@ -179,13 +188,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
               const SizedBox(height: 30),
-              _buildTextFieldContainer(
-                  'ชื่อผู้ใช้งาน',
-                  userData?['username'] ??
-                      'ดูเหมือนจะเกิดข้อผิดพลาดในการดึงข้อมูล!'),
+              _buildTextFieldContainer('ชื่อผู้ใช้งาน',
+                  profileData?['username'] ?? 'เกิดข้อผิดพลาดในการดึงข้อมูล!'),
               const SizedBox(height: 5),
               _buildTextFieldContainer('อีเมลของฉัน',
-                  user?.email ?? 'ดูเหมือนจะเกิดข้อผิดพลาดในการดึงข้อมูล!'),
+                  user?.email ?? 'เกิดข้อผิดพลาดในการดึงข้อมูล!'),
               const SizedBox(height: 30),
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,

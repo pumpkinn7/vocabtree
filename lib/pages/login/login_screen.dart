@@ -43,12 +43,17 @@ class _LoginScreenState extends State<LoginScreen> {
       // ถ้าไม่ใช่ email ให้ค้นหา email จาก username ใน Firestore
       try {
         QuerySnapshot querySnapshot = await FirebaseFirestore.instance
-            .collection('users')
+            .collection('profiles')
             .where('username', isEqualTo: usernameOrEmail)
             .get();
 
         if (querySnapshot.docs.isNotEmpty) {
-          email = querySnapshot.docs.first['email'];
+          String userId = querySnapshot.docs.first['userId'];
+          DocumentSnapshot userDoc = await FirebaseFirestore.instance
+              .collection('users')
+              .doc(userId)
+              .get();
+          email = userDoc['email'];
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(

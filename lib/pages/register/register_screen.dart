@@ -128,6 +128,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         'username': _usernameController.text.trim(),
         'email': _emailController.text.trim(),
         'profileImageUrl': profileImageUrl,
+        'createdAt': FieldValue.serverTimestamp(),
       });
 
       Navigator.push(

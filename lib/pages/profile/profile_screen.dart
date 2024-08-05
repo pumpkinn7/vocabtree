@@ -95,7 +95,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       );
     }
 
-    Timestamp? joinDateTimestamp = userData?['joinDate'] as Timestamp?;
+    Timestamp? joinDateTimestamp = userData?['createdAt'] as Timestamp?;
     String joinDate = joinDateTimestamp != null
         ? '${joinDateTimestamp.toDate().day}/${joinDateTimestamp.toDate().month}/${joinDateTimestamp.toDate().year}'
         : 'ไม่ทราบ';
@@ -178,17 +178,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ],
                 ),
               ),
-              const SizedBox(height: 15),
+              const SizedBox(height: 30),
               _buildTextFieldContainer(
-                  'ชื่อ',
+                  'ชื่อผู้ใช้งาน',
                   userData?['username'] ??
                       'ดูเหมือนจะเกิดข้อผิดพลาดในการดึงข้อมูล!'),
-              const SizedBox(height: 8),
-              _buildTextFieldContainer('อีเมล',
+              const SizedBox(height: 5),
+              _buildTextFieldContainer('อีเมลของฉัน',
                   user?.email ?? 'ดูเหมือนจะเกิดข้อผิดพลาดในการดึงข้อมูล!'),
-              const SizedBox(height: 8),
-              _buildTextFieldContainer('รหัสผ่าน', '**********'),
-              const SizedBox(height: 15),
+              const SizedBox(height: 30),
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
@@ -196,7 +194,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     'การแสดงผลหน้าจอ',
                     style: AppTextStyles.label,
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 5),
                   SizedBox(
                     width: 65,
                     child: DayNightSwitcher(

@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:vocabtree/pages/login/login_screen.dart';
@@ -8,6 +9,7 @@ import 'package:vocabtree/pages/otp/otp_verification_screen.dart';
 import 'package:vocabtree/pages/register/account_success_screen.dart';
 import 'package:vocabtree/pages/register/register_screen.dart';
 import 'package:vocabtree/pages/reset_password/forget_password_screen.dart';
+import 'package:vocabtree/theme/text_styles.dart';
 import 'package:vocabtree/theme/theme_provider.dart';
 import 'package:vocabtree/widgets/bottom_navbar.dart';
 
@@ -18,6 +20,7 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
   final themeMode = await _getInitialThemeMode();
   runApp(MyApp(initialThemeMode: themeMode));
 }
@@ -25,18 +28,27 @@ void main() async {
 Future<ThemeMode> _getInitialThemeMode() async {
   User? user = FirebaseAuth.instance.currentUser;
   if (user != null) {
-    DocumentSnapshot<Map<String, dynamic>> profileSnapshot =
-        await FirebaseFirestore.instance
-            .collection('profiles')
-            .doc(user.uid)
-            .get();
-    if (profileSnapshot.exists) {
-      String displayMode =
-          profileSnapshot.data()?['settings']['displayMode'] ?? 'light';
-      return displayMode == 'dark' ? ThemeMode.dark : ThemeMode.light;
+    try {
+      DocumentSnapshot<Map<String, dynamic>> profileSnapshot =
+          await FirebaseFirestore.instance
+              .collection('profiles')
+              .doc(user.uid)
+              .get();
+      if (profileSnapshot.exists) {
+        String displayMode = profileSnapshot.data()?['settings']['displayMode'];
+        if (displayMode == 'dark') {
+          return ThemeMode.dark;
+        } else if (displayMode == 'light') {
+          return ThemeMode.light;
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error getting initial theme mode: $e');
+      }
     }
   }
-  return ThemeMode.light;
+  return ThemeMode.system;
 }
 
 class MyApp extends StatelessWidget {
@@ -52,8 +64,8 @@ class MyApp extends StatelessWidget {
         builder: (context, themeProvider, child) {
           return MaterialApp(
             themeMode: themeProvider.themeMode,
-            theme: ThemeData.light(), // ธีมกลางวัน
-            darkTheme: ThemeData.dark(), // ธีมกลางคืน
+            theme: AppTextStyles.lightTheme, // ใช้ AppTextStyles.lightTheme
+            darkTheme: AppTextStyles.darkTheme, // ใช้ AppTextStyles.darkTheme
             initialRoute: '/',
             routes: {
               '/': (context) => const LoginScreen(),

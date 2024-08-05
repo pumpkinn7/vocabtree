@@ -1,51 +1,45 @@
-// ignore_for_file: library_private_types_in_public_api, use_build_context_synchronously
-
 import 'dart:io';
 
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:vocabtree/pages/login/login_screen.dart';
 import 'package:vocabtree/pages/otp/otp_verification_screen.dart';
+import 'package:vocabtree/services/auth_service.dart';
 import 'package:vocabtree/theme/text_styles.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
 
   @override
-  _RegisterScreenState createState() => _RegisterScreenState();
+  State<RegisterScreen> createState() => _RegisterScreenState();
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
+  final _formKey = GlobalKey<FormState>();
   final _usernameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  final AuthService _authService = AuthService();
 
-  bool _obscureText = true;
-  bool _obscureConfirmText = true;
+  bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
   File? _imageFile;
+  bool _isLoading = false;
 
-  final ImagePicker _picker = ImagePicker();
-
-  void _toggleObscureText() {
-    setState(() {
-      _obscureText = !_obscureText;
-    });
-  }
-
-  void _toggleObscureConfirmText() {
-    setState(() {
-      _obscureConfirmText = !_obscureConfirmText;
-    });
+  @override
+  void dispose() {
+    _usernameController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
   }
 
   Future<void> _pickImage() async {
-    final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
+    final pickedFile =
+        await ImagePicker().pickImage(source: ImageSource.gallery);
     if (pickedFile != null) {
       setState(() {
         _imageFile = File(pickedFile.path);
@@ -53,146 +47,73 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
   }
 
+  void _togglePasswordVisibility() {
+    setState(() {
+      _obscurePassword = !_obscurePassword;
+    });
+  }
+
+  void _toggleConfirmPasswordVisibility() {
+    setState(() {
+      _obscureConfirmPassword = !_obscureConfirmPassword;
+    });
+  }
+
   Future<void> _register() async {
-    if (_usernameController.text.isEmpty ||
-        _emailController.text.isEmpty ||
-        _passwordController.text.isEmpty ||
-        _confirmPasswordController.text.isEmpty ||
-        _imageFile == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('กรุณากรอกข้อมูลให้ครบทุกช่องและอัปโหลดรูปภาพ')),
-      );
+    if (!_formKey.currentState!.validate()) return;
+    if (_imageFile == null) {
+      _showErrorSnackBar('กรุณาอัปโหลดรูปภาพโปรไฟล์');
       return;
     }
 
-    if (_passwordController.text.length < 6) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('รหัสผ่านอย่างน้อยควรมี 6 ตัว')),
-      );
-      return;
-    }
-
-    if (_passwordController.text != _confirmPasswordController.text) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('รหัสผ่านไม่ตรงกัน')),
-      );
-      return;
-    }
+    setState(() {
+      _isLoading = true;
+    });
 
     try {
-      // ตรวจสอบว่า username ซ้ำหรือไม่
-      QuerySnapshot usernameQuery = await FirebaseFirestore.instance
-          .collection('profiles')
-          .where('username', isEqualTo: _usernameController.text.trim())
-          .get();
-
-      if (usernameQuery.docs.isNotEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('ชื่อผู้ใช้งานนี้ถูกใช้ไปแล้ว กรุณาใช้ชื่ออื่น')),
-        );
-        return;
-      }
-
-      // ตรวจสอบว่า email ซ้ำหรือไม่ใน Firestore
-      QuerySnapshot emailQuery = await FirebaseFirestore.instance
-          .collection('users')
-          .where('email', isEqualTo: _emailController.text.trim())
-          .get();
-
-      if (emailQuery.docs.isNotEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text(
-                  'อีเมลนี้ถูกใช้งานแล้ว คุณสามารถรีเซตรหัสผ่าน หรือใช้เมลใหม่แทน')),
-        );
-        return;
-      }
-
-      // สร้างผู้ใช้ด้วย Firebase Authentication
-      UserCredential userCredential =
-          await FirebaseAuth.instance.createUserWithEmailAndPassword(
+      final result = await _authService.registerUser(
+        username: _usernameController.text.trim(),
         email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
+        password: _passwordController.text,
+        profileImage: _imageFile!,
       );
 
-      User user = userCredential.user!;
-      await user.sendEmailVerification();
+      setState(() {
+        _isLoading = false;
+      });
 
-      // อัปโหลดรูปภาพโปรไฟล์ไปที่ Firebase Storage
-      String profilePicture = await _uploadProfileImage(user.uid);
-
-      // บันทึกข้อมูลผู้ใช้เพิ่มเติมใน Firestore
-      await _createUserCollections(user.uid, profilePicture);
-
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => OTPVerificationScreen(
-            email: _emailController.text.trim(),
-            password: _passwordController.text.trim(),
-            username: _usernameController.text.trim(),
-            profileImageFile: _imageFile,
-            user: user, // ส่งค่า user ที่ถูกต้อง
-            profileImageUrl: profilePicture,
-          ),
-        ),
-      );
-    } on FirebaseAuthException catch (e) {
-      if (e.code == 'email-already-in-use') {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-                'อีเมลนี้ถูกใช้งานแล้ว คุณสามารถรีเซตรหัสผ่าน หรือใช้เมลใหม่แทน'),
+      if (result.success && result.user != null) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => OTPVerificationScreen(
+              email: _emailController.text.trim(),
+              password: _passwordController.text,
+              username: _usernameController.text.trim(),
+              profileImageFile: _imageFile,
+              user: result.user!,
+              profileImageUrl: result.user!.photoURL ?? '',
+            ),
           ),
         );
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${e.message}')),
-        );
+        _showErrorSnackBar(
+            result.errorMessage ?? 'เกิดข้อผิดพลาดในการลงทะเบียน');
       }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: ${e.toString()}')),
-      );
-    }
-  }
-
-  Future<String> _uploadProfileImage(String userId) async {
-    try {
-      Reference storageReference = FirebaseStorage.instance
-          .ref()
-          .child('profile_images')
-          .child('$userId.jpg');
-      UploadTask uploadTask = storageReference.putFile(_imageFile!);
-      TaskSnapshot storageTaskSnapshot = await uploadTask;
-      String downloadUrl = await storageTaskSnapshot.ref.getDownloadURL();
-      return downloadUrl;
     } catch (e) {
       if (kDebugMode) {
-        print('Error uploading profile image: $e');
+        print('Error in _register: $e');
       }
-      rethrow;
+      setState(() {
+        _isLoading = false;
+      });
+      _showErrorSnackBar('เกิดข้อผิดพลาดในการลงทะเบียน: $e');
     }
   }
 
-  Future<void> _createUserCollections(
-      String userId, String profilePicture) async {
-    await FirebaseFirestore.instance.collection('users').doc(userId).set({
-      'email': _emailController.text.trim(),
-      'profilePicture': profilePicture,
-    });
-
-    await FirebaseFirestore.instance.collection('profiles').doc(userId).set({
-      'username': _usernameController.text.trim(),
-      'userId': userId,
-      'friends': [],
-      'achievements': [],
-      'settings': {'displayMode': 'light'},
-      'createdAt': FieldValue.serverTimestamp(),
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -202,177 +123,212 @@ class _RegisterScreenState extends State<RegisterScreen> {
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () {
-            Navigator.pop(context);
-          },
+          onPressed: () => Navigator.pop(context),
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
-      body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
+      body: SafeArea(
         child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const SizedBox(height: 24),
+                const Text(
+                  'สวัสดี!\nสมัครสมาชิกเพื่อเข้าใช้งาน',
+                  style: AppTextStyles.headline,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 32),
+                _buildUsernameAndProfileImage(),
+                const SizedBox(height: 24),
+                _buildEmailField(),
+                const SizedBox(height: 16),
+                _buildPasswordField(),
+                const SizedBox(height: 16),
+                _buildConfirmPasswordField(),
+                const SizedBox(height: 32),
+                _buildRegisterButton(),
+                const SizedBox(height: 24),
+                _buildLoginLink(),
+                const SizedBox(height: 24),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildUsernameAndProfileImage() {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Expanded(
+          child: TextFormField(
+            controller: _usernameController,
+            decoration: InputDecoration(
+              labelText: 'ชื่อผู้ใช้งาน',
+              border:
+                  OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+              labelStyle: AppTextStyles.inputText,
+              contentPadding:
+                  const EdgeInsets.symmetric(vertical: 15, horizontal: 10),
+            ),
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'กรุณากรอกชื่อผู้ใช้งาน';
+              }
+              return null;
+            },
+          ),
+        ),
+        const SizedBox(width: 20),
+        Stack(
+          alignment: Alignment.bottomRight,
+          children: [
+            CircleAvatar(
+              radius: 50,
+              backgroundColor: Colors.grey[300],
+              backgroundImage:
+                  _imageFile != null ? FileImage(_imageFile!) : null,
+              child: _imageFile == null
+                  ? const Icon(Icons.person, size: 50, color: Colors.white)
+                  : null,
+            ),
+            CircleAvatar(
+              backgroundColor: Colors.grey[700],
+              radius: 18,
+              child: IconButton(
+                icon:
+                    const Icon(Icons.camera_alt, size: 18, color: Colors.white),
+                onPressed: _pickImage,
+                padding: EdgeInsets.zero,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEmailField() {
+    return TextFormField(
+      controller: _emailController,
+      keyboardType: TextInputType.emailAddress,
+      decoration: InputDecoration(
+        labelText: 'อีเมล',
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+        labelStyle: AppTextStyles.inputText,
+      ),
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return 'กรุณากรอกอีเมล';
+        }
+        if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+          return 'กรุณากรอกอีเมลให้ถูกต้อง';
+        }
+        return null;
+      },
+    );
+  }
+
+  Widget _buildPasswordField() {
+    return TextFormField(
+      controller: _passwordController,
+      obscureText: _obscurePassword,
+      decoration: InputDecoration(
+        labelText: 'รหัสผ่าน',
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+        labelStyle: AppTextStyles.inputText,
+        suffixIcon: IconButton(
+          icon:
+              Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility),
+          onPressed: _togglePasswordVisibility,
+        ),
+      ),
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return 'กรุณากรอกรหัสผ่าน';
+        }
+        if (value.length < 6) {
+          return 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร';
+        }
+        return null;
+      },
+    );
+  }
+
+  Widget _buildConfirmPasswordField() {
+    return TextFormField(
+      controller: _confirmPasswordController,
+      obscureText: _obscureConfirmPassword,
+      decoration: InputDecoration(
+        labelText: 'ยืนยันรหัสผ่าน',
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+        labelStyle: AppTextStyles.inputText,
+        suffixIcon: IconButton(
+          icon: Icon(_obscureConfirmPassword
+              ? Icons.visibility_off
+              : Icons.visibility),
+          onPressed: _toggleConfirmPasswordVisibility,
+        ),
+      ),
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return 'กรุณายืนยันรหัสผ่าน';
+        }
+        if (value != _passwordController.text) {
+          return 'รหัสผ่านไม่ตรงกัน';
+        }
+        return null;
+      },
+    );
+  }
+
+  Widget _buildRegisterButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: _isLoading ? null : _register,
+        style: ElevatedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          backgroundColor: Colors.black87,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+        child: _isLoading
+            ? const CircularProgressIndicator(color: Colors.white)
+            : Text(
+                'สมัครสมาชิก',
+                style: AppTextStyles.label.copyWith(color: Colors.white),
+              ),
+      ),
+    );
+  }
+
+  Widget _buildLoginLink() {
+    return Center(
+      child: GestureDetector(
+        onTap: () {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const LoginScreen()),
+          );
+        },
+        child: Text.rich(
+          TextSpan(
+            text: 'มีบัญชีผู้ใช้งานอยู่แล้ว? ',
+            style: AppTextStyles.label,
             children: [
-              const SizedBox(height: 100),
-              const Text(
-                'สวัสดี!\nสมัครสมาชิกเพื่อเข้าใช้งาน',
-                style: AppTextStyles.headline,
+              TextSpan(
+                text: 'เข้าสู่ระบบเลย',
+                style: AppTextStyles.label.copyWith(color: Colors.orange),
               ),
-              const SizedBox(height: 20),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _usernameController,
-                      decoration: InputDecoration(
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        labelText: 'ชื่อผู้ใช้งาน',
-                        labelStyle: AppTextStyles.inputText,
-                        contentPadding: const EdgeInsets.symmetric(
-                            vertical: 15, horizontal: 10),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Stack(
-                    children: [
-                      CircleAvatar(
-                        radius: 50,
-                        backgroundColor: Colors.grey[300],
-                        backgroundImage:
-                            _imageFile != null ? FileImage(_imageFile!) : null,
-                        child: _imageFile == null
-                            ? const Icon(Icons.person,
-                                size: 50, color: Colors.white)
-                            : null,
-                      ),
-                      Positioned(
-                        bottom: 0,
-                        right: 0,
-                        child: CircleAvatar(
-                          backgroundColor: Colors.grey[700],
-                          radius: 15,
-                          child: IconButton(
-                            icon: const Icon(Icons.camera_alt,
-                                size: 15, color: Colors.white),
-                            onPressed: _pickImage,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              TextField(
-                controller: _emailController,
-                decoration: InputDecoration(
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  labelText: 'อีเมล',
-                  labelStyle: AppTextStyles.inputText,
-                  contentPadding:
-                      const EdgeInsets.symmetric(vertical: 15, horizontal: 10),
-                ),
-              ),
-              const SizedBox(height: 30),
-              TextField(
-                controller: _passwordController,
-                obscureText: _obscureText,
-                decoration: InputDecoration(
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  labelText: 'รหัสผ่าน',
-                  labelStyle: AppTextStyles.inputText,
-                  contentPadding:
-                      const EdgeInsets.symmetric(vertical: 15, horizontal: 10),
-                  suffixIcon: Padding(
-                    padding: const EdgeInsets.only(right: 5),
-                    child: IconButton(
-                      icon: Icon(
-                        _obscureText ? Icons.visibility_off : Icons.visibility,
-                        color: Colors.grey[700],
-                      ),
-                      onPressed: _toggleObscureText,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              TextField(
-                controller: _confirmPasswordController,
-                obscureText: _obscureConfirmText,
-                decoration: InputDecoration(
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  labelText: 'ยืนยัน รหัสผ่าน',
-                  labelStyle: AppTextStyles.inputText,
-                  contentPadding:
-                      const EdgeInsets.symmetric(vertical: 15, horizontal: 10),
-                  suffixIcon: Padding(
-                    padding: const EdgeInsets.only(right: 5),
-                    child: IconButton(
-                      icon: Icon(
-                        _obscureConfirmText
-                            ? Icons.visibility_off
-                            : Icons.visibility,
-                        color: Colors.grey[700],
-                      ),
-                      onPressed: _toggleObscureConfirmText,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 30),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _register,
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    backgroundColor: Colors.black87,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: Text(
-                    'สมัครสมาชิก',
-                    style: AppTextStyles.label.copyWith(color: Colors.white),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 30),
-              Center(
-                child: Text.rich(
-                  TextSpan(
-                    text: 'มีบัญชีผู้ใช้งานอยู่แล้ว? ',
-                    children: [
-                      TextSpan(
-                        text: 'เข้าสู่ระบบเลย',
-                        style:
-                            AppTextStyles.label.copyWith(color: Colors.orange),
-                        recognizer: TapGestureRecognizer()
-                          ..onTap = () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (context) => const LoginScreen()),
-                            );
-                          },
-                      ),
-                    ],
-                  ),
-                  style: AppTextStyles.label,
-                ),
-              ),
-              const SizedBox(height: 20),
             ],
           ),
         ),

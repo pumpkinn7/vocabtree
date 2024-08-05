@@ -1,7 +1,10 @@
+// lib/pages/reset_password/forget_password_screen.dart
+
 // ignore_for_file: library_private_types_in_public_api, use_build_context_synchronously
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:vocabtree/theme/text_styles.dart';
 
 class ForgetPasswordScreen extends StatefulWidget {
   const ForgetPasswordScreen({super.key});
@@ -57,17 +60,11 @@ class _ForgetPasswordScreenState extends State<ForgetPasswordScreen> {
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        leading: GestureDetector(
-          onTap: () {
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
             Navigator.pop(context);
           },
-          child: Padding(
-            padding: const EdgeInsets.only(left: 20, top: 20),
-            child: Image.asset(
-              'assets/icons/back.png',
-              fit: BoxFit.contain,
-            ),
-          ),
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -88,12 +85,12 @@ class _ForgetPasswordScreenState extends State<ForgetPasswordScreen> {
               const SizedBox(height: 20),
               const Text(
                 'ลืมรหัสผ่าน?',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                style: AppTextStyles.headline,
               ),
               const SizedBox(height: 20),
-              const Text(
+              Text(
                 'ไม่ต้องกังวล! เราสามารถกู้คืนรหัสผ่านคุณได้.\nกรุณากรอกที่อยู่อีเมลที่เชื่อมโยงกับบัญชีของคุณ',
-                style: TextStyle(fontSize: 16, color: Colors.black54),
+                style: AppTextStyles.caption,
               ),
               const SizedBox(height: 20),
               TextField(
@@ -103,7 +100,7 @@ class _ForgetPasswordScreenState extends State<ForgetPasswordScreen> {
                     borderRadius: BorderRadius.circular(10),
                   ),
                   labelText: 'อีเมลที่ท่านเชื่อมโยงบัญชี',
-                  labelStyle: TextStyle(color: Colors.grey[700]),
+                  labelStyle: AppTextStyles.inputText,
                   contentPadding:
                       const EdgeInsets.symmetric(vertical: 15, horizontal: 10),
                 ),
@@ -115,14 +112,14 @@ class _ForgetPasswordScreenState extends State<ForgetPasswordScreen> {
                   onPressed: _resetPassword,
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    backgroundColor: Colors.black,
+                    backgroundColor: Colors.black87,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
-                  child: const Text(
+                  child: Text(
                     'ส่งรหัส',
-                    style: TextStyle(color: Colors.white),
+                    style: AppTextStyles.label.copyWith(color: Colors.white),
                   ),
                 ),
               ),

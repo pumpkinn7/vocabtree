@@ -1,6 +1,4 @@
-// lib/pages/otp/otp_verification_screen.dart
-
-// ignore_for_file: library_private_types_in_public_api, use_build_context_synchronously, avoid_print
+// ignore_for_file: library_private_types_in_public_api, use_build_context_synchronously
 
 import 'dart:io';
 
@@ -8,6 +6,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:vocabtree/theme/text_styles.dart';
 
 class OTPVerificationScreen extends StatefulWidget {
   final String email;
@@ -73,6 +72,18 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('ลิงก์ยืนยันถูกส่งไปที่อีเมลของคุณแล้ว')),
       );
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'too-many-requests') {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('เราส่งไปแล้วนะ รอเวลาสักครู่ค่อยลองกดใหม่'),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: ${e.message}')),
+        );
+      }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: ${e.toString()}')),
@@ -91,14 +102,11 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        leading: GestureDetector(
-          onTap: () {
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
             Navigator.pop(context);
           },
-          child: const Padding(
-            padding: EdgeInsets.only(left: 20, top: 20),
-            child: Icon(Icons.arrow_back, color: Colors.black),
-          ),
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -110,11 +118,6 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 100),
-              const Text(
-                'OTP! เราได้ส่งไปที่อีเมลคุณ',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 20),
               Center(
                 child: CircleAvatar(
                   radius: 50,
@@ -128,8 +131,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
               Center(
                 child: Text(
                   'สวัสดีคุณ, ${widget.username}',
-                  style: const TextStyle(
-                      fontSize: 20, fontWeight: FontWeight.bold),
+                  style: AppTextStyles.headline,
                 ),
               ),
               const SizedBox(height: 10),
@@ -137,7 +139,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                 child: Text(
                   'เราได้ส่ง Link ยืนยัน OTP\nไปที่อีเมลของคุณเรียบร้อยแล้ว กดยืนยันเพื่อเข้าใช้งาน',
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 16, color: Colors.black54),
+                  style: AppTextStyles.label,
                 ),
               ),
               const SizedBox(height: 30),
@@ -147,14 +149,14 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                   onPressed: _verifyEmail,
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    backgroundColor: Colors.black,
+                    backgroundColor: Colors.black87,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
-                  child: const Text(
+                  child: Text(
                     'ยืนยัน',
-                    style: TextStyle(color: Colors.white),
+                    style: AppTextStyles.label.copyWith(color: Colors.white),
                   ),
                 ),
               ),
@@ -163,11 +165,12 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                 child: RichText(
                   text: TextSpan(
                     text: 'ฉันยังไม่ได้รับรหัสยืนยัน? ',
-                    style: const TextStyle(color: Colors.black54),
+                    style: AppTextStyles.label,
                     children: [
                       TextSpan(
                         text: 'ส่งอีกครั้ง',
-                        style: const TextStyle(color: Colors.teal),
+                        style:
+                            AppTextStyles.label.copyWith(color: Colors.orange),
                         recognizer: TapGestureRecognizer()
                           ..onTap = _resendVerificationEmail,
                       ),

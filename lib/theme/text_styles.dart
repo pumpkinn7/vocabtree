@@ -1,28 +1,31 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 class AppTextStyles {
-  static final TextStyle headline = GoogleFonts.kanit(
+  static const TextStyle headline = TextStyle(
+    fontFamily: 'Kanit',
     fontSize: 28,
     fontWeight: FontWeight.bold,
   );
 
-  static final TextStyle caption = GoogleFonts.kanit(
+  static final TextStyle caption = TextStyle(
+    fontFamily: 'Kanit',
     fontSize: 18,
     fontWeight: FontWeight.w500,
     color: Colors.grey[600],
   );
 
-  static final TextStyle label = GoogleFonts.kanit(
+  static const TextStyle label = TextStyle(
+    fontFamily: 'Kanit',
     fontSize: 16,
     fontWeight: FontWeight.w400,
-    color: const Color(0xFF6D7278),
+    color: Color(0xFF6D7278),
   );
 
-  static final TextStyle inputText = GoogleFonts.kanit(
+  static const TextStyle inputText = TextStyle(
+    fontFamily: 'Kanit',
     fontSize: 15,
     fontWeight: FontWeight.w400,
-    color: const Color(0xFF6D7278),
+    color: Color(0xFF6D7278),
   );
 
   static ThemeData lightTheme = ThemeData(

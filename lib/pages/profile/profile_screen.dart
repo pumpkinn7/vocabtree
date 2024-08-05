@@ -190,7 +190,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  Text(
+                  const Text(
                     'การแสดงผลหน้าจอ',
                     style: AppTextStyles.label,
                   ),

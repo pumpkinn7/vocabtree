@@ -6,6 +6,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:vocabtree/theme/text_styles.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -29,7 +30,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (_usernameEmailController.text.isEmpty ||
         _passwordController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('กรุณากรอกข้อมูลให้ครบ')),
+        const SnackBar(content: Text('กรอกข้อมูลให้ครบก่อนสิ')),
       );
       return;
     }
@@ -138,7 +139,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   labelText: 'ชื่อผู้ใช้งาน หรืออีเมล',
-                  labelStyle: TextStyle(color: Colors.grey[700]),
+                  labelStyle: AppTextStyles.inputText,
                 ),
               ),
               const SizedBox(height: 16),
@@ -150,13 +151,13 @@ class _LoginScreenState extends State<LoginScreen> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   labelText: 'รหัสผ่าน',
-                  labelStyle: TextStyle(color: Colors.grey[700]),
+                  labelStyle: AppTextStyles.inputText,
                   suffixIcon: Padding(
                     padding: const EdgeInsets.only(right: 5),
                     child: IconButton(
                       icon: Icon(
                         _obscureText ? Icons.visibility_off : Icons.visibility,
-                        color: Colors.grey[700],
+                        color: Theme.of(context).iconTheme.color,
                       ),
                       onPressed: _toggleObscureText,
                     ),
@@ -169,7 +170,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Text.rich(
                   TextSpan(
                     text: 'ลืมรหัสผ่าน?',
-                    style: const TextStyle(color: Colors.teal, fontSize: 14),
+                    style: AppTextStyles.label.copyWith(
+                      color: Colors.grey,
+                    ),
                     recognizer: TapGestureRecognizer()
                       ..onTap = () {
                         Navigator.pushNamed(context, '/reset-password');
@@ -189,21 +192,23 @@ class _LoginScreenState extends State<LoginScreen> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
-                  child: const Text(
+                  child: Text(
                     'เข้าสู่ระบบ',
-                    style: TextStyle(color: Colors.white),
+                    style: AppTextStyles.label.copyWith(color: Colors.white),
                   ),
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 35),
               Text.rich(
                 TextSpan(
                   text: 'ไม่มีบัญชีผู้ใช้งานใช่หรือไม่? ',
-                  style: const TextStyle(color: Colors.black54, fontSize: 14),
+                  style: AppTextStyles.label,
                   children: [
                     TextSpan(
                       text: 'สมัครเลย',
-                      style: const TextStyle(color: Colors.teal, fontSize: 14),
+                      style: AppTextStyles.label.copyWith(
+                        color: Colors.orange,
+                      ),
                       recognizer: TapGestureRecognizer()
                         ..onTap = () {
                           Navigator.pushNamed(context, '/register');

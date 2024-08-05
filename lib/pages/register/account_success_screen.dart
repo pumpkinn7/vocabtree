@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:vocabtree/theme/text_styles.dart';
 
 class AccountSuccessScreen extends StatelessWidget {
   const AccountSuccessScreen({super.key});
@@ -7,22 +8,6 @@ class AccountSuccessScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        leading: GestureDetector(
-          onTap: () {
-            Navigator.pop(context);
-          },
-          child: Padding(
-            padding: const EdgeInsets.only(left: 20, top: 20),
-            child: Image.asset(
-              'assets/icons/back.png',
-              fit: BoxFit.contain,
-            ),
-          ),
-        ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-      ),
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 20),
         child: SingleChildScrollView(
@@ -37,12 +22,12 @@ class AccountSuccessScreen extends StatelessWidget {
               const SizedBox(height: 20),
               const Text(
                 'สร้างบัญชีสำเร็จ',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                style: AppTextStyles.headline,
               ),
               const SizedBox(height: 10),
-              const Text(
+              Text(
                 'สนุกกับการเรียนรู้คำศัพท์ใหม่\nและ แบบทดสอบหลากหลาย',
-                style: TextStyle(fontSize: 16, color: Colors.black54),
+                style: AppTextStyles.caption,
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 30),
@@ -54,14 +39,14 @@ class AccountSuccessScreen extends StatelessWidget {
                   },
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    backgroundColor: Colors.black,
+                    backgroundColor: Colors.black87,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
-                  child: const Text(
+                  child: Text(
                     'ดำเนินการเข้าสู่ระบบ',
-                    style: TextStyle(color: Colors.white),
+                    style: AppTextStyles.label.copyWith(color: Colors.white),
                   ),
                 ),
               ),

@@ -12,6 +12,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:vocabtree/pages/login/login_screen.dart';
 import 'package:vocabtree/pages/otp/otp_verification_screen.dart';
+import 'package:vocabtree/theme/text_styles.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -185,17 +186,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        leading: GestureDetector(
-          onTap: () {
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
             Navigator.pop(context);
           },
-          child: Padding(
-            padding: const EdgeInsets.only(left: 20, top: 20),
-            child: Image.asset(
-              'assets/icons/back.png',
-              fit: BoxFit.contain,
-            ),
-          ),
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -209,7 +204,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               const SizedBox(height: 100),
               const Text(
                 'สวัสดี!\nสมัครสมาชิกเพื่อเข้าใช้งาน',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                style: AppTextStyles.headline,
               ),
               const SizedBox(height: 20),
               Row(
@@ -222,6 +217,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           borderRadius: BorderRadius.circular(10),
                         ),
                         labelText: 'ชื่อผู้ใช้งาน',
+                        labelStyle: AppTextStyles.inputText,
                         contentPadding: const EdgeInsets.symmetric(
                             vertical: 15, horizontal: 10),
                       ),
@@ -265,6 +261,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     borderRadius: BorderRadius.circular(10),
                   ),
                   labelText: 'อีเมล',
+                  labelStyle: AppTextStyles.inputText,
                   contentPadding:
                       const EdgeInsets.symmetric(vertical: 15, horizontal: 10),
                 ),
@@ -278,6 +275,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     borderRadius: BorderRadius.circular(10),
                   ),
                   labelText: 'รหัสผ่าน',
+                  labelStyle: AppTextStyles.inputText,
                   contentPadding:
                       const EdgeInsets.symmetric(vertical: 15, horizontal: 10),
                   suffixIcon: Padding(
@@ -301,6 +299,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     borderRadius: BorderRadius.circular(10),
                   ),
                   labelText: 'ยืนยัน รหัสผ่าน',
+                  labelStyle: AppTextStyles.inputText,
                   contentPadding:
                       const EdgeInsets.symmetric(vertical: 15, horizontal: 10),
                   suffixIcon: Padding(
@@ -324,14 +323,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   onPressed: _register,
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    backgroundColor: Colors.black,
+                    backgroundColor: Colors.black87,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
-                  child: const Text(
+                  child: Text(
                     'สมัครสมาชิก',
-                    style: TextStyle(color: Colors.white),
+                    style: AppTextStyles.label.copyWith(color: Colors.white),
                   ),
                 ),
               ),
@@ -343,7 +342,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     children: [
                       TextSpan(
                         text: 'เข้าสู่ระบบเลย',
-                        style: const TextStyle(color: Colors.teal),
+                        style:
+                            AppTextStyles.label.copyWith(color: Colors.orange),
                         recognizer: TapGestureRecognizer()
                           ..onTap = () {
                             Navigator.push(
@@ -355,7 +355,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                     ],
                   ),
-                  style: const TextStyle(color: Colors.black54),
+                  style: AppTextStyles.label,
                 ),
               ),
               const SizedBox(height: 20),

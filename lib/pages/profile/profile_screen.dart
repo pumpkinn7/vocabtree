@@ -443,14 +443,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _deleteAccount() async {
-    // แสดง dialog ยืนยันการลบบัญชี
     bool confirmDelete = await showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('ยืนยันการลบบัญชี T_T'),
+          title: const Text('ยืนยันการลบบัญชี'),
           content: const Text(
-              'คุณแน่ใจหรือไม่ที่จะลบบัญชีผู้ใช้งาน? บัญชีไม่สามารถกู้คืนได้นะ'),
+              'คุณแน่ใจหรือไม่ที่จะลบบัญชีผู้ใช้งาน? การกระทำนี้ไม่สามารถยกเลิกได้'),
           actions: <Widget>[
             TextButton(
               child: const Text('ยกเลิก'),
@@ -479,23 +478,40 @@ class _ProfileScreenState extends State<ProfileScreen> {
               .doc(user.uid)
               .delete();
 
-          // ลบรูปโปรไฟล์จาก Firebase Storage (ถ้ามี)
-          final storageRef =
-              FirebaseStorage.instance.ref('profile_images/${user.uid}.jpg');
+          // ลบรูปโปรไฟล์จาก Firebase Storage
+          final storageRef = FirebaseStorage.instance
+              .ref()
+              .child('profile_images')
+              .child('${user.uid}.jpg');
           try {
+            // ตรวจสอบว่าไฟล์มีอยู่จริง
+            await storageRef.getDownloadURL();
+            // ถ้าไม่เกิด error แสดงว่าไฟล์มีอยู่ ให้ทำการลบ
             await storageRef.delete();
-          } catch (e) {
             if (kDebugMode) {
-              print('No profile picture to delete or error deleting: $e');
+              print('Profile picture deleted successfully');
+            }
+          } catch (e) {
+            if (e is FirebaseException && e.code == 'object-not-found') {
+              if (kDebugMode) {
+                print('Profile picture does not exist');
+              }
+            } else {
+              if (kDebugMode) {
+                print('Error deleting profile picture: $e');
+              }
             }
           }
 
           // ลบบัญชีผู้ใช้จาก Firebase Authentication
           await user.delete();
 
-          // ออกจากระบบและนำทางกลับไปยังหน้าล็อกอิน
+          // ออกจากระบบ
           await FirebaseAuth.instance.signOut();
-          Navigator.of(context).pushReplacementNamed('/login');
+
+          // นำทางกลับไปยังหน้า Login
+          Navigator.of(context)
+              .pushNamedAndRemoveUntil('/', (Route<dynamic> route) => false);
         }
       } catch (e) {
         if (kDebugMode) {

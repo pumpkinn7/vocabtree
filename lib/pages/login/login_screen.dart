@@ -191,11 +191,9 @@ class _LoginScreenState extends State<LoginScreen> {
         onPressed: _login,
         style: ElevatedButton.styleFrom(
           padding: const EdgeInsets.symmetric(vertical: 16),
-          backgroundColor: Colors.black,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
-        child: Text('เข้าสู่ระบบ',
-            style: AppTextStyles.label.copyWith(color: Colors.white)),
+        child: const Text('เข้าสู่ระบบ', style: AppTextStyles.label),
       ),
     );
   }

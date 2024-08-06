@@ -149,14 +149,13 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                   onPressed: _verifyEmail,
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    backgroundColor: Colors.black87,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
-                  child: Text(
+                  child: const Text(
                     'ยืนยัน',
-                    style: AppTextStyles.label.copyWith(color: Colors.white),
+                    style: AppTextStyles.label,
                   ),
                 ),
               ),

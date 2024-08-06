@@ -112,14 +112,13 @@ class _ForgetPasswordScreenState extends State<ForgetPasswordScreen> {
                   onPressed: _resetPassword,
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    backgroundColor: Colors.black87,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
-                  child: Text(
+                  child: const Text(
                     'ส่งรหัส',
-                    style: AppTextStyles.label.copyWith(color: Colors.white),
+                    style: AppTextStyles.label,
                   ),
                 ),
               ),

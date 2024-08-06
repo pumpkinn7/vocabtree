@@ -1,8 +1,5 @@
-import 'dart:io';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 
 class AuthResult {
@@ -16,7 +13,6 @@ class AuthResult {
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseStorage _storage = FirebaseStorage.instance;
 
   Future<bool> isUsernameTaken(String username) async {
     final QuerySnapshot result = await _firestore
@@ -40,7 +36,7 @@ class AuthService {
     required String username,
     required String email,
     required String password,
-    required File profileImage,
+    String? profileImageUrl,
   }) async {
     try {
       if (await isUsernameTaken(username)) {
@@ -63,8 +59,6 @@ class AuthService {
 
       User? user = userCredential.user;
       if (user != null) {
-        String profileImageUrl =
-            await _uploadProfileImage(user.uid, profileImage);
         await _createUserDocument(user.uid, username, email, profileImageUrl);
         await user.sendEmailVerification();
         return AuthResult(success: true, user: user);
@@ -80,31 +74,12 @@ class AuthService {
     }
   }
 
-  Future<String> _uploadProfileImage(String userId, File imageFile) async {
-    try {
-      Reference storageReference =
-          _storage.ref().child('profile_images').child('$userId.jpg');
-      UploadTask uploadTask = storageReference.putFile(imageFile);
-      TaskSnapshot snapshot = await uploadTask;
-      String downloadUrl = await snapshot.ref.getDownloadURL();
-      if (kDebugMode) {
-        print('Profile image uploaded. URL: $downloadUrl');
-      }
-      return downloadUrl;
-    } catch (e) {
-      if (kDebugMode) {
-        print('Error uploading profile image: $e');
-      }
-      rethrow;
-    }
-  }
-
   Future<void> _createUserDocument(String userId, String username, String email,
-      String profileImageUrl) async {
+      String? profileImageUrl) async {
     try {
       await _firestore.collection('users').doc(userId).set({
         'email': email,
-        'profileImageUrl': profileImageUrl,
+        'profileImageUrl': profileImageUrl ?? '',
         'username': username,
       });
 

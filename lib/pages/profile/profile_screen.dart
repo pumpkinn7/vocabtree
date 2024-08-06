@@ -297,28 +297,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildDisplayModeSwitch(ThemeProvider themeProvider) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.end,
-      children: [
-        const Text(
-          'การแสดงผลหน้าจอ',
-          style: AppTextStyles.label,
+Widget _buildDisplayModeSwitch(ThemeProvider themeProvider) {
+  return Row(
+    mainAxisAlignment: MainAxisAlignment.end,
+    children: [
+      const Text(
+        'การแสดงผลหน้าจอ',
+        style: AppTextStyles.label,
+      ),
+      const SizedBox(width: 5),
+      SizedBox(
+        width: 65,
+        child: DayNightSwitcher(
+          isDarkModeEnabled: themeProvider.themeMode == ThemeMode.dark,
+          onStateChanged: (isDarkModeEnabled) {
+            themeProvider.toggleTheme(isDarkModeEnabled);
+            _toggleDisplayMode(isDarkModeEnabled);
+          },
         ),
-        const SizedBox(width: 5),
-        SizedBox(
-          width: 65,
-          child: DayNightSwitcher(
-            isDarkModeEnabled: themeProvider.themeMode == ThemeMode.dark,
-            onStateChanged: (isDarkModeEnabled) {
-              themeProvider.toggleTheme(isDarkModeEnabled);
-              _toggleDisplayMode(isDarkModeEnabled);
-            },
-          ),
-        ),
-      ],
-    );
-  }
+      ),
+    ],
+  );
+}
 
   Widget _buildActionButtons() {
     return Row(

@@ -39,14 +39,13 @@ class AccountSuccessScreen extends StatelessWidget {
                   },
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    backgroundColor: Colors.black87,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
-                  child: Text(
+                  child: const Text(
                     'ดำเนินการเข้าสู่ระบบ',
-                    style: AppTextStyles.label.copyWith(color: Colors.white),
+                    style: AppTextStyles.label,
                   ),
                 ),
               ),

@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -26,6 +27,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   File? _imageFile;
+  String? _profileImageUrl;
   bool _isLoading = false;
 
   @override
@@ -44,6 +46,28 @@ class _RegisterScreenState extends State<RegisterScreen> {
       setState(() {
         _imageFile = File(pickedFile.path);
       });
+      await _uploadImage();
+    }
+  }
+
+  Future<void> _uploadImage() async {
+    if (_imageFile == null) return;
+
+    try {
+      final ref = FirebaseStorage.instance
+          .ref()
+          .child('profile_images')
+          .child('${DateTime.now().toIso8601String()}.jpg');
+      await ref.putFile(_imageFile!);
+      final url = await ref.getDownloadURL();
+      setState(() {
+        _profileImageUrl = url;
+      });
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error uploading image: $e');
+      }
+      _showErrorSnackBar('เกิดข้อผิดพลาดในการอัปโหลดรูปภาพ');
     }
   }
 
@@ -61,7 +85,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Future<void> _register() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_imageFile == null) {
+    if (_profileImageUrl == null) {
       _showErrorSnackBar('กรุณาอัปโหลดรูปภาพโปรไฟล์');
       return;
     }
@@ -75,7 +99,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         username: _usernameController.text.trim(),
         email: _emailController.text.trim(),
         password: _passwordController.text,
-        profileImage: _imageFile!,
+        profileImageUrl: _profileImageUrl!,
       );
 
       setState(() {
@@ -92,7 +116,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               username: _usernameController.text.trim(),
               profileImageFile: _imageFile,
               user: result.user!,
-              profileImageUrl: result.user!.photoURL ?? '',
+              profileImageUrl: _profileImageUrl!,
             ),
           ),
         );
@@ -296,16 +320,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
         onPressed: _isLoading ? null : _register,
         style: ElevatedButton.styleFrom(
           padding: const EdgeInsets.symmetric(vertical: 16),
-          backgroundColor: Colors.black87,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(8),
           ),
         ),
         child: _isLoading
             ? const CircularProgressIndicator(color: Colors.white)
-            : Text(
+            : const Text(
                 'สมัครสมาชิก',
-                style: AppTextStyles.label.copyWith(color: Colors.white),
+                style: AppTextStyles.label,
               ),
       ),
     );

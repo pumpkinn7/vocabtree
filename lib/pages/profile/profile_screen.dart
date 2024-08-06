@@ -1,3 +1,5 @@
+// ignore_for_file: unused_element
+
 import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -28,10 +30,311 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool isLoading = true;
   String? errorMessage;
 
+  //sensor email ไม่ให้แสดงข้อความเต็ม
+  String _maskEmail(String email) {
+    if (email.isEmpty) return '';
+
+    final parts = email.split('@');
+    if (parts.length != 2) return email; // ไม่ใช่รูปแบบอีเมลที่ถูกต้อง
+
+    String username = parts[0];
+    String domain = parts[1];
+
+    // แสดง 2 ตัวอักษรแรกและ 2 ตัวสุดท้ายของ username
+    if (username.length > 4) {
+      username =
+          '${username.substring(0, 2)}****${username.substring(username.length - 2)}';
+    } else {
+      username = username.replaceRange(1, null, '***');
+    }
+
+    return '$username@$domain';
+  }
+
   @override
   void initState() {
     super.initState();
     _loadUserData();
+  }
+
+  void _showReportProblemDialog() {
+    String? selectedProblem;
+    final TextEditingController customProblemController =
+        TextEditingController();
+    final TextEditingController detailsController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('รายงานปัญหา', style: AppTextStyles.headline),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('ปัญหาที่พบบ่อย:', style: AppTextStyles.label),
+                    DropdownButton<String>(
+                      isExpanded: true,
+                      value: selectedProblem,
+                      hint: const Text('เลือกปัญหาที่พบ'),
+                      items: [
+                        'ปัญหาที่ 1',
+                        'ปัญหาที่ 2',
+                        'ปัญหาที่ 3',
+                        'ปัญหาที่ 4',
+                        'ปัญหาที่ 5',
+                      ].map((String value) {
+                        return DropdownMenuItem<String>(
+                          value: value,
+                          child: Text(value),
+                        );
+                      }).toList(),
+                      onChanged: (String? newValue) {
+                        setState(() {
+                          selectedProblem = newValue;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 20),
+                    TextField(
+                      controller: customProblemController,
+                      decoration: const InputDecoration(
+                        labelText: 'ปัญหาที่ฉันพบ',
+                        hintText: 'กรอกปัญหาที่คุณพบ',
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    TextField(
+                      controller: detailsController,
+                      decoration: const InputDecoration(
+                        labelText: 'รายละเอียด',
+                        hintText: 'กรอกรายละเอียดเพิ่มเติม',
+                      ),
+                      maxLines: 3,
+                    ),
+                  ],
+                ),
+              ),
+              actions: <Widget>[
+                TextButton(
+                  child: const Text('ยกเลิก'),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+                TextButton(
+                  child: const Text('ส่งรายงาน'),
+                  onPressed: () {
+                    if (kDebugMode) {
+                      print('ปัญหาที่เลือก: $selectedProblem');
+                    }
+                    if (kDebugMode) {
+                      print('ปัญหาที่กรอก: ${customProblemController.text}');
+                    }
+                    if (kDebugMode) {
+                      print('รายละเอียด: ${detailsController.text}');
+                    }
+                    Navigator.of(context).pop();
+                  },
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showFriendsDialog() {
+    final TextEditingController friendController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('รายชื่อเพื่อน', style: AppTextStyles.headline),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: friendController,
+                      decoration: const InputDecoration(
+                        hintText: 'ชื่อเพื่อน',
+                        hintStyle: AppTextStyles.inputText,
+                      ),
+                      style: AppTextStyles.inputText,
+                    ),
+                    ElevatedButton(
+                      child:
+                          const Text('เพิ่มเพื่อน', style: AppTextStyles.label),
+                      onPressed: () {
+                        _addFriend(friendController.text, setState);
+                        friendController.clear();
+                      },
+                    ),
+                    const SizedBox(height: 20),
+                    Expanded(
+                      child: FutureBuilder<DocumentSnapshot>(
+                        future: FirebaseFirestore.instance
+                            .collection('profiles')
+                            .doc(FirebaseAuth.instance.currentUser!.uid)
+                            .get(),
+                        builder: (BuildContext context,
+                            AsyncSnapshot<DocumentSnapshot> snapshot) {
+                          if (snapshot.connectionState ==
+                              ConnectionState.waiting) {
+                            return const Center(
+                                child: CircularProgressIndicator());
+                          }
+
+                          if (snapshot.hasError) {
+                            return const Text('เกิดข้อผิดพลาดในการโหลดข้อมูล',
+                                style: AppTextStyles.inputText);
+                          }
+
+                          if (!snapshot.hasData || !snapshot.data!.exists) {
+                            return const Text('ไม่พบข้อมูลผู้ใช้',
+                                style: AppTextStyles.inputText);
+                          }
+
+                          List<dynamic> friends =
+                              snapshot.data!.get('friends') ?? [];
+
+                          if (friends.isEmpty) {
+                            return const Text('ยังไม่มีรายชื่อเพื่อน',
+                                style: AppTextStyles.inputText);
+                          }
+
+                          return ListView.builder(
+                            shrinkWrap: true,
+                            itemCount: friends.length,
+                            itemBuilder: (context, index) {
+                              return ListTile(
+                                title: Text(friends[index],
+                                    style: AppTextStyles.inputText),
+                                trailing: IconButton(
+                                  icon: const Icon(Icons.delete,
+                                      color: Colors.red),
+                                  onPressed: () =>
+                                      _removeFriend(friends[index], setState),
+                                ),
+                              );
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: <Widget>[
+                TextButton(
+                  child: const Text('ปิด', style: AppTextStyles.label),
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showManageAccountDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: const Text('จัดการบัญชี', style: AppTextStyles.headline),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Image.asset(
+                'assets/images/tree_6977598.png',
+                width: 35,
+                height: 35,
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.of(dialogContext).pop();
+                  Navigator.pushNamed(context, '/reset-password');
+                },
+                child: const Text('ฉันลืมรหัสผ่าน', style: AppTextStyles.label),
+              ),
+              const SizedBox(height: 10),
+              ElevatedButton(
+                onPressed: _deleteAccount,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                ),
+                child:
+                    const Text('ลบบัญชีผู้ใช้งาน', style: AppTextStyles.label),
+              ),
+            ],
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('ปิด', style: AppTextStyles.label),
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _addFriend(String friendName, StateSetter setState) async {
+    if (friendName.isNotEmpty) {
+      try {
+        final userDoc = FirebaseFirestore.instance
+            .collection('profiles')
+            .doc(FirebaseAuth.instance.currentUser!.uid);
+
+        await userDoc.update({
+          'friends': FieldValue.arrayUnion([friendName])
+        });
+
+        setState(() {});
+      } catch (e) {
+        if (kDebugMode) {
+          print('Error adding friend: $e');
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('เกิดข้อผิดพลาดในการเพิ่มเพื่อน')),
+        );
+      }
+    }
+  }
+
+  Future<void> _removeFriend(String friendName, StateSetter setState) async {
+    try {
+      final userDoc = FirebaseFirestore.instance
+          .collection('profiles')
+          .doc(FirebaseAuth.instance.currentUser!.uid);
+
+      await userDoc.update({
+        'friends': FieldValue.arrayRemove([friendName])
+      });
+
+      setState(() {});
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error removing friend: $e');
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('เกิดข้อผิดพลาดในการลบเพื่อน')),
+      );
+    }
   }
 
   Future<void> _loadUserData() async {
@@ -96,14 +399,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final fileName = '${FirebaseAuth.instance.currentUser!.uid}.jpg';
 
       try {
-        // Upload image to Firebase Storage
         final uploadTask = FirebaseStorage.instance
             .ref('profile_images/$fileName')
             .putFile(file);
         final snapshot = await uploadTask;
         final downloadUrl = await snapshot.ref.getDownloadURL();
 
-        // Update Firestore with the new image URL
         await FirebaseFirestore.instance
             .collection('users')
             .doc(FirebaseAuth.instance.currentUser!.uid)
@@ -138,6 +439,73 @@ class _ProfileScreenState extends State<ProfileScreen> {
             content: Text(
                 'เกิดข้อผิดพลาดในการบันทึกการตั้งค่า กรุณาลองใหม่อีกครั้ง')),
       );
+    }
+  }
+
+  Future<void> _deleteAccount() async {
+    // แสดง dialog ยืนยันการลบบัญชี
+    bool confirmDelete = await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('ยืนยันการลบบัญชี T_T'),
+          content: const Text(
+              'คุณแน่ใจหรือไม่ที่จะลบบัญชีผู้ใช้งาน? บัญชีไม่สามารถกู้คืนได้นะ'),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('ยกเลิก'),
+              onPressed: () => Navigator.of(context).pop(false),
+            ),
+            TextButton(
+              child: const Text('ยืนยัน'),
+              onPressed: () => Navigator.of(context).pop(true),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmDelete == true) {
+      try {
+        User? user = FirebaseAuth.instance.currentUser;
+        if (user != null) {
+          // ลบข้อมูลผู้ใช้จาก Firestore
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .delete();
+          await FirebaseFirestore.instance
+              .collection('profiles')
+              .doc(user.uid)
+              .delete();
+
+          // ลบรูปโปรไฟล์จาก Firebase Storage (ถ้ามี)
+          final storageRef =
+              FirebaseStorage.instance.ref('profile_images/${user.uid}.jpg');
+          try {
+            await storageRef.delete();
+          } catch (e) {
+            if (kDebugMode) {
+              print('No profile picture to delete or error deleting: $e');
+            }
+          }
+
+          // ลบบัญชีผู้ใช้จาก Firebase Authentication
+          await user.delete();
+
+          // ออกจากระบบและนำทางกลับไปยังหน้าล็อกอิน
+          await FirebaseAuth.instance.signOut();
+          Navigator.of(context).pushReplacementNamed('/login');
+        }
+      } catch (e) {
+        if (kDebugMode) {
+          print('Error deleting account: $e');
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('เกิดข้อผิดพลาดในการลบบัญชี กรุณาลองใหม่อีกครั้ง')),
+        );
+      }
     }
   }
 
@@ -179,8 +547,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const SizedBox(height: 5),
               _buildTextFieldContainer(
                   'อีเมลของฉัน',
-                  FirebaseAuth.instance.currentUser?.email ??
-                      'เกิดข้อผิดพลาดในการดึงข้อมูล!'),
+                  _maskEmail(FirebaseAuth.instance.currentUser?.email ??
+                      'เกิดข้อผิดพลาดในการดึงข้อมูล!')),
               const SizedBox(height: 30),
               _buildDisplayModeSwitch(themeProvider),
               const SizedBox(height: 20),
@@ -198,7 +566,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Align(
       alignment: Alignment.topRight,
       child: TextButton(
-        onPressed: () {},
+        onPressed: _showReportProblemDialog,
         child: Text(
           label,
           style: AppTextStyles.label.copyWith(color: color),
@@ -297,45 +665,49 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-Widget _buildDisplayModeSwitch(ThemeProvider themeProvider) {
-  return Row(
-    mainAxisAlignment: MainAxisAlignment.end,
-    children: [
-      const Text(
-        'การแสดงผลหน้าจอ',
-        style: AppTextStyles.label,
-      ),
-      const SizedBox(width: 5),
-      SizedBox(
-        width: 65,
-        child: DayNightSwitcher(
-          isDarkModeEnabled: themeProvider.themeMode == ThemeMode.dark,
-          onStateChanged: (isDarkModeEnabled) {
-            themeProvider.toggleTheme(isDarkModeEnabled);
-            _toggleDisplayMode(isDarkModeEnabled);
-          },
+  Widget _buildDisplayModeSwitch(ThemeProvider themeProvider) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        const Text(
+          'การแสดงผลหน้าจอ',
+          style: AppTextStyles.label,
         ),
-      ),
-    ],
-  );
-}
+        const SizedBox(width: 5),
+        SizedBox(
+          width: 65,
+          child: DayNightSwitcher(
+            isDarkModeEnabled: themeProvider.themeMode == ThemeMode.dark,
+            onStateChanged: (isDarkModeEnabled) {
+              themeProvider.toggleTheme(isDarkModeEnabled);
+              _toggleDisplayMode(isDarkModeEnabled);
+            },
+          ),
+        ),
+      ],
+    );
+  }
 
   Widget _buildActionButtons() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Expanded(
-          child: _buildButton('แก้ไขเพื่อน'),
+          child: _buildButton('แก้ไขเพื่อน', onPressed: () {
+            _showFriendsDialog();
+          }),
         ),
         const SizedBox(width: 10),
         Expanded(
-          child: _buildButton('จัดการบัญชี'),
+          child: _buildButton('จัดการบัญชี', onPressed: () {
+            _showManageAccountDialog();
+          }),
         ),
       ],
     );
   }
 
-  Widget _buildButton(String label) {
+  Widget _buildButton(String label, {required VoidCallback onPressed}) {
     return ElevatedButton(
       style: ElevatedButton.styleFrom(
         padding: const EdgeInsets.symmetric(vertical: 15),
@@ -344,8 +716,8 @@ Widget _buildDisplayModeSwitch(ThemeProvider themeProvider) {
           side: const BorderSide(color: Colors.grey),
         ),
       ),
-      onPressed: () {},
-      child: Text(label),
+      onPressed: onPressed,
+      child: Text(label, style: AppTextStyles.inputText),
     );
   }
 

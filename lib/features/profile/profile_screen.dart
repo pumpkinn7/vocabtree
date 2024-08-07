@@ -80,11 +80,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       value: selectedProblem,
                       hint: const Text('เลือกปัญหาที่พบ'),
                       items: [
-                        'ปัญหาที่ 1',
-                        'ปัญหาที่ 2',
-                        'ปัญหาที่ 3',
-                        'ปัญหาที่ 4',
-                        'ปัญหาที่ 5',
+                        'ข้อผิดพลาดในการทำแบบฝึกหัด',
+                        'การซิงค์ข้อมูลระหว่างอุปกรณ์',
+                        'ญหาเกี่ยวกับการเชื่อมต่ออินเทอร์เน็ต',
+                        'การแจ้งเตือนที่ไม่สม่ำเสมอ',
+                        'การอัปเดต และการดาวน์โหลดข้อมูล',
                       ].map((String value) {
                         return DropdownMenuItem<String>(
                           value: value,

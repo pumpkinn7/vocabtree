@@ -43,6 +43,7 @@ dependencies:
   day_night_switcher: ^0.2.0+1
   provider: ^6.1.2
   google_fonts: ^6.2.1
+  swipe_cards: ^2.0.0+1
   
 dev_dependencies:
   flutter_test:

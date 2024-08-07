@@ -17,12 +17,25 @@ import 'core/config/firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    if (kDebugMode) {
+      print('Firebase initialized successfully');
+    }
 
-  final themeMode = await _getInitialThemeMode();
-  runApp(MyApp(initialThemeMode: themeMode));
+    final themeMode = await _getInitialThemeMode();
+    if (kDebugMode) {
+      print('Initial theme mode: $themeMode');
+    }
+
+    runApp(MyApp(initialThemeMode: themeMode));
+  } catch (e) {
+    if (kDebugMode) {
+      print('Error initializing app: $e');
+    }
+  }
 }
 
 Future<ThemeMode> _getInitialThemeMode() async {
@@ -66,9 +79,8 @@ class MyApp extends StatelessWidget {
             themeMode: themeProvider.themeMode,
             theme: AppTextStyles.lightTheme,
             darkTheme: AppTextStyles.darkTheme,
-            initialRoute: '/',
+            home: const LoginScreen(),
             routes: {
-              '/': (context) => const LoginScreen(),
               '/reset-password': (context) => const ResetPasswordScreen(),
               '/register': (context) => const RegisterScreen(),
               '/otp-verification': (context) => OTPVerificationScreen(

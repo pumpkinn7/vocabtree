@@ -3,11 +3,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_nav_bar/google_nav_bar.dart';
 import 'package:provider/provider.dart';
-import 'package:vocabtree/pages/home/home_screen.dart';
-import 'package:vocabtree/pages/profile/profile_screen.dart';
-import 'package:vocabtree/pages/quiz_screen/quiz_screen.dart';
-import 'package:vocabtree/pages/vocab/vocab_screen.dart';
-import 'package:vocabtree/theme/theme_provider.dart';
+import 'package:vocabtree/features/home/home_screen.dart';
+import 'package:vocabtree/features/profile/profile_screen.dart';
+import 'package:vocabtree/features/quiz/quiz_screen.dart';
+import 'package:vocabtree/features/vocab/vocab_screen.dart';
+import 'package:vocabtree/core/theme/theme_provider.dart';
 
 class BottomNavBar extends StatefulWidget {
   const BottomNavBar({super.key});

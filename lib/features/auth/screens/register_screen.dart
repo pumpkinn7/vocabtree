@@ -4,10 +4,10 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:vocabtree/pages/login/login_screen.dart';
-import 'package:vocabtree/pages/otp/otp_verification_screen.dart';
-import 'package:vocabtree/services/auth_service.dart';
-import 'package:vocabtree/theme/text_styles.dart';
+import 'package:vocabtree/features/auth/screens/login_screen.dart';
+import 'package:vocabtree/features/auth/screens/otp_verification_screen.dart';
+import 'package:vocabtree/features/auth/services/auth_service.dart';
+import 'package:vocabtree/core/theme/text_styles.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});

@@ -1,24 +1,20 @@
-// lib/pages/reset_password/forget_password_screen.dart
-
-// ignore_for_file: library_private_types_in_public_api, use_build_context_synchronously
+// ignore_for_file: library_private_types_in_public_api
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:vocabtree/theme/text_styles.dart';
+import 'package:vocabtree/core/theme/text_styles.dart';
 
-class ForgetPasswordScreen extends StatefulWidget {
-  const ForgetPasswordScreen({super.key});
+class ResetPasswordScreen extends StatefulWidget {
+  const ResetPasswordScreen({super.key});
 
   @override
-  _ForgetPasswordScreenState createState() => _ForgetPasswordScreenState();
+  _ResetPasswordScreenState createState() => _ResetPasswordScreenState();
 }
 
-class _ForgetPasswordScreenState extends State<ForgetPasswordScreen> {
+class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   final _emailController = TextEditingController();
 
-  final RegExp emailRegex = RegExp(
-    r'^[^@]+@[^@]+\.[^@]+',
-  );
+  final RegExp emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+');
 
   Future<void> _resetPassword() async {
     if (_emailController.text.isEmpty) {
@@ -43,7 +39,7 @@ class _ForgetPasswordScreenState extends State<ForgetPasswordScreen> {
         const SnackBar(
             content: Text('ลิงก์รีเซ็ตรหัสผ่านถูกส่งไปที่อีเมลของคุณแล้ว')),
       );
-      Navigator.pop(context);
+      Navigator.of(context).pop(true); // ส่งค่า true กลับไป
     } on FirebaseAuthException catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: ${e.message}')),
@@ -60,11 +56,10 @@ class _ForgetPasswordScreenState extends State<ForgetPasswordScreen> {
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
+        title: const Text('รีเซ็ตรหัสผ่าน'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () {
-            Navigator.pop(context);
-          },
+          onPressed: () => Navigator.pop(context),
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -84,12 +79,12 @@ class _ForgetPasswordScreenState extends State<ForgetPasswordScreen> {
               ),
               const SizedBox(height: 20),
               const Text(
-                'ลืมรหัสผ่าน?',
+                'รีเซ็ตรหัสผ่าน',
                 style: AppTextStyles.headline,
               ),
               const SizedBox(height: 20),
               Text(
-                'ไม่ต้องกังวล! เราสามารถกู้คืนรหัสผ่านคุณได้.\nกรุณากรอกที่อยู่อีเมลที่เชื่อมโยงกับบัญชีของคุณ',
+                'กรุณากรอกที่อยู่อีเมลที่เชื่อมโยงกับบัญชีของคุณเพื่อรับลิงก์รีเซ็ตรหัสผ่าน',
                 style: AppTextStyles.caption,
               ),
               const SizedBox(height: 20),
@@ -117,7 +112,7 @@ class _ForgetPasswordScreenState extends State<ForgetPasswordScreen> {
                     ),
                   ),
                   child: const Text(
-                    'ส่งรหัส',
+                    'ส่งลิงก์รีเซ็ตรหัสผ่าน',
                     style: AppTextStyles.label,
                   ),
                 ),

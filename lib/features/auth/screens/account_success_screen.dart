@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:vocabtree/theme/text_styles.dart';
+import 'package:vocabtree/core/theme/text_styles.dart';
 
 class AccountSuccessScreen extends StatelessWidget {
   const AccountSuccessScreen({super.key});

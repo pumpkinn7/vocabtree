@@ -11,9 +11,9 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:logger/logger.dart';
 import 'package:provider/provider.dart';
-import 'package:vocabtree/services/auth_service.dart';
-import 'package:vocabtree/theme/text_styles.dart';
-import 'package:vocabtree/theme/theme_provider.dart';
+import 'package:vocabtree/core/theme/text_styles.dart';
+import 'package:vocabtree/core/theme/theme_provider.dart';
+import 'package:vocabtree/features/auth/services/auth_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -35,12 +35,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (email.isEmpty) return '';
 
     final parts = email.split('@');
-    if (parts.length != 2) return email; // ไม่ใช่รูปแบบอีเมลที่ถูกต้อง
+    if (parts.length != 2) return email;
 
     String username = parts[0];
     String domain = parts[1];
 
-    // แสดง 2 ตัวอักษรแรกและ 2 ตัวสุดท้ายของ username
     if (username.length > 4) {
       username =
           '${username.substring(0, 2)}****${username.substring(username.length - 2)}';
@@ -126,15 +125,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 TextButton(
                   child: const Text('ส่งรายงาน'),
                   onPressed: () {
-                    if (kDebugMode) {
-                      print('ปัญหาที่เลือก: $selectedProblem');
-                    }
-                    if (kDebugMode) {
-                      print('ปัญหาที่กรอก: ${customProblemController.text}');
-                    }
-                    if (kDebugMode) {
-                      print('รายละเอียด: ${detailsController.text}');
-                    }
+                    _submitReport(
+                      selectedProblem,
+                      customProblemController.text,
+                      detailsController.text,
+                    );
                     Navigator.of(context).pop();
                   },
                 ),
@@ -265,7 +260,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ElevatedButton(
                 onPressed: () {
                   Navigator.of(dialogContext).pop();
-                  Navigator.pushNamed(context, '/reset-password');
+                  _handleResetPasswordAndSignOut();
                 },
                 child: const Text('ฉันลืมรหัสผ่าน', style: AppTextStyles.label),
               ),
@@ -291,6 +286,56 @@ class _ProfileScreenState extends State<ProfileScreen> {
         );
       },
     );
+  }
+
+  Future<void> _handleResetPasswordAndSignOut() async {
+    final result = await Navigator.pushNamed(context, '/reset-password');
+    if (result == true) {
+      try {
+        await FirebaseAuth.instance.signOut();
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content:
+                  Text('คำขอรีเซ็ตรหัสผ่านถูกส่งแล้ว กรุณาตรวจสอบอีเมลของคุณ')),
+        );
+
+        Navigator.of(context).pushReplacementNamed('/login');
+      } catch (e) {
+        if (kDebugMode) {
+          print('เกิดข้อผิดพลาดในการออกจากระบบ: $e');
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content:
+                  Text('เกิดข้อผิดพลาดในการออกจากระบบ กรุณาลองใหม่อีกครั้ง')),
+        );
+      }
+    }
+  }
+
+  Future<void> _submitReport(
+      String? commonIssue, String customIssue, String details) async {
+    try {
+      await FirebaseFirestore.instance.collection('reports').add({
+        'userId': FirebaseAuth.instance.currentUser?.uid,
+        'commonIssue': commonIssue,
+        'customIssue': customIssue,
+        'issueDetails': details,
+        'reportedAt': FieldValue.serverTimestamp(),
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('รายงานถูกส่งเรียบร้อยแล้ว')),
+      );
+    } catch (e) {
+      if (kDebugMode) {
+        print('เกิดข้อผิดพลาดในการส่งรายงาน: $e');
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('เกิดข้อผิดพลาดในการส่งรายงาน กรุณาลองใหม่อีกครั้ง')),
+      );
+    }
   }
 
   Future<void> _addFriend(String friendName, StateSetter setState) async {
@@ -361,7 +406,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       } else {
         setState(() {
           isLoading = false;
-          errorMessage = 'User is not logged in.';
+          errorMessage = 'ผู้ใช้งานยังไม่ได้เข้าสู่ระบบ.';
         });
       }
     } catch (e) {
@@ -468,7 +513,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       try {
         User? user = FirebaseAuth.instance.currentUser;
         if (user != null) {
-          // ลบข้อมูลผู้ใช้จาก Firestore
+          // ลบข้อมูลผู้ใช้
           await FirebaseFirestore.instance
               .collection('users')
               .doc(user.uid)
@@ -478,13 +523,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
               .doc(user.uid)
               .delete();
 
-          // ลบรูปโปรไฟล์จาก Firebase Storage
+          // ลบรูปโปรไฟล์
           final storageRef = FirebaseStorage.instance
               .ref()
               .child('profile_images')
               .child('${user.uid}.jpg');
           try {
-            // ตรวจสอบว่าไฟล์มีอยู่จริง
+            // ตรวจสอบว่ามีไฟล์
             await storageRef.getDownloadURL();
             // ถ้าไม่เกิด error แสดงว่าไฟล์มีอยู่ ให้ทำการลบ
             await storageRef.delete();
@@ -503,13 +548,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
             }
           }
 
-          // ลบบัญชีผู้ใช้จาก Firebase Authentication
           await user.delete();
-
-          // ออกจากระบบ
           await FirebaseAuth.instance.signOut();
 
-          // นำทางกลับไปยังหน้า Login
+          // กลับไปหน้า Login
           Navigator.of(context)
               .pushNamedAndRemoveUntil('/', (Route<dynamic> route) => false);
         }

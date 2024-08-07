@@ -4,16 +4,16 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:vocabtree/pages/login/login_screen.dart';
-import 'package:vocabtree/pages/otp/otp_verification_screen.dart';
-import 'package:vocabtree/pages/register/account_success_screen.dart';
-import 'package:vocabtree/pages/register/register_screen.dart';
-import 'package:vocabtree/pages/reset_password/forget_password_screen.dart';
-import 'package:vocabtree/theme/text_styles.dart';
-import 'package:vocabtree/theme/theme_provider.dart';
-import 'package:vocabtree/widgets/bottom_navbar.dart';
+import 'package:vocabtree/core/theme/text_styles.dart';
+import 'package:vocabtree/core/theme/theme_provider.dart';
+import 'package:vocabtree/core/widgets/bottom_navbar.dart';
+import 'package:vocabtree/features/auth/screens/account_success_screen.dart';
+import 'package:vocabtree/features/auth/screens/forget_password_screen.dart';
+import 'package:vocabtree/features/auth/screens/login_screen.dart';
+import 'package:vocabtree/features/auth/screens/otp_verification_screen.dart';
+import 'package:vocabtree/features/auth/screens/register_screen.dart';
 
-import 'firebase_options.dart';
+import 'core/config/firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -64,26 +64,24 @@ class MyApp extends StatelessWidget {
         builder: (context, themeProvider, child) {
           return MaterialApp(
             themeMode: themeProvider.themeMode,
-            theme: AppTextStyles.lightTheme, // ใช้ AppTextStyles.lightTheme
-            darkTheme: AppTextStyles.darkTheme, // ใช้ AppTextStyles.darkTheme
+            theme: AppTextStyles.lightTheme,
+            darkTheme: AppTextStyles.darkTheme,
             initialRoute: '/',
             routes: {
               '/': (context) => const LoginScreen(),
-              '/reset-password': (context) => const ForgetPasswordScreen(),
+              '/reset-password': (context) => const ResetPasswordScreen(),
               '/register': (context) => const RegisterScreen(),
               '/otp-verification': (context) => OTPVerificationScreen(
                     email: '',
                     password: '',
                     username: '',
                     profileImageFile: null,
-                    user: FirebaseAuth
-                        .instance.currentUser!, // ปรับตามความต้องการ
-                    profileImageUrl: '', // ปรับตามความต้องการ
+                    user: FirebaseAuth.instance.currentUser!,
+                    profileImageUrl: '',
                   ),
               '/account-success': (context) => const AccountSuccessScreen(),
               '/login': (context) => const LoginScreen(),
-              '/home': (context) =>
-                  const BottomNavBar(), // เปลี่ยนหน้า home ให้ใช้ BottomNavBar
+              '/home': (context) => const BottomNavBar(),
             },
           );
         },

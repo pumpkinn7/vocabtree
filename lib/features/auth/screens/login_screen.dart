@@ -18,6 +18,13 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   bool _obscureText = true;
 
+  @override
+  void dispose() {
+    _usernameEmailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
   void _toggleObscureText() => setState(() => _obscureText = !_obscureText);
 
   Future<void> _login() async {

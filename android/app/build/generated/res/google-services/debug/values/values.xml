@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="gcm_defaultSenderId" translatable="false">1007747882513</string>
+    <string name="google_api_key" translatable="false">AIzaSyBZwrbsI499YM82he9wSYkJ1_jvvaJO_D4</string>
+    <string name="google_app_id" translatable="false">1:1007747882513:android:4f612636657c99f4625bb0</string>
+    <string name="google_crash_reporting_api_key" translatable="false">AIzaSyBZwrbsI499YM82he9wSYkJ1_jvvaJO_D4</string>
+    <string name="google_storage_bucket" translatable="false">vocabtree-b91f2.appspot.com</string>
+    <string name="project_id" translatable="false">vocabtree-b91f2</string>
+</resources>

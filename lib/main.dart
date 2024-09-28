@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -17,6 +19,8 @@ import 'core/config/firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  ThemeMode themeMode = ThemeMode.system;
+
   try {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
@@ -25,40 +29,42 @@ void main() async {
       print('Firebase initialized successfully');
     }
 
-    final themeMode = await _getInitialThemeMode();
+    themeMode = await _getInitialThemeMode();
     if (kDebugMode) {
       print('Initial theme mode: $themeMode');
     }
-
-    runApp(MyApp(initialThemeMode: themeMode));
   } catch (e) {
     if (kDebugMode) {
       print('Error initializing app: $e');
     }
+  } finally {
+    runApp(MyApp(initialThemeMode: themeMode));
   }
 }
 
 Future<ThemeMode> _getInitialThemeMode() async {
-  User? user = FirebaseAuth.instance.currentUser;
-  if (user != null) {
-    try {
+  try {
+    User? user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
       DocumentSnapshot<Map<String, dynamic>> profileSnapshot =
           await FirebaseFirestore.instance
               .collection('profiles')
               .doc(user.uid)
               .get();
+
       if (profileSnapshot.exists) {
-        String displayMode = profileSnapshot.data()?['settings']['displayMode'];
+        String? displayMode =
+            profileSnapshot.data()?['settings']['displayMode'];
         if (displayMode == 'dark') {
           return ThemeMode.dark;
         } else if (displayMode == 'light') {
           return ThemeMode.light;
         }
       }
-    } catch (e) {
-      if (kDebugMode) {
-        print('Error getting initial theme mode: $e');
-      }
+    }
+  } catch (e) {
+    if (kDebugMode) {
+      print('Error getting initial theme mode: $e');
     }
   }
   return ThemeMode.system;
@@ -67,7 +73,7 @@ Future<ThemeMode> _getInitialThemeMode() async {
 class MyApp extends StatelessWidget {
   final ThemeMode initialThemeMode;
 
-  const MyApp({super.key, required this.initialThemeMode});
+  const MyApp({super.key, this.initialThemeMode = ThemeMode.system});
 
   @override
   Widget build(BuildContext context) {

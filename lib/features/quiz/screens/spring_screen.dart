@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:simple_circular_progress_bar/simple_circular_progress_bar.dart';
 
-import '../../flashcards/screens/flashcard_screen.dart'; // Import the FlashcardScreen
+import '../../flashcards/screens/flashcard_screen.dart';
+import 'quiz_school_and_education_screen.dart';
 
 class SpringScreen extends StatelessWidget {
   const SpringScreen({super.key});
@@ -9,13 +11,10 @@ class SpringScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Spring'),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: ListView(
+        title: const Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'SPRING',
               style: TextStyle(
                 fontSize: 24,
@@ -23,23 +22,40 @@ class SpringScreen extends StatelessWidget {
                 color: Colors.green,
               ),
             ),
-            const Text(
+            Text(
               'คำศัพท์ภาษาอังกฤษระดับ B1',
               style: TextStyle(
                 fontSize: 16,
               ),
             ),
-            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: ListView(
+          children: [
             Column(
               children: [
                 _buildProgressItem(
                   context,
                   title: '1. School and Education.',
+                  flashcardProgress: 0.7, // Example progress
+                  quizProgress: 0.6, // Example progress
                   onFlashcardPressed: () {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
                         builder: (context) => const FlashcardScreen(),
+                      ),
+                    );
+                  },
+                  onQuizPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            const QuizSchoolAndEducationScreen(),
                       ),
                     );
                   },
@@ -68,8 +84,14 @@ class SpringScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildProgressItem(BuildContext context,
-      {required String title, VoidCallback? onFlashcardPressed}) {
+  Widget _buildProgressItem(
+    BuildContext context, {
+    required String title,
+    double flashcardProgress = 0.0,
+    double quizProgress = 0.0,
+    VoidCallback? onFlashcardPressed,
+    VoidCallback? onQuizPressed,
+  }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
@@ -103,21 +125,50 @@ class SpringScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
-                      ElevatedButton(
-                        onPressed: onFlashcardPressed,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.orange,
-                        ),
-                        child: const Text('Flashcard'),
+                      Column(
+                        children: [
+                          SimpleCircularProgressBar(
+                            size: 50,
+                            valueNotifier:
+                                ValueNotifier(flashcardProgress * 100),
+                            progressStrokeWidth: 8,
+                            backStrokeWidth: 4,
+                            mergeMode: true,
+                            progressColors: const [Colors.orange],
+                            fullProgressColor: Colors.orange,
+                          ),
+                          const SizedBox(height: 8),
+                          ElevatedButton(
+                            onPressed: onFlashcardPressed,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.orange,
+                            ),
+                            child: const Text('Flashcard'),
+                          ),
+                        ],
                       ),
-                      ElevatedButton(
-                        onPressed: () {},
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.pink,
-                        ),
-                        child: const Text('Quiz'),
+                      Column(
+                        children: [
+                          SimpleCircularProgressBar(
+                            size: 50,
+                            valueNotifier: ValueNotifier(quizProgress * 100),
+                            progressStrokeWidth: 8,
+                            backStrokeWidth: 4,
+                            mergeMode: true,
+                            progressColors: const [Colors.pink],
+                            fullProgressColor: Colors.pink,
+                          ),
+                          const SizedBox(height: 8),
+                          ElevatedButton(
+                            onPressed: onQuizPressed,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.pink,
+                            ),
+                            child: const Text('Quiz'),
+                          ),
+                        ],
                       ),
                     ],
                   ),

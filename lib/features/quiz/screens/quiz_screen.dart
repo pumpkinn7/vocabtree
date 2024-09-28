@@ -1,4 +1,3 @@
-// quiz_screen.dart
 import 'package:flutter/material.dart';
 import 'package:vocabtree/features/quiz/screens/spring_screen.dart';
 
@@ -64,12 +63,27 @@ class QuizScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 16),
-              const Text(
-                'คำอธิบาย',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'หมวดหมู่',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.help_outline),
+                        onPressed: () {
+                          _showHelpDialog(context);
+                        },
+                      ),
+                    ],
+                  ),
+                ],
               ),
               const Divider(),
               VocabularyItem(
@@ -111,6 +125,69 @@ class QuizScreen extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  void _showHelpDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'คำอธิบาย',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'คุณสามารถเลือกหัวข้อที่สนใจ เลือกทำ Flashcard เพื่อสำรวจคำศัพท์ใหม่ๆ หรือจะทอลองทำ Quiz เลยก็ย่อมได้ '
+                  'ขอให้สนุกกับการเรียนรู้คำศัพท์',
+                  style: TextStyle(fontSize: 16),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'ของรางวัล: แน่นอน! หากคุณทำ Quiz ถึงจุดที่ดีขึ้นได้คุณจะได้รับต้นไม้นี้ และนำไปตกแต่งในโปรไฟล์ได้',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.orange,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  width: 50,
+                  height: 50,
+                  color:
+                      Colors.orange, // Replace this with the image widget later
+                ),
+                const SizedBox(height: 16),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

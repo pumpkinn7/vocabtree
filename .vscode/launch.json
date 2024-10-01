@@ -6,15 +6,11 @@
     "configurations": [
 
         {
-            "name": "vocabtree",
-            "request": "launch",
-            "type": "dart"
-        },
-        {
-            "name": "vocabtree (profile mode)",
+            "name": "vocabtree (debug hot reload)",
             "request": "launch",
             "type": "dart",
-            "flutterMode": "profile"
+            "flutterMode": "debug",
+            "args": ["--hot"]
         },
         {
             "name": "vocabtree (release mode)",

@@ -5,11 +5,24 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "vocabtree (debug mode)",
+            "name": "Flutter (debug mode)",
+            "type": "dart",
+            "request": "launch",
+            "program": "lib/main.dart"
+        },
+        {
+            "name": "vocabtree (debug mode with software rendering)",
             "request": "launch",
             "type": "dart",
             "program": "lib/main.dart",
             "args": ["--enable-software-rendering"]
+        },
+        {
+            "name": "vocabtree (profile mode)",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "profile",
+            "program": "lib/main.dart",
         },
         {
             "name": "vocabtree (release mode)",

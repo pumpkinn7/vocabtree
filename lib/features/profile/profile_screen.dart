@@ -479,11 +479,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }
     } catch (e) {
       _logger.e('Error updating user theme preference: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text(
-                'เกิดข้อผิดพลาดในการบันทึกการตั้งค่า กรุณาลองใหม่อีกครั้ง')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text(
+                  'เกิดข้อผิดพลาดในการบันทึกการตั้งค่า กรุณาลองใหม่อีกครั้ง')),
+        );
+      }
     }
   }
 
@@ -736,9 +738,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           width: 65,
           child: DayNightSwitcher(
             isDarkModeEnabled: themeProvider.themeMode == ThemeMode.dark,
-            onStateChanged: (isDarkModeEnabled) {
+            onStateChanged: (isDarkModeEnabled) async {
               themeProvider.toggleTheme(isDarkModeEnabled);
-              _toggleDisplayMode(isDarkModeEnabled);
+              await _toggleDisplayMode(isDarkModeEnabled);
             },
           ),
         ),

@@ -11,7 +11,7 @@ class AppTextStyles {
     fontFamily: 'Kanit',
     fontSize: 18,
     fontWeight: FontWeight.w500,
-    color: Colors.grey[600],
+    color: Colors.grey.shade600,
   );
 
   static const TextStyle label = TextStyle(
@@ -28,7 +28,7 @@ class AppTextStyles {
     color: Color(0xFF6D7278),
   );
 
-  static ThemeData lightTheme = ThemeData(
+  static final ThemeData lightTheme = ThemeData(
     brightness: Brightness.light,
     textTheme: TextTheme(
       headlineMedium: headline,
@@ -38,13 +38,13 @@ class AppTextStyles {
     ),
   );
 
-  static ThemeData darkTheme = ThemeData(
+  static final ThemeData darkTheme = ThemeData(
     brightness: Brightness.dark,
     textTheme: TextTheme(
       headlineMedium: headline.copyWith(color: Colors.white),
       bodyLarge: inputText.copyWith(color: Colors.white70),
       titleMedium: label.copyWith(color: Colors.white70),
-      bodySmall: caption.copyWith(color: Colors.grey[300]),
+      bodySmall: caption.copyWith(color: Colors.grey.shade300),
     ),
   );
 }

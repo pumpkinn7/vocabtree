@@ -17,29 +17,33 @@ import 'package:vocabtree/features/auth/screens/register_screen.dart';
 
 import 'core/config/firebase_options.dart';
 
-void main() async {
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  ThemeMode themeMode = ThemeMode.system;
 
-  try {
+  FlutterError.onError = (FlutterErrorDetails details) {
+    FlutterError.presentError(details);
+    // จัดการข้อผิดพลาดที่เกิดขึ้นใน Flutter framework
+    if (kDebugMode) {
+      print('Flutter Error: ${details.exceptionAsString()}');
+      print('Stack Trace: ${details.stack}');
+    }
+  };
+
+  runZonedGuarded(() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
-    if (kDebugMode) {
-      print('Firebase initialized successfully');
-    }
 
-    themeMode = await _getInitialThemeMode();
-    if (kDebugMode) {
-      print('Initial theme mode: $themeMode');
-    }
-  } catch (e) {
-    if (kDebugMode) {
-      print('Error initializing app: $e');
-    }
-  } finally {
+    ThemeMode themeMode = await _getInitialThemeMode();
+
     runApp(MyApp(initialThemeMode: themeMode));
-  }
+  }, (error, stackTrace) {
+    // จัดการข้อผิดพลาดที่ไม่ได้ถูกจับ
+    if (kDebugMode) {
+      print('Uncaught Error: $error');
+      print('Stack Trace: $stackTrace');
+    }
+  });
 }
 
 Future<ThemeMode> _getInitialThemeMode() async {
@@ -53,50 +57,100 @@ Future<ThemeMode> _getInitialThemeMode() async {
               .get();
 
       if (profileSnapshot.exists) {
-        String? displayMode =
-            profileSnapshot.data()?['settings']['displayMode'];
-        if (displayMode == 'dark') {
-          return ThemeMode.dark;
-        } else if (displayMode == 'light') {
-          return ThemeMode.light;
+        Map<String, dynamic>? data = profileSnapshot.data();
+        Map<String, dynamic>? settings =
+            data?['settings'] as Map<String, dynamic>?;
+
+        if (settings != null) {
+          String? displayMode = settings['displayMode'] as String?;
+          if (displayMode == 'dark') {
+            return ThemeMode.dark;
+          } else if (displayMode == 'light') {
+            return ThemeMode.light;
+          }
         }
       }
     }
-  } catch (e) {
+  } catch (e, stackTrace) {
     if (kDebugMode) {
       print('Error getting initial theme mode: $e');
+      print('Stack Trace: $stackTrace');
     }
   }
   return ThemeMode.system;
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   final ThemeMode initialThemeMode;
 
-  const MyApp({super.key, this.initialThemeMode = ThemeMode.system});
+  const MyApp({super.key, required this.initialThemeMode});
+
+  @override
+  // ignore: library_private_types_in_public_api
+  _MyAppState createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    if (kDebugMode) {
+      print('App initState');
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    if (kDebugMode) {
+      print('App disposed');
+    }
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (kDebugMode) {
+      print('AppLifecycleState changed to $state');
+    }
+    if (state == AppLifecycleState.resumed) {
+      if (kDebugMode) {
+        print('App resumed');
+      }
+      // คุณสามารถเพิ่มโค้ดที่ต้องการให้ทำงานเมื่อแอปกลับมาได้ที่นี่
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
-      create: (_) => ThemeProvider(initialThemeMode),
+      create: (_) => ThemeProvider(widget.initialThemeMode),
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, child) {
           return MaterialApp(
-            themeMode: themeProvider.themeMode,
             theme: AppTextStyles.lightTheme,
             darkTheme: AppTextStyles.darkTheme,
-            home: const LoginScreen(),
+            themeMode: themeProvider.themeMode,
+            home: const RootWidget(),
             routes: {
               '/reset-password': (context) => const ResetPasswordScreen(),
               '/register': (context) => const RegisterScreen(),
-              '/otp-verification': (context) => OTPVerificationScreen(
+              '/otp-verification': (context) {
+                User? currentUser = FirebaseAuth.instance.currentUser;
+                if (currentUser != null) {
+                  return OTPVerificationScreen(
                     email: '',
                     password: '',
                     username: '',
                     profileImageFile: null,
-                    user: FirebaseAuth.instance.currentUser!,
+                    user: currentUser,
                     profileImageUrl: '',
-                  ),
+                  );
+                } else {
+                  return const LoginScreen();
+                }
+              },
               '/account-success': (context) => const AccountSuccessScreen(),
               '/login': (context) => const LoginScreen(),
               '/home': (context) => const BottomNavBar(),
@@ -104,6 +158,28 @@ class MyApp extends StatelessWidget {
           );
         },
       ),
+    );
+  }
+}
+
+class RootWidget extends StatelessWidget {
+  const RootWidget({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<User?>(
+      stream: FirebaseAuth.instance.authStateChanges(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        } else if (snapshot.hasData) {
+          return const BottomNavBar();
+        } else {
+          return const LoginScreen();
+        }
+      },
     );
   }
 }

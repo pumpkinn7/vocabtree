@@ -3,5 +3,6 @@
         "labelstyle",
         "กำหนดความสูงของรูปภาพ",
         "เข้าสู่ระบบ"
-    ]
+    ],
+    "CodeGPT.apiKey": "Ollama"
 }

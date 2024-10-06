@@ -18,18 +18,19 @@ import 'package:vocabtree/features/auth/screens/register_screen.dart';
 import 'core/config/firebase_options.dart';
 
 void main() {
-  WidgetsFlutterBinding.ensureInitialized();
-
-  FlutterError.onError = (FlutterErrorDetails details) {
-    FlutterError.presentError(details);
-    // จัดการข้อผิดพลาดที่เกิดขึ้นใน Flutter framework
-    if (kDebugMode) {
-      print('Flutter Error: ${details.exceptionAsString()}');
-      print('Stack Trace: ${details.stack}');
-    }
-  };
-
   runZonedGuarded(() async {
+    // เริ่มต้น Flutter bindings ภายใน Zone เดียวกัน
+    WidgetsFlutterBinding.ensureInitialized();
+
+    FlutterError.onError = (FlutterErrorDetails details) {
+      FlutterError.presentError(details);
+      // จัดการข้อผิดพลาดที่เกิดขึ้นใน Flutter framework
+      if (kDebugMode) {
+        print('Flutter Error: ${details.exceptionAsString()}');
+        print('Stack Trace: ${details.stack}');
+      }
+    };
+
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
@@ -51,15 +52,15 @@ Future<ThemeMode> _getInitialThemeMode() async {
     User? user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       DocumentSnapshot<Map<String, dynamic>> profileSnapshot =
-          await FirebaseFirestore.instance
-              .collection('profiles')
-              .doc(user.uid)
-              .get();
+      await FirebaseFirestore.instance
+          .collection('profiles')
+          .doc(user.uid)
+          .get();
 
       if (profileSnapshot.exists) {
         Map<String, dynamic>? data = profileSnapshot.data();
         Map<String, dynamic>? settings =
-            data?['settings'] as Map<String, dynamic>?;
+        data?['settings'] as Map<String, dynamic>?;
 
         if (settings != null) {
           String? displayMode = settings['displayMode'] as String?;

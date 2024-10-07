@@ -7,7 +7,9 @@ import 'package:swipe_cards/swipe_cards.dart';
 import 'package:vocabtree/features/flashcards/model/flashcard_topic_model.dart';
 
 class FlashcardScreen extends StatefulWidget {
-  const FlashcardScreen({super.key, required String topic});
+  final String topic;
+
+  const FlashcardScreen({super.key, required this.topic});
 
   @override
   _FlashcardScreenState createState() => _FlashcardScreenState();
@@ -24,44 +26,126 @@ class _FlashcardScreenState extends State<FlashcardScreen> {
     super.initState();
     _swipeItems = [];
     _matchEngine = MatchEngine(swipeItems: _swipeItems);
-
-    FirebaseFirestore.instance.collection('vocabtree').get().then((snapshot) {
-      setState(() {
-        _swipeItems = snapshot.docs.map((doc) {
-          Flashcard flashcard = Flashcard.fromDocument(doc);
-          return SwipeItem(
-            content: flashcard,
-            likeAction: () {
-              setState(() {
-                knownCount++;
-              });
-              if (kDebugMode) {
-                print("Liked ${flashcard.word}");
-              }
-            },
-            nopeAction: () {
-              setState(() {
-                unknownCount++;
-              });
-              if (kDebugMode) {
-                print("Nope ${flashcard.word}");
-              }
-            },
-          );
-        }).toList();
-        _matchEngine = MatchEngine(swipeItems: _swipeItems);
-      });
-    });
+    _fetchFlashcards();
   }
+
+  Future<void> _fetchFlashcards() async {
+    try {
+      // กำหนดระดับ (Level) จาก topic ที่ส่งเข้ามา
+      String level = '';
+      if (widget.topic.startsWith('daily_life') ||
+          widget.topic.startsWith('education') ||
+          widget.topic.startsWith('entertainment') ||
+          widget.topic.startsWith('environment_and_nature') ||
+          widget.topic.startsWith('health_and_fitness') ||
+          widget.topic.startsWith('travel_and_tourism')) {
+        level = 'B1';
+      } else if (widget.topic.startsWith('home_renovation_and_decor') ||
+          widget.topic.startsWith('outdoor_activities_and_adventures') ||
+          widget.topic.startsWith('music_and_performing_arts') ||
+          widget.topic.startsWith('fitness_and_exercise') ||
+          widget.topic.startsWith('cooking_and_culinary_skills') ||
+          widget.topic.startsWith('pet_care_and_animal_welfare') ||
+          widget.topic.startsWith('gardening_and_landscaping') ||
+          widget.topic.startsWith('hobbies_and_crafts')) {
+        level = 'B2';
+      } else if (widget.topic.startsWith('urban_living') ||
+          widget.topic.startsWith('digital_well_being') ||
+          widget.topic.startsWith('cultural_festivals') ||
+          widget.topic.startsWith('creative_writing') ||
+          widget.topic.startsWith('nutrition_and_wellness') ||
+          widget.topic.startsWith('interior_decorating') ||
+          widget.topic.startsWith('fashion_trends') ||
+          widget.topic.startsWith('event_planning')) {
+        level = 'C1';
+      } else if (widget.topic.startsWith('immersive_technologies') ||
+          widget.topic.startsWith('cosmic_discoveries') ||
+          widget.topic.startsWith('digital_finance') ||
+          widget.topic.startsWith('adrenaline_activities') ||
+          widget.topic.startsWith('smart_automation') ||
+          widget.topic.startsWith('legends_and_lore') ||
+          widget.topic.startsWith('criminal_investigation')) {
+        level = 'C2';
+      }
+
+      // ดึงข้อมูลระดับจาก Firestore
+      DocumentSnapshot levelSnapshot = await FirebaseFirestore.instance
+          .collection('cefr_levels')
+          .doc(level)
+          .get();
+
+      if (levelSnapshot.exists) {
+        // ดึงข้อมูลหัวข้อ
+        Map<String, dynamic>? topics = (levelSnapshot.data() as Map<String, dynamic>)['topics'];
+
+        // ตรวจสอบว่าหัวข้อที่เลือกมีอยู่ใน topics
+        if (topics != null && topics.containsKey(widget.topic)) {
+          // ดึง vocabularies จากหัวข้อที่เลือก
+          List<dynamic>? vocabularies = (topics[widget.topic] as Map<String, dynamic>)['vocabularies'];
+
+          if (vocabularies != null) {
+            // ทำการสุ่ม vocabularies ก่อนสร้าง _swipeItems
+            vocabularies.shuffle();
+
+            // ใช้ vocabularies เพื่อสร้าง _swipeItems
+            setState(() {
+              _swipeItems = vocabularies.map((vocab) {
+                return Flashcard.fromMap(vocab); // สร้าง Flashcard จาก Map
+              }).map((flashcard) {
+                return SwipeItem(
+                  content: flashcard,
+                  likeAction: () {
+                    setState(() {
+                      knownCount++;
+                    });
+                    if (kDebugMode) {
+                      print("Liked ${flashcard.word}");
+                    }
+                  },
+                  nopeAction: () {
+                    setState(() {
+                      unknownCount++;
+                    });
+                    if (kDebugMode) {
+                      print("Nope ${flashcard.word}");
+                    }
+                  },
+                );
+              }).toList();
+              _matchEngine = MatchEngine(swipeItems: _swipeItems);
+            });
+          } else {
+            if (kDebugMode) {
+              print("No vocabularies found for topic: ${widget.topic}");
+            }
+          }
+        } else {
+          if (kDebugMode) {
+            print("Topic does not exist in level: ${widget.topic}");
+          }
+        }
+      } else {
+        if (kDebugMode) {
+          print("Level document does not exist for: $level");
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print("Error fetching flashcards: $e");
+      }
+    }
+  }
+
+
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Column(
+        title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            const Text(
               'FLASHCARD',
               style: TextStyle(
                 fontSize: 24,
@@ -70,8 +154,8 @@ class _FlashcardScreenState extends State<FlashcardScreen> {
               ),
             ),
             Text(
-              '1. SCHOOL AND EDUCATION.',
-              style: TextStyle(
+              '${widget.topic.replaceAll('_', ' ').toUpperCase()}.',
+              style: const TextStyle(
                 fontSize: 16,
                 color: Colors.grey,
               ),
@@ -85,30 +169,30 @@ class _FlashcardScreenState extends State<FlashcardScreen> {
             child: _swipeItems.isEmpty
                 ? const Center(child: CircularProgressIndicator())
                 : SwipeCards(
-                    matchEngine: _matchEngine,
-                    itemBuilder: (BuildContext context, int index) {
-                      Flashcard flashcard = _swipeItems[index].content;
-                      return Center(
-                        child: SizedBox(
-                          width: MediaQuery.of(context).size.width * 0.85,
-                          height: MediaQuery.of(context).size.height * 0.65,
-                          child: FlashcardItem(
-                            flashcard: flashcard,
-                            currentIndex: index + 1,
-                            totalItems: _swipeItems.length,
-                          ),
-                        ),
-                      );
-                    },
-                    onStackFinished: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                              "เก่งมาก ฉันว่าฉันจำได้แล้ว: $knownCount คำ, ยังจำไม่ได้: $unknownCount คำ"),
-                        ),
-                      );
-                    },
+              matchEngine: _matchEngine,
+              itemBuilder: (BuildContext context, int index) {
+                Flashcard flashcard = _swipeItems[index].content;
+                return Center(
+                  child: SizedBox(
+                    width: MediaQuery.of(context).size.width * 0.85,
+                    height: MediaQuery.of(context).size.height * 0.65,
+                    child: FlashcardItem(
+                      flashcard: flashcard,
+                      currentIndex: index + 1,
+                      totalItems: _swipeItems.length,
+                    ),
                   ),
+                );
+              },
+              onStackFinished: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                        "เก่งมาก ฉันว่าฉันจำได้แล้ว: $knownCount คำ, ยังจำไม่ได้: $unknownCount คำ"),
+                  ),
+                );
+              },
+            ),
           ),
           const SizedBox(height: 16),
           Row(

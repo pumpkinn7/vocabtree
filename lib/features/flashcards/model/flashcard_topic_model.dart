@@ -1,15 +1,13 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 class Flashcard {
   final String id;
-  final String category;
+  final String category; // ประเภทของหัวข้อ
   final String word;
   final String partOfSpeech;
   final String definition;
   final String hint;
   final String translation;
-  final Map<String, String> exampleSentence;
-  final List<String> options;
+  final Map<String, String> exampleSentence; // ตัวอย่างประโยค
+  final List<String> options; // ตัวเลือกคำศัพท์
 
   Flashcard({
     required this.id,
@@ -23,18 +21,20 @@ class Flashcard {
     required this.options,
   });
 
-  factory Flashcard.fromDocument(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
+  factory Flashcard.fromMap(Map<String, dynamic> data) {
     return Flashcard(
-      id: doc.id,
-      category: data['category'],
-      word: data['word'],
-      partOfSpeech: data['partOfSpeech'],
-      definition: data['definition'],
-      hint: data['hint'],
-      translation: data['translation'],
-      exampleSentence: Map<String, String>.from(data['exampleSentence']),
-      options: List<String>.from(data['options']),
+      id: data['vocabulary_id'] ?? '', // ใช้ empty string ถ้าไม่มี
+      category: data['category'] ?? '', // ใช้ empty string ถ้าไม่มี
+      word: data['word'] ?? '', // ใช้ empty string ถ้าไม่มี
+      partOfSpeech: data['type'] ?? '', // ใช้ empty string ถ้าไม่มี
+      definition: data['meaning'] ?? '', // ใช้ empty string ถ้าไม่มี
+      hint: data['hint'] ?? '', // ใช้ empty string ถ้าไม่มี
+      translation: data['translation'] ?? '', // ใช้ empty string ถ้าไม่มี
+      exampleSentence: {
+        'sentence': data['example_sentence'] ?? '', // ใช้ empty string ถ้าไม่มี
+        'translation': data['example_translation'] ?? '', // ใช้ empty string ถ้าไม่มี
+      },
+      options: [], // ถ้าต้องการใช้ options ให้เพิ่มข้อมูลที่นี่
     );
   }
 }

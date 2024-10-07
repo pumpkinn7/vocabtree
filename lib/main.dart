@@ -19,12 +19,12 @@ import 'core/config/firebase_options.dart';
 
 void main() {
   runZonedGuarded(() async {
-    // เริ่มต้น Flutter bindings ภายใน Zone เดียวกัน
+    // เริ่ม Flutter bindings ใน Zone เดียวกัน
     WidgetsFlutterBinding.ensureInitialized();
 
     FlutterError.onError = (FlutterErrorDetails details) {
       FlutterError.presentError(details);
-      // จัดการข้อผิดพลาดที่เกิดขึ้นใน Flutter framework
+      // ดักจับ Error Flutter framework อย่าลบ
       if (kDebugMode) {
         print('Flutter Error: ${details.exceptionAsString()}');
         print('Stack Trace: ${details.stack}');
@@ -39,7 +39,6 @@ void main() {
 
     runApp(MyApp(initialThemeMode: themeMode));
   }, (error, stackTrace) {
-    // จัดการข้อผิดพลาดที่ไม่ได้ถูกจับ
     if (kDebugMode) {
       print('Uncaught Error: $error');
       print('Stack Trace: $stackTrace');
@@ -111,6 +110,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   }
 
   @override
+  //อย่าพึ่งลบ Lifecycle !!! เก็บไว้ลองเอาไปใส่ดักจับด้านบน
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (kDebugMode) {
       print('AppLifecycleState changed to $state');
@@ -119,7 +119,6 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       if (kDebugMode) {
         print('App resumed');
       }
-      // คุณสามารถเพิ่มโค้ดที่ต้องการให้ทำงานเมื่อแอปกลับมาได้ที่นี่
     }
   }
 

@@ -1,4 +1,4 @@
-// quiz_model.dart
+// quiz_topic_model.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class QuizOption {

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:vocabtree/features/quiz/screens/spring_screen.dart';
+import 'package:vocabtree/features/quiz/screens/summer_screen.dart';
+import 'package:vocabtree/features/quiz/screens/autumn_screen.dart';
+import 'package:vocabtree/features/quiz/screens/winter_screen.dart';
 
 class QuizScreen extends StatelessWidget {
   const QuizScreen({super.key});
@@ -105,21 +108,42 @@ class QuizScreen extends StatelessWidget {
                 level: 'คำศัพท์ภาษาอังกฤษ B2',
                 difficulty: 'กลาง (Intermediate)',
                 color: Colors.orange,
-                onTap: () {},
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const SummerScreen(), // เชื่อมโยงไปยัง SummerScreen
+                    ),
+                  );
+                },
               ),
               VocabularyItem(
                 title: 'AUTUMN',
                 level: 'คำศัพท์ภาษาอังกฤษ C1',
                 difficulty: 'กลาง (Intermediate)',
                 color: Colors.red,
-                onTap: () {},
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const AutumnScreen(), // เชื่อมโยงไปยัง AutumnScreen
+                    ),
+                  );
+                },
               ),
               VocabularyItem(
                 title: 'WINTER',
                 level: 'คำศัพท์ภาษาอังกฤษ C2',
                 difficulty: 'กลาง (Intermediate)',
                 color: Colors.blue,
-                onTap: () {},
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const WinterScreen(), // เชื่อมโยงไปยัง WinterScreen
+                    ),
+                  );
+                },
               ),
             ],
           ),
@@ -161,8 +185,8 @@ class QuizScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
                 const Text(
-                  'คุณสามารถเลือกหัวข้อที่สนใจ เลือกทำ Flashcard เพื่อสำรวจคำศัพท์ใหม่ๆ หรือจะทอลองทำ Quiz เลยก็ย่อมได้ '
-                  'ขอให้สนุกกับการเรียนรู้คำศัพท์',
+                  'คุณสามารถเลือกหัวข้อที่สนใจ เลือกทำ Flashcard เพื่อสำรวจคำศัพท์ใหม่ๆ หรือจะลองทำ Quiz เลยก็ย่อมได้ '
+                      'ขอให้สนุกกับการเรียนรู้คำศัพท์',
                   style: TextStyle(fontSize: 16),
                   textAlign: TextAlign.center,
                 ),
@@ -179,8 +203,7 @@ class QuizScreen extends StatelessWidget {
                 Container(
                   width: 50,
                   height: 50,
-                  color:
-                      Colors.orange, // Replace this with the image widget later
+                  color: Colors.orange, // Replace this with the image widget later
                 ),
                 const SizedBox(height: 16),
               ],

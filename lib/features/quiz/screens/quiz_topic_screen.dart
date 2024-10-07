@@ -1,20 +1,20 @@
-// quiz_school_and_education_screen.dart
+// quiz_topic_screen.dart
 // ignore_for_file: depend_on_referenced_packages, no_leading_underscores_for_local_identifiers, library_private_types_in_public_api
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 
-class QuizSchoolAndEducationScreen extends StatefulWidget {
-  const QuizSchoolAndEducationScreen({super.key});
+class QuizTopicScreen extends StatefulWidget {
+  final String topic; // รับหัวข้อเป็นพารามิเตอร์
+
+  const QuizTopicScreen({super.key, required this.topic});
 
   @override
-  _QuizSchoolAndEducationScreenState createState() =>
-      _QuizSchoolAndEducationScreenState();
+  _QuizTopicScreenState createState() => _QuizTopicScreenState();
 }
 
-class _QuizSchoolAndEducationScreenState
-    extends State<QuizSchoolAndEducationScreen> {
+class _QuizTopicScreenState extends State<QuizTopicScreen> {
   final FlutterTts flutterTts = FlutterTts();
   List<DocumentSnapshot> quizzes = [];
   int currentIndex = 0;
@@ -27,8 +27,8 @@ class _QuizSchoolAndEducationScreenState
   }
 
   Future<void> _fetchQuizzes() async {
-    QuerySnapshot snapshot =
-        await FirebaseFirestore.instance.collection('quizzes').get();
+    // ดึงควิซทั้งหมด
+    QuerySnapshot snapshot = await FirebaseFirestore.instance.collection('quizzes').get();
     setState(() {
       quizzes = snapshot.docs;
     });
@@ -56,8 +56,7 @@ class _QuizSchoolAndEducationScreenState
       );
     }
 
-    await Future.delayed(
-        const Duration(seconds: 2)); // รอ 2 วินาทีก่อนเปลี่ยนคำถาม
+    await Future.delayed(const Duration(seconds: 2)); // รอ 2 วินาทีก่อนเปลี่ยนคำถาม
 
     setState(() {
       if (currentIndex < quizzes.length - 1) {
@@ -105,7 +104,7 @@ class _QuizSchoolAndEducationScreenState
     if (quizzes.isEmpty) {
       return Scaffold(
         appBar: AppBar(
-          title: const Text('Quiz - School and Education'),
+          title: Text('Quiz - ${widget.topic.replaceAll('_', ' ').toUpperCase()}'),
         ),
         body: const Center(child: CircularProgressIndicator()),
       );
@@ -114,8 +113,7 @@ class _QuizSchoolAndEducationScreenState
     DocumentSnapshot currentQuiz = quizzes[currentIndex];
     String question = currentQuiz['question'];
     List<dynamic> options = currentQuiz['options'];
-    String correctAnswer =
-        options.firstWhere((option) => option['isCorrect'])['option'];
+    String correctAnswer = options.firstWhere((option) => option['isCorrect'])['option'];
 
     return Scaffold(
       body: Padding(
@@ -132,25 +130,13 @@ class _QuizSchoolAndEducationScreenState
                   },
                 ),
                 const SizedBox(width: 8),
-                const Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'SPRING',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.green,
-                      ),
-                    ),
-                    Text(
-                      '1. SCHOOL AND EDUCATION.',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.grey,
-                      ),
-                    ),
-                  ],
+                Text(
+                  'Quiz - ${widget.topic.replaceAll('_', ' ').toUpperCase()}',
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.green,
+                  ),
                 ),
               ],
             ),
@@ -205,7 +191,6 @@ class _QuizSchoolAndEducationScreenState
             ...options.map<Widget>((option) {
               return _buildAnswerButton(context, option['option'],
                   option['isCorrect'], correctAnswer);
-              // ignore: unnecessary_to_list_in_spreads
             }).toList(),
           ],
         ),

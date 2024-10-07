@@ -4,8 +4,8 @@ import 'package:simple_circular_progress_bar/simple_circular_progress_bar.dart';
 import '../../flashcards/screens/flashcard_topic_screen.dart';
 import '../../quiz/screens/quiz_topic_screen.dart'; // นำเข้า QuizTopicScreen
 
-class SpringScreen extends StatelessWidget {
-  const SpringScreen({super.key});
+class AutumnScreen extends StatelessWidget {
+  const AutumnScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -15,15 +15,15 @@ class SpringScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'SPRING',
+              'AUTUMN',
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
-                color: Colors.green,
+                color: Colors.red,
               ),
             ),
             Text(
-              'คำศัพท์ภาษาอังกฤษระดับ B1',
+              'คำศัพท์ภาษาอังกฤษระดับ C1',
               style: TextStyle(
                 fontSize: 16,
               ),
@@ -34,7 +34,7 @@ class SpringScreen extends StatelessWidget {
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: FutureBuilder<DocumentSnapshot>(
-          future: FirebaseFirestore.instance.collection('cefr_levels').doc('B1').get(),
+          future: FirebaseFirestore.instance.collection('cefr_levels').doc('C1').get(),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
@@ -106,7 +106,7 @@ class SpringScreen extends StatelessWidget {
             width: 24,
             height: 24,
             decoration: const BoxDecoration(
-              color: Colors.green,
+              color: Colors.red,
               shape: BoxShape.circle,
             ),
           ),
@@ -140,14 +140,14 @@ class SpringScreen extends StatelessWidget {
                             progressStrokeWidth: 8,
                             backStrokeWidth: 4,
                             mergeMode: true,
-                            progressColors: const [Colors.orange],
-                            fullProgressColor: Colors.orange,
+                            progressColors: const [Colors.red],
+                            fullProgressColor: Colors.red,
                           ),
                           const SizedBox(height: 8),
                           ElevatedButton(
                             onPressed: onFlashcardPressed,
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.orange,
+                              backgroundColor: Colors.red,
                             ),
                             child: const Text('Flashcard'),
                           ),

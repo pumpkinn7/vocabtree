@@ -4,10 +4,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:swipe_cards/swipe_cards.dart';
-import 'package:vocabtree/features/flashcards/model/flashcard_model.dart';
+import 'package:vocabtree/features/flashcards/model/flashcard_topic_model.dart';
 
 class FlashcardScreen extends StatefulWidget {
-  const FlashcardScreen({super.key});
+  const FlashcardScreen({super.key, required String topic});
 
   @override
   _FlashcardScreenState createState() => _FlashcardScreenState();

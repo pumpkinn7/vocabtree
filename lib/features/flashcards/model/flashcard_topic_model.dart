@@ -6,8 +6,8 @@ class Flashcard {
   final String definition;
   final String hint;
   final String translation;
+  final String hintTranslation;
   final Map<String, String> exampleSentence;
-  final List<String> options;
 
   Flashcard({
     required this.id,
@@ -17,8 +17,8 @@ class Flashcard {
     required this.definition,
     required this.hint,
     required this.translation,
+    required this.hintTranslation,
     required this.exampleSentence,
-    required this.options,
   });
 
   factory Flashcard.fromMap(Map<String, dynamic> data) {
@@ -30,11 +30,11 @@ class Flashcard {
       definition: data['meaning'] ?? '',
       hint: data['hint'] ?? '',
       translation: data['translation'] ?? '',
+      hintTranslation: data['hint_translation'] ?? '',
       exampleSentence: {
         'sentence': data['example_sentence'] ?? '',
         'translation': data['example_translation'] ?? '',
       },
-      options: [],
     );
   }
 }

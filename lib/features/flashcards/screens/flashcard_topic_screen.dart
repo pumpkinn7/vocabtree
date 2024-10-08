@@ -1,5 +1,3 @@
-// ignore_for_file: library_private_types_in_public_api, no_leading_underscores_for_local_identifiers
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -13,15 +11,17 @@ class FlashcardScreen extends StatefulWidget {
   const FlashcardScreen({super.key, required this.topic});
 
   @override
-  _FlashcardScreenState createState() => _FlashcardScreenState();
+  FlashcardScreenState createState() => FlashcardScreenState();
 }
 
-class _FlashcardScreenState extends State<FlashcardScreen> {
+class FlashcardScreenState extends State<FlashcardScreen> {
   late List<SwipeItem> _swipeItems;
   late MatchEngine _matchEngine;
   int knownCount = 0;
   int unknownCount = 0;
   final FlutterTts flutterTts = FlutterTts();
+  bool isShowingMeaning = false;
+  int currentIndex = 0; // เพิ่มตัวแปรนี้เพื่อติดตามคำศัพท์ปัจจุบัน
 
   @override
   void initState() {
@@ -77,23 +77,24 @@ class _FlashcardScreenState extends State<FlashcardScreen> {
       if (levelSnapshot.exists) {
         Map<String, dynamic>? topics = (levelSnapshot.data() as Map<String, dynamic>)['topics'];
 
+
         if (topics != null && topics.containsKey(widget.topic)) {
           List<dynamic>? vocabularies = (topics[widget.topic] as Map<String, dynamic>)['vocabularies'];
 
           if (vocabularies != null) {
-            // สุ่ม vocab ก่อนสร้าง _swipeItems
             vocabularies.shuffle();
 
-            // ใช้ vocabularies เพื่อสร้าง _swipeItems
             setState(() {
               _swipeItems = vocabularies.map((vocab) {
-                return Flashcard.fromMap(vocab); // สร้าง Flashcard จาก Map
+                return Flashcard.fromMap(vocab);
               }).map((flashcard) {
                 return SwipeItem(
                   content: flashcard,
                   likeAction: () {
                     setState(() {
                       knownCount++;
+                      currentIndex++; // อัปเดตคำศัพท์ปัจจุบัน
+                      isShowingMeaning = false; // รีเซ็ตสถานะ
                     });
                     if (kDebugMode) {
                       print("Liked ${flashcard.word}");
@@ -102,6 +103,8 @@ class _FlashcardScreenState extends State<FlashcardScreen> {
                   nopeAction: () {
                     setState(() {
                       unknownCount++;
+                      currentIndex++; // อัปเดตคำศัพท์ปัจจุบัน
+                      isShowingMeaning = false; // รีเซ็ตสถานะ
                     });
                     if (kDebugMode) {
                       print("Nope ${flashcard.word}");
@@ -134,7 +137,7 @@ class _FlashcardScreenState extends State<FlashcardScreen> {
   }
 
   Future<void> _speak(String text) async {
-    await flutterTts.speak(text); // ฟังก์ชันสำหรับเล่นเสียง
+    await flutterTts.speak(text);
   }
 
   @override
@@ -171,6 +174,10 @@ class _FlashcardScreenState extends State<FlashcardScreen> {
               matchEngine: _matchEngine,
               itemBuilder: (BuildContext context, int index) {
                 Flashcard flashcard = _swipeItems[index].content;
+
+                // ตรวจสอบว่าคำศัพท์ถัดไปจะไม่แสดงความหมายโดยอัตโนมัติ
+                bool isNextCard = index == currentIndex + 1;
+
                 return Center(
                   child: SizedBox(
                     width: MediaQuery.of(context).size.width * 0.85,
@@ -179,6 +186,7 @@ class _FlashcardScreenState extends State<FlashcardScreen> {
                       flashcard: flashcard,
                       currentIndex: index + 1,
                       totalItems: _swipeItems.length,
+                      showMeaning: isShowingMeaning && !isNextCard, // ป้องกันไม่ให้แสดงความหมายของคำถัดไป
                     ),
                   ),
                 );
@@ -187,7 +195,8 @@ class _FlashcardScreenState extends State<FlashcardScreen> {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text(
-                        "เก่งมาก ฉันว่าฉันจำได้แล้ว: $knownCount คำ, ยังจำไม่ได้: $unknownCount คำ"),
+                        "เก่งมาก ฉันว่าฉันจำได้แล้ว: $knownCount คำ, ยังจำไม่ได้: $unknownCount คำ"
+                    ),
                   ),
                 );
               },
@@ -219,7 +228,11 @@ class _FlashcardScreenState extends State<FlashcardScreen> {
               ),
               IconButton(
                 icon: const Icon(Icons.message, color: Colors.teal),
-                onPressed: () {},
+                onPressed: () {
+                  setState(() {
+                    isShowingMeaning = !isShowingMeaning; // สลับแสดงความหมาย
+                  });
+                },
               ),
               IconButton(
                 icon: const Icon(Icons.check, color: Colors.green),
@@ -240,12 +253,14 @@ class FlashcardItem extends StatelessWidget {
   final Flashcard flashcard;
   final int currentIndex;
   final int totalItems;
+  final bool showMeaning;
 
   const FlashcardItem({
     super.key,
     required this.flashcard,
     required this.currentIndex,
     required this.totalItems,
+    required this.showMeaning,
   });
 
   @override
@@ -265,10 +280,11 @@ class FlashcardItem extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // ลบปุ่ม volume_up ออก
                     const SizedBox(width: 16),
                     Text(
-                      flashcard.word,
+                      showMeaning
+                          ? flashcard.definition
+                          : flashcard.word,
                       style: const TextStyle(
                         fontSize: 35,
                         fontWeight: FontWeight.bold,
@@ -292,7 +308,9 @@ class FlashcardItem extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  flashcard.exampleSentence['sentence']!,
+                  showMeaning
+                      ? flashcard.exampleSentence['translation'] ?? ''
+                      : flashcard.exampleSentence['sentence'] ?? '',
                   style: const TextStyle(
                     fontSize: 16,
                   ),
@@ -307,7 +325,9 @@ class FlashcardItem extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  flashcard.hint,
+                  showMeaning
+                      ? flashcard.hintTranslation
+                      : flashcard.hint,
                   style: const TextStyle(
                     fontSize: 16,
                   ),

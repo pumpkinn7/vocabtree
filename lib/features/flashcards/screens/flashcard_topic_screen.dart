@@ -1,7 +1,8 @@
-// ignore_for_file: library_private_types_in_public_api
+// ignore_for_file: library_private_types_in_public_api, no_leading_underscores_for_local_identifiers
 
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_tts/flutter_tts.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:swipe_cards/swipe_cards.dart';
 import 'package:vocabtree/features/flashcards/model/flashcard_topic_model.dart';
@@ -20,6 +21,7 @@ class _FlashcardScreenState extends State<FlashcardScreen> {
   late MatchEngine _matchEngine;
   int knownCount = 0;
   int unknownCount = 0;
+  final FlutterTts flutterTts = FlutterTts();
 
   @override
   void initState() {
@@ -31,7 +33,6 @@ class _FlashcardScreenState extends State<FlashcardScreen> {
 
   Future<void> _fetchFlashcards() async {
     try {
-      // กำหนดระดับ (Level) จาก topic ที่ส่งเข้ามา
       String level = '';
       if (widget.topic.startsWith('daily_life') ||
           widget.topic.startsWith('education') ||
@@ -68,23 +69,19 @@ class _FlashcardScreenState extends State<FlashcardScreen> {
         level = 'C2';
       }
 
-      // ดึงข้อมูลระดับจาก Firestore
       DocumentSnapshot levelSnapshot = await FirebaseFirestore.instance
           .collection('cefr_levels')
           .doc(level)
           .get();
 
       if (levelSnapshot.exists) {
-        // ดึงข้อมูลหัวข้อ
         Map<String, dynamic>? topics = (levelSnapshot.data() as Map<String, dynamic>)['topics'];
 
-        // ตรวจสอบว่าหัวข้อที่เลือกมีอยู่ใน topics
         if (topics != null && topics.containsKey(widget.topic)) {
-          // ดึง vocabularies จากหัวข้อที่เลือก
           List<dynamic>? vocabularies = (topics[widget.topic] as Map<String, dynamic>)['vocabularies'];
 
           if (vocabularies != null) {
-            // ทำการสุ่ม vocabularies ก่อนสร้าง _swipeItems
+            // สุ่ม vocab ก่อนสร้าง _swipeItems
             vocabularies.shuffle();
 
             // ใช้ vocabularies เพื่อสร้าง _swipeItems
@@ -136,7 +133,9 @@ class _FlashcardScreenState extends State<FlashcardScreen> {
     }
   }
 
-
+  Future<void> _speak(String text) async {
+    await flutterTts.speak(text); // ฟังก์ชันสำหรับเล่นเสียง
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -206,7 +205,13 @@ class _FlashcardScreenState extends State<FlashcardScreen> {
               ),
               IconButton(
                 icon: const Icon(Icons.mic, color: Colors.blue),
-                onPressed: () {},
+                onPressed: () {
+                  final currentItem = _matchEngine.currentItem;
+                  if (currentItem != null) {
+                    final flashcard = currentItem.content as Flashcard;
+                    _speak(flashcard.word);
+                  }
+                },
               ),
               IconButton(
                 icon: const Icon(Icons.backpack, color: Colors.orange),
@@ -257,12 +262,19 @@ class FlashcardItem extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(
-                  flashcard.word,
-                  style: const TextStyle(
-                    fontSize: 35,
-                    fontWeight: FontWeight.bold,
-                  ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // ลบปุ่ม volume_up ออก
+                    const SizedBox(width: 16),
+                    Text(
+                      flashcard.word,
+                      style: const TextStyle(
+                        fontSize: 35,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
                 ),
                 Text(
                   flashcard.partOfSpeech,

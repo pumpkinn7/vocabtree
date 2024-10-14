@@ -1,14 +1,15 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/material.dart';
 import 'package:swipe_cards/swipe_cards.dart';
-import 'package:vocabtree/features/flashcards/model/flashcard_topic_model.dart';
+
+import '../model/flashcard_topic_model.dart';
 
 class FlashcardScreen extends StatefulWidget {
   final String topic;
+  final String userId;
 
-  const FlashcardScreen({super.key, required this.topic});
+  const FlashcardScreen({super.key, required this.topic, required this.userId});
 
   @override
   FlashcardScreenState createState() => FlashcardScreenState();
@@ -17,11 +18,9 @@ class FlashcardScreen extends StatefulWidget {
 class FlashcardScreenState extends State<FlashcardScreen> {
   late List<SwipeItem> _swipeItems;
   late MatchEngine _matchEngine;
-  int knownCount = 0;
-  int unknownCount = 0;
   final FlutterTts flutterTts = FlutterTts();
   bool isShowingMeaning = false;
-  int currentIndex = 0; // เพิ่มตัวแปรนี้เพื่อติดตามคำศัพท์ปัจจุบัน
+  int currentIndex = 0;
 
   @override
   void initState() {
@@ -32,112 +31,140 @@ class FlashcardScreenState extends State<FlashcardScreen> {
   }
 
   Future<void> _fetchFlashcards() async {
-    try {
-      String level = '';
-      if (widget.topic.startsWith('daily_life') ||
-          widget.topic.startsWith('education') ||
-          widget.topic.startsWith('entertainment') ||
-          widget.topic.startsWith('environment_and_nature') ||
-          widget.topic.startsWith('health_and_fitness') ||
-          widget.topic.startsWith('travel_and_tourism')) {
-        level = 'B1';
-      } else if (widget.topic.startsWith('home_renovation_and_decor') ||
-          widget.topic.startsWith('outdoor_activities_and_adventures') ||
-          widget.topic.startsWith('music_and_performing_arts') ||
-          widget.topic.startsWith('fitness_and_exercise') ||
-          widget.topic.startsWith('cooking_and_culinary_skills') ||
-          widget.topic.startsWith('pet_care_and_animal_welfare') ||
-          widget.topic.startsWith('gardening_and_landscaping') ||
-          widget.topic.startsWith('hobbies_and_crafts')) {
-        level = 'B2';
-      } else if (widget.topic.startsWith('urban_living') ||
-          widget.topic.startsWith('digital_well_being') ||
-          widget.topic.startsWith('cultural_festivals') ||
-          widget.topic.startsWith('creative_writing') ||
-          widget.topic.startsWith('nutrition_and_wellness') ||
-          widget.topic.startsWith('interior_decorating') ||
-          widget.topic.startsWith('fashion_trends') ||
-          widget.topic.startsWith('event_planning')) {
-        level = 'C1';
-      } else if (widget.topic.startsWith('immersive_technologies') ||
-          widget.topic.startsWith('cosmic_discoveries') ||
-          widget.topic.startsWith('digital_finance') ||
-          widget.topic.startsWith('adrenaline_activities') ||
-          widget.topic.startsWith('smart_automation') ||
-          widget.topic.startsWith('legends_and_lore') ||
-          widget.topic.startsWith('criminal_investigation')) {
-        level = 'C2';
-      }
+    String level = _getLevelFromTopic(widget.topic);
 
-      DocumentSnapshot levelSnapshot = await FirebaseFirestore.instance
-          .collection('cefr_levels')
-          .doc(level)
-          .get();
+    // ดึงคำศัพท์จาก cefr_levels
+    DocumentSnapshot levelSnapshot = await FirebaseFirestore.instance
+        .collection('cefr_levels')
+        .doc(level)
+        .get();
 
-      if (levelSnapshot.exists) {
-        Map<String, dynamic>? topics = (levelSnapshot.data() as Map<String, dynamic>)['topics'];
+    Map<String, dynamic> topics =
+    (levelSnapshot.data() as Map<String, dynamic>)['topics'];
 
+    List<dynamic> vocabularies =
+    topics[widget.topic]['vocabularies'] as List<dynamic>;
 
-        if (topics != null && topics.containsKey(widget.topic)) {
-          List<dynamic>? vocabularies = (topics[widget.topic] as Map<String, dynamic>)['vocabularies'];
+    // ดึงคำศัพท์ที่ผู้ใช้รู้แล้วจาก users/{userId}
+    QuerySnapshot userKnownVocabSnapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(widget.userId)
+        .collection(level)
+        .doc(widget.topic)
+        .collection('vocabularies')
+        .where('is_known', isEqualTo: true)
+        .get();
 
-          if (vocabularies != null) {
-            vocabularies.shuffle();
+    List<String> knownWords = [];
+    for (var doc in userKnownVocabSnapshot.docs) {
+      knownWords.add(doc.id);
+    }
 
+    // กรองคำศัพท์ที่ผู้ใช้ยังไม่รู้
+    List<dynamic> filteredVocabularies = vocabularies
+        .where((vocab) => !knownWords.contains(vocab['word']))
+        .toList();
+
+    filteredVocabularies.shuffle();
+
+    setState(() {
+      _swipeItems = filteredVocabularies.map((vocab) {
+        Flashcard flashcard = Flashcard.fromMap(vocab);
+        return SwipeItem(
+          content: flashcard,
+          likeAction: () {
+            _saveFlashcardToFirestore(flashcard, true, false);
             setState(() {
-              _swipeItems = vocabularies.map((vocab) {
-                return Flashcard.fromMap(vocab);
-              }).map((flashcard) {
-                return SwipeItem(
-                  content: flashcard,
-                  likeAction: () {
-                    setState(() {
-                      knownCount++;
-                      currentIndex++; // อัปเดตคำศัพท์ปัจจุบัน
-                      isShowingMeaning = false; // รีเซ็ตสถานะ
-                    });
-                    if (kDebugMode) {
-                      print("Liked ${flashcard.word}");
-                    }
-                  },
-                  nopeAction: () {
-                    setState(() {
-                      unknownCount++;
-                      currentIndex++; // อัปเดตคำศัพท์ปัจจุบัน
-                      isShowingMeaning = false; // รีเซ็ตสถานะ
-                    });
-                    if (kDebugMode) {
-                      print("Nope ${flashcard.word}");
-                    }
-                  },
-                );
-              }).toList();
-              _matchEngine = MatchEngine(swipeItems: _swipeItems);
+              isShowingMeaning = false; // รีเซ็ตการแปลภาษา
+              currentIndex++;
             });
-          } else {
-            if (kDebugMode) {
-              print("No vocabularies found for topic: ${widget.topic}");
-            }
-          }
-        } else {
-          if (kDebugMode) {
-            print("Topic does not exist in level: ${widget.topic}");
-          }
-        }
-      } else {
-        if (kDebugMode) {
-          print("Level document does not exist for: $level");
-        }
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        print("Error fetching flashcards: $e");
-      }
+          },
+          nopeAction: () {
+            _saveFlashcardToFirestore(flashcard, false, false);
+            setState(() {
+              isShowingMeaning = false; // รีเซ็ตการแปลภาษา
+              currentIndex++;
+            });
+          },
+          superlikeAction: () {
+            _saveFlashcardToFirestore(flashcard, true, false); // ทำงานเหมือนปุ่ม backpack
+            setState(() {
+              isShowingMeaning = false; // รีเซ็ตการแปลภาษา
+              currentIndex++;
+            });
+          },
+        );
+      }).toList();
+      _matchEngine = MatchEngine(swipeItems: _swipeItems);
+    });
+  }
+
+  String _getLevelFromTopic(String topic) {
+    if (topic.startsWith('daily_life') ||
+        topic.startsWith('education') ||
+        topic.startsWith('entertainment') ||
+        topic.startsWith('environment_and_nature') ||
+        topic.startsWith('health_and_fitness') ||
+        topic.startsWith('travel_and_tourism')) {
+      return 'B1';
+    } else if (topic.startsWith('home_renovation_and_decor') ||
+        topic.startsWith('outdoor_activities_and_adventures') ||
+        topic.startsWith('music_and_performing_arts') ||
+        topic.startsWith('fitness_and_exercise') ||
+        topic.startsWith('cooking_and_culinary_skills') ||
+        topic.startsWith('pet_care_and_animal_welfare') ||
+        topic.startsWith('gardening_and_landscaping') ||
+        topic.startsWith('hobbies_and_crafts')) {
+      return 'B2';
+    } else if (topic.startsWith('urban_living') ||
+        topic.startsWith('digital_well_being') ||
+        topic.startsWith('cultural_festivals') ||
+        topic.startsWith('creative_writing') ||
+        topic.startsWith('nutrition_and_wellness') ||
+        topic.startsWith('interior_decorating') ||
+        topic.startsWith('fashion_trends') ||
+        topic.startsWith('event_planning')) {
+      return 'C1';
+    } else if (topic.startsWith('immersive_technologies') ||
+        topic.startsWith('cosmic_discoveries') ||
+        topic.startsWith('digital_finance') ||
+        topic.startsWith('adrenaline_activities') ||
+        topic.startsWith('smart_automation') ||
+        topic.startsWith('legends_and_lore') ||
+        topic.startsWith('criminal_investigation')) {
+      return 'C2';
+    } else {
+      return 'B1'; // คืนค่าเริ่มต้น
     }
   }
 
   Future<void> _speak(String text) async {
     await flutterTts.speak(text);
+  }
+
+  Future<void> _saveFlashcardToFirestore(
+      Flashcard flashcard, bool isKnown, bool forReview) async {
+    String userId = widget.userId;
+    String level = _getLevelFromTopic(widget.topic);
+
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(userId)
+        .collection(level)
+        .doc(widget.topic)
+        .collection('vocabularies')
+        .doc(flashcard.word)
+        .set({
+      'is_known': isKnown,
+      'for_review': forReview,
+      'meaning': flashcard.definition,
+      'type': flashcard.partOfSpeech,
+      'example_sentence': flashcard.exampleSentence['sentence'] ?? '',
+      'example_translation': flashcard.exampleSentence['translation'] ?? '',
+      'hint': flashcard.hint,
+      'hint_translation': flashcard.hintTranslation,
+      'timestamp': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
   }
 
   @override
@@ -165,12 +192,12 @@ class FlashcardScreenState extends State<FlashcardScreen> {
           ],
         ),
       ),
-      body: Column(
+      body: _swipeItems.isEmpty
+          ? const Center(child: CircularProgressIndicator())
+          : Column(
         children: [
           Expanded(
-            child: _swipeItems.isEmpty
-                ? const Center(child: CircularProgressIndicator())
-                : SwipeCards(
+            child: SwipeCards(
               matchEngine: _matchEngine,
               itemBuilder: (BuildContext context, int index) {
                 Flashcard flashcard = _swipeItems[index].content;
@@ -192,17 +219,16 @@ class FlashcardScreenState extends State<FlashcardScreen> {
                 );
               },
               onStackFinished: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                        "เก่งมาก ฉันว่าฉันจำได้แล้ว: $knownCount คำ, ยังจำไม่ได้: $unknownCount คำ"
-                    ),
-                  ),
-                );
+                // ทำอะไรบางอย่างเมื่อหมดการ์ด
               },
+              itemChanged: (SwipeItem item, int index) {
+                setState(() {
+                  isShowingMeaning = false; // รีเซ็ตการแปลภาษาเมื่อเปลี่ยนการ์ด
+                });
+              },
+              upSwipeAllowed: true, // อนุญาตการปัดขึ้น
             ),
           ),
-          const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
@@ -213,7 +239,7 @@ class FlashcardScreenState extends State<FlashcardScreen> {
                 },
               ),
               IconButton(
-                icon: const Icon(Icons.mic, color: Colors.blue),
+                icon: const Icon(Icons.volume_up, color: Colors.blue),
                 onPressed: () {
                   final currentItem = _matchEngine.currentItem;
                   if (currentItem != null) {
@@ -224,13 +250,15 @@ class FlashcardScreenState extends State<FlashcardScreen> {
               ),
               IconButton(
                 icon: const Icon(Icons.backpack, color: Colors.orange),
-                onPressed: () {},
+                onPressed: () {
+                  _matchEngine.currentItem?.superLike();
+                },
               ),
               IconButton(
-                icon: const Icon(Icons.message, color: Colors.teal),
+                icon: const Icon(Icons.translate, color: Colors.teal),
                 onPressed: () {
                   setState(() {
-                    isShowingMeaning = !isShowingMeaning; // สลับแสดงความหมาย
+                    isShowingMeaning = !isShowingMeaning;
                   });
                 },
               ),
@@ -265,97 +293,97 @@ class FlashcardItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16.0),
-      decoration: BoxDecoration(
-        color: Colors.grey[200],
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Stack(
-        children: [
-          Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const SizedBox(width: 16),
-                    Text(
-                      showMeaning
-                          ? flashcard.definition
-                          : flashcard.word,
-                      style: const TextStyle(
-                        fontSize: 35,
-                        fontWeight: FontWeight.bold,
+    return Center(
+      child: SizedBox(
+        width: MediaQuery.of(context).size.width * 0.85,
+        child: Container(
+          padding: const EdgeInsets.all(16.0),
+          decoration: BoxDecoration(
+            color: Colors.grey[200],
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Stack(
+            children: [
+              Center(
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        showMeaning ? flashcard.definition : flashcard.word,
+                        style: const TextStyle(
+                          fontSize: 35,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
+                      Text(
+                        flashcard.partOfSpeech,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                      const SizedBox(height: 25),
+                      const Text(
+                        'ตัวอย่างประโยค: ',
+                        style: TextStyle(
+                          fontSize: 18,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        showMeaning
+                            ? flashcard.exampleSentence['translation'] ?? ''
+                            : flashcard.exampleSentence['sentence'] ?? '',
+                        style: const TextStyle(
+                          fontSize: 16,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 35),
+                      const Text(
+                        'คำใบ้: ',
+                        style: TextStyle(
+                          fontSize: 18,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        showMeaning
+                            ? flashcard.hintTranslation
+                            : flashcard.hint,
+                        style: const TextStyle(
+                          fontSize: 16,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              Positioned(
+                top: 16,
+                right: 16,
+                child: Container(
+                  padding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.grey,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    '$currentIndex of $totalItems',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
                     ),
-                  ],
-                ),
-                Text(
-                  flashcard.partOfSpeech,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontStyle: FontStyle.italic,
                   ),
-                ),
-                const SizedBox(height: 25),
-                const Text(
-                  'ตัวอย่างประโยค :',
-                  style: TextStyle(
-                    fontSize: 18,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  showMeaning
-                      ? flashcard.exampleSentence['translation'] ?? ''
-                      : flashcard.exampleSentence['sentence'] ?? '',
-                  style: const TextStyle(
-                    fontSize: 16,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 35),
-                const Text(
-                  'คำใบ้ :',
-                  style: TextStyle(
-                    fontSize: 18,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  showMeaning
-                      ? flashcard.hintTranslation
-                      : flashcard.hint,
-                  style: const TextStyle(
-                    fontSize: 16,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            ),
-          ),
-          Positioned(
-            top: 16,
-            right: 16,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.grey,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                '$currentIndex of $totalItems',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
                 ),
               ),
-            ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

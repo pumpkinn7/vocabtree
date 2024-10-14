@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart'; // เพิ่มการนำเข้า Firebase Auth
 import 'package:flutter/material.dart';
 import 'package:simple_circular_progress_bar/simple_circular_progress_bar.dart';
 import '../../flashcards/screens/flashcard_topic_screen.dart';
@@ -9,6 +10,8 @@ class AutumnScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final User? user = FirebaseAuth.instance.currentUser; // ดึง userId
+
     return Scaffold(
       appBar: AppBar(
         title: const Column(
@@ -60,7 +63,10 @@ class AutumnScreen extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => FlashcardScreen(topic: topicKey),
+                        builder: (context) => FlashcardScreen(
+                          topic: topicKey,
+                          userId: user?.uid ?? '', // ส่ง userId ที่ถูกต้อง
+                        ),
                       ),
                     );
                   },

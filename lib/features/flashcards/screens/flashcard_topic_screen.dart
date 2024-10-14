@@ -33,7 +33,6 @@ class FlashcardScreenState extends State<FlashcardScreen> {
   Future<void> _fetchFlashcards() async {
     String level = _getLevelFromTopic(widget.topic);
 
-    // ดึงคำศัพท์จาก cefr_levels
     DocumentSnapshot levelSnapshot = await FirebaseFirestore.instance
         .collection('cefr_levels')
         .doc(level)
@@ -45,7 +44,6 @@ class FlashcardScreenState extends State<FlashcardScreen> {
     List<dynamic> vocabularies =
     topics[widget.topic]['vocabularies'] as List<dynamic>;
 
-    // ดึงคำศัพท์ที่ผู้ใช้รู้แล้วจาก users/{userId}
     QuerySnapshot userKnownVocabSnapshot = await FirebaseFirestore.instance
         .collection('users')
         .doc(widget.userId)
@@ -60,7 +58,6 @@ class FlashcardScreenState extends State<FlashcardScreen> {
       knownWords.add(doc.id);
     }
 
-    // กรองคำศัพท์ที่ผู้ใช้ยังไม่รู้
     List<dynamic> filteredVocabularies = vocabularies
         .where((vocab) => !knownWords.contains(vocab['word']))
         .toList();
@@ -74,28 +71,26 @@ class FlashcardScreenState extends State<FlashcardScreen> {
           content: flashcard,
           likeAction: () {
             _saveFlashcardToFirestore(flashcard, true, false);
-            setState(() {
-              isShowingMeaning = false; // รีเซ็ตการแปลภาษา
-              currentIndex++;
-            });
+            _resetFlashcardState();
           },
           nopeAction: () {
             _saveFlashcardToFirestore(flashcard, false, false);
-            setState(() {
-              isShowingMeaning = false; // รีเซ็ตการแปลภาษา
-              currentIndex++;
-            });
+            _resetFlashcardState();
           },
           superlikeAction: () {
-            _saveFlashcardToFirestore(flashcard, true, false); // ทำงานเหมือนปุ่ม backpack
-            setState(() {
-              isShowingMeaning = false; // รีเซ็ตการแปลภาษา
-              currentIndex++;
-            });
+            _saveFlashcardToFirestore(flashcard, true, true);
+            _resetFlashcardState();
           },
         );
       }).toList();
       _matchEngine = MatchEngine(swipeItems: _swipeItems);
+    });
+  }
+
+  void _resetFlashcardState() {
+    setState(() {
+      isShowingMeaning = false;
+      currentIndex++;
     });
   }
 
@@ -134,7 +129,7 @@ class FlashcardScreenState extends State<FlashcardScreen> {
         topic.startsWith('criminal_investigation')) {
       return 'C2';
     } else {
-      return 'B1'; // คืนค่าเริ่มต้น
+      return 'B1';
     }
   }
 
@@ -202,7 +197,6 @@ class FlashcardScreenState extends State<FlashcardScreen> {
               itemBuilder: (BuildContext context, int index) {
                 Flashcard flashcard = _swipeItems[index].content;
 
-                // ตรวจสอบว่าคำศัพท์ถัดไปจะไม่แสดงความหมายโดยอัตโนมัติ
                 bool isNextCard = index == currentIndex + 1;
 
                 return Center(
@@ -213,20 +207,18 @@ class FlashcardScreenState extends State<FlashcardScreen> {
                       flashcard: flashcard,
                       currentIndex: index + 1,
                       totalItems: _swipeItems.length,
-                      showMeaning: isShowingMeaning && !isNextCard, // ป้องกันไม่ให้แสดงความหมายของคำถัดไป
+                      showMeaning: isShowingMeaning && !isNextCard,
                     ),
                   ),
                 );
               },
-              onStackFinished: () {
-                // ทำอะไรบางอย่างเมื่อหมดการ์ด
-              },
+              onStackFinished: () {},
               itemChanged: (SwipeItem item, int index) {
                 setState(() {
-                  isShowingMeaning = false; // รีเซ็ตการแปลภาษาเมื่อเปลี่ยนการ์ด
+                  isShowingMeaning = false;
                 });
               },
-              upSwipeAllowed: true, // อนุญาตการปัดขึ้น
+              upSwipeAllowed: true,
             ),
           ),
           Row(

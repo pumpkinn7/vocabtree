@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_tts/flutter_tts.dart';
 
 class VocabScreen extends StatelessWidget {
   const VocabScreen({super.key});
@@ -86,31 +87,48 @@ class VocabScreen extends StatelessWidget {
                   return Padding(
                     padding: const EdgeInsets.all(8.0),
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.center, // จัดหัวข้อให้อยู่ตรงกลาง
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         Text(
                           'หัวข้อ: $topic',
                           style: Theme.of(context).textTheme.titleMedium,
-                          textAlign: TextAlign.center, // จัดข้อความให้อยู่ตรงกลาง
+                          textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: 8.0),
                         Wrap(
                           spacing: 12.0,
                           runSpacing: 12.0,
-                          alignment: WrapAlignment.center, // จัดปุ่มให้อยู่ตรงกลาง
+                          alignment: WrapAlignment.center,
                           children: vocabDocs.map((doc) {
                             final vocabData = doc.data() as Map<String, dynamic>;
                             final word = vocabData['word'] ?? '';
+                            final type = vocabData['type'] ?? '';
+                            final meaning = vocabData['meaning'] ?? '';
+                            final exampleSentence = vocabData['example_sentence'] ?? '';
+                            final exampleTranslation = vocabData['example_translation'] ?? '';
+                            final hint = vocabData['hint'] ?? '';
+                            final FlutterTts flutterTts = FlutterTts();
+
                             return OutlinedButton(
                               onPressed: () {
-                                // Handle button press (เช่นเปิดรายละเอียดของคำศัพท์)
+                                _showVocabDialog(
+                                  context,
+                                  word,
+                                  type,
+                                  meaning,
+                                  exampleSentence,
+                                  exampleTranslation,
+                                  hint,
+                                  flutterTts,
+                                  topic, // ส่ง topic เพื่อแสดงหมวดหมู่
+                                );
                               },
                               style: OutlinedButton.styleFrom(
                                 padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12.0),
                                 ),
-                                side: BorderSide(color: Theme.of(context).primaryColor), // ปรับสีขอบตามธีม
+                                side: BorderSide(color: Theme.of(context).primaryColor),
                               ),
                               child: Text(word, textAlign: TextAlign.center),
                             );
@@ -125,6 +143,75 @@ class VocabScreen extends StatelessWidget {
           );
         }).toList(),
       ),
+    );
+  }
+
+  void _showVocabDialog(
+      BuildContext context,
+      String word,
+      String type,
+      String meaning,
+      String exampleSentence,
+      String exampleTranslation,
+      String hint,
+      FlutterTts flutterTts,
+      String topic, // รับ topic
+      ) {
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('$word - คำ$type', style: Theme.of(context).textTheme.titleLarge),
+              IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () {
+                  Navigator.of(dialogContext).pop();
+                },
+              ),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.volume_up, color: Colors.blue),
+                  onPressed: () async {
+                    await flutterTts.speak(word);
+                  },
+                ),
+                const SizedBox(height: 10),
+                Text('หมวดหมู่ : $topic', style: Theme.of(context).textTheme.bodyLarge), // แสดงหมวดหมู่ตามหัวข้อ
+                const SizedBox(height: 10),
+                Text('ความหมาย : $meaning', style: Theme.of(context).textTheme.bodyLarge),
+                const SizedBox(height: 10),
+                Text('ตัวอย่าง : $exampleSentence', style: Theme.of(context).textTheme.bodyLarge),
+                const SizedBox(height: 5),
+                Text('คำแปล : $exampleTranslation', style: Theme.of(context).textTheme.bodyLarge),
+                const SizedBox(height: 10),
+                Text('คำใบ้ : $hint', style: Theme.of(context).textTheme.bodyLarge),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              child: const Text('แปลภาษา'),
+              onPressed: () {
+                // Add your translation action here
+              },
+            ),
+            TextButton(
+              child: const Text('ลบออกจากคลัง', style: TextStyle(color: Colors.orange)),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
     );
   }
 }

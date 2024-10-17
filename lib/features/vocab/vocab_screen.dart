@@ -5,59 +5,16 @@ import 'package:firebase_auth/firebase_auth.dart';
 class VocabScreen extends StatelessWidget {
   const VocabScreen({super.key});
 
-  // ฟังก์ชัน _getLevelFromTopic สำหรับอ้างอิง level จาก topic
-  String _getLevelFromTopic(String topic) {
-    if (topic.startsWith('daily_life') ||
-        topic.startsWith('education') ||
-        topic.startsWith('entertainment') ||
-        topic.startsWith('environment_and_nature') ||
-        topic.startsWith('health_and_fitness') ||
-        topic.startsWith('travel_and_tourism')) {
-      return 'B1';
-    } else if (topic.startsWith('home_renovation_and_decor') ||
-        topic.startsWith('outdoor_activities_and_adventures') ||
-        topic.startsWith('music_and_performing_arts') ||
-        topic.startsWith('fitness_and_exercise') ||
-        topic.startsWith('cooking_and_culinary_skills') ||
-        topic.startsWith('pet_care_and_animal_welfare') ||
-        topic.startsWith('gardening_and_landscaping') ||
-        topic.startsWith('hobbies_and_crafts')) {
-      return 'B2';
-    } else if (topic.startsWith('urban_living') ||
-        topic.startsWith('digital_well_being') ||
-        topic.startsWith('cultural_festivals') ||
-        topic.startsWith('creative_writing') ||
-        topic.startsWith('nutrition_and_wellness') ||
-        topic.startsWith('interior_decorating') ||
-        topic.startsWith('fashion_trends') ||
-        topic.startsWith('event_planning')) {
-      return 'C1';
-    } else if (topic.startsWith('immersive_technologies') ||
-        topic.startsWith('cosmic_discoveries') ||
-        topic.startsWith('digital_finance') ||
-        topic.startsWith('adrenaline_activities') ||
-        topic.startsWith('smart_automation') ||
-        topic.startsWith('legends_and_lore') ||
-        topic.startsWith('criminal_investigation')) {
-      return 'C2';
-    } else {
-      return 'B1';
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    // รับค่า userId จาก Firebase Authentication
-    final String? userId = FirebaseAuth.instance.currentUser?.uid;
-
-    // กำหนดหัวข้อ (topics) ทั้งหมดที่มีการอ้างอิง
-    final List<String> topics = [
+  static const Map<String, List<String>> levelMapping = {
+    'B1': [
       'daily_life',
       'education',
       'entertainment',
       'environment_and_nature',
       'health_and_fitness',
       'travel_and_tourism',
+    ],
+    'B2': [
       'home_renovation_and_decor',
       'outdoor_activities_and_adventures',
       'music_and_performing_arts',
@@ -66,6 +23,8 @@ class VocabScreen extends StatelessWidget {
       'pet_care_and_animal_welfare',
       'gardening_and_landscaping',
       'hobbies_and_crafts',
+    ],
+    'C1': [
       'urban_living',
       'digital_well_being',
       'cultural_festivals',
@@ -74,67 +33,97 @@ class VocabScreen extends StatelessWidget {
       'interior_decorating',
       'fashion_trends',
       'event_planning',
+    ],
+    'C2': [
       'immersive_technologies',
       'cosmic_discoveries',
       'digital_finance',
       'adrenaline_activities',
       'smart_automation',
       'legends_and_lore',
-      'criminal_investigation'
-    ];
+      'criminal_investigation',
+    ],
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final String? userId = FirebaseAuth.instance.currentUser?.uid;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Vocab Screen'),
-      ),
-      body: ListView.builder(
-        itemCount: topics.length,
-        itemBuilder: (context, index) {
-          final topic = topics[index];
-          final String level = _getLevelFromTopic(topic);
+      appBar: AppBar(title: const Text('Vocab Screen')),
+      body: ListView(
+        children: levelMapping.entries.map((levelEntry) {
+          final level = levelEntry.key;
+          final topics = levelEntry.value;
 
-          return StreamBuilder<QuerySnapshot>(
-            stream: FirebaseFirestore.instance
-                .collection('users')
-                .doc(userId)
-                .collection(level)
-                .doc(topic)
-                .collection('vocabularies')
-                .snapshots(),
-            builder: (context, snapshot) {
-              if (snapshot.hasError) {
-                return Center(
-                  child: Text('เกิดข้อผิดพลาดในการดึงข้อมูล: ${snapshot.error}'),
-                );
-              }
+          return ExpansionTile(
+            title: Text('ระดับ: $level'),
+            children: topics.map((topic) {
+              return FutureBuilder<QuerySnapshot>(
+                future: FirebaseFirestore.instance
+                    .collection('users')
+                    .doc(userId)
+                    .collection(level)
+                    .doc(topic)
+                    .collection('vocabularies')
+                    .where('for_review', isEqualTo: true)
+                    .get(),
+                builder: (context, snapshot) {
+                  if (snapshot.hasError) {
+                    return ListTile(title: Text('เกิดข้อผิดพลาดในการโหลดหัวข้อ: $topic'));
+                  }
 
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const ListTile(title: Text('กำลังโหลดหัวข้อ...'));
+                  }
 
-              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                return ListTile(
-                  title: Text('Topic: $topic (ไม่พบคำศัพท์)'),
-                );
-              }
+                  final vocabDocs = snapshot.data?.docs ?? [];
 
-              final vocabDocs = snapshot.data!.docs;
+                  if (vocabDocs.isEmpty) {
+                    return SizedBox.shrink(); // ไม่มีคำศัพท์ไม่แสดงหัวข้อนี้
+                  }
 
-              return ExpansionTile(
-                title: Text('Topic: $topic (Level: $level)'),
-                children: vocabDocs.map((doc) {
-                  final vocabData = doc.data() as Map<String, dynamic>;
-                  final word = vocabData['word'] ?? '';
-                  final meaning = vocabData['meaning'] ?? '';
-                  return ListTile(
-                    title: Text(word),
-                    subtitle: Text(meaning),
+                  return Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.center, // จัดหัวข้อให้อยู่ตรงกลาง
+                      children: [
+                        Text(
+                          'หัวข้อ: $topic',
+                          style: Theme.of(context).textTheme.titleMedium,
+                          textAlign: TextAlign.center, // จัดข้อความให้อยู่ตรงกลาง
+                        ),
+                        const SizedBox(height: 8.0),
+                        Wrap(
+                          spacing: 12.0,
+                          runSpacing: 12.0,
+                          alignment: WrapAlignment.center, // จัดปุ่มให้อยู่ตรงกลาง
+                          children: vocabDocs.map((doc) {
+                            final vocabData = doc.data() as Map<String, dynamic>;
+                            final word = vocabData['word'] ?? '';
+                            return OutlinedButton(
+                              onPressed: () {
+                                // Handle button press (เช่นเปิดรายละเอียดของคำศัพท์)
+                              },
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12.0),
+                                ),
+                                side: BorderSide(color: Theme.of(context).primaryColor), // ปรับสีขอบตามธีม
+                              ),
+                              child: Text(word, textAlign: TextAlign.center),
+                            );
+                          }).toList(),
+                        ),
+                      ],
+                    ),
                   );
-                }).toList(),
+                },
               );
-            },
+            }).toList(),
           );
-        },
+        }).toList(),
       ),
     );
   }

@@ -150,6 +150,10 @@ class FlashcardScreenState extends State<FlashcardScreen> {
         .collection('vocabularies')
         .doc(flashcard.word)
         .set({
+      'userId': userId,
+      'level': level,
+      'topic': widget.topic,
+      'word': flashcard.word,
       'is_known': isKnown,
       'for_review': forReview,
       'meaning': flashcard.definition,
@@ -161,6 +165,8 @@ class FlashcardScreenState extends State<FlashcardScreen> {
       'timestamp': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
   }
+
+
 
   @override
   Widget build(BuildContext context) {

@@ -206,7 +206,6 @@ class VocabScreen extends StatelessWidget {
             TextButton(
               child: const Text('ลบออกจากคลัง', style: TextStyle(color: Colors.orange)),
               onPressed: () {
-                Navigator.of(context).pop();
               },
             ),
           ],

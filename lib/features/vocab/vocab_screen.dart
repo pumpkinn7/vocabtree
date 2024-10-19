@@ -3,9 +3,14 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 
-class VocabScreen extends StatelessWidget {
+class VocabScreen extends StatefulWidget {
   const VocabScreen({super.key});
 
+  @override
+  VocabScreenState createState() => VocabScreenState();
+}
+
+class VocabScreenState extends State<VocabScreen> {
   static const Map<String, List<String>> levelMapping = {
     'B1': [
       'daily_life',
@@ -46,10 +51,42 @@ class VocabScreen extends StatelessWidget {
     ],
   };
 
+  String? userId;
+  Map<String, Map<String, List<DocumentSnapshot>>> vocabData = {}; // level -> topic -> vocabDocs
+
+  @override
+  void initState() {
+    super.initState();
+    userId = FirebaseAuth.instance.currentUser?.uid;
+    _fetchAllVocabularies();
+  }
+
+  Future<void> _fetchAllVocabularies() async {
+    for (var levelEntry in levelMapping.entries) {
+      final level = levelEntry.key;
+      final topics = levelEntry.value;
+      if (!vocabData.containsKey(level)) {
+        vocabData[level] = {};
+      }
+      for (var topic in topics) {
+        final snapshot = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(userId)
+            .collection(level)
+            .doc(topic)
+            .collection('vocabularies')
+            .where('for_review', isEqualTo: true)
+            .get();
+
+        setState(() {
+          vocabData[level]![topic] = snapshot.docs;
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final String? userId = FirebaseAuth.instance.currentUser?.uid;
-
     return Scaffold(
       appBar: AppBar(title: const Text('Vocab Screen')),
       body: ListView(
@@ -60,95 +97,68 @@ class VocabScreen extends StatelessWidget {
           return ExpansionTile(
             title: Text('ระดับ: $level'),
             children: topics.map((topic) {
-              return FutureBuilder<QuerySnapshot>(
-                future: FirebaseFirestore.instance
-                    .collection('users')
-                    .doc(userId)
-                    .collection(level)
-                    .doc(topic)
-                    .collection('vocabularies')
-                    .where('for_review', isEqualTo: true)
-                    .get(),
-                builder: (context, snapshot) {
-                  if (snapshot.hasError) {
-                    return ListTile(
-                        title:
-                        Text('เกิดข้อผิดพลาดในการโหลดหัวข้อ: $topic'));
-                  }
+              final vocabDocs = vocabData[level]?[topic] ?? [];
 
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const ListTile(title: Text('กำลังโหลดหัวข้อ...'));
-                  }
+              if (vocabDocs.isEmpty) {
+                return const SizedBox.shrink(); // ไม่มีคำศัพท์ไม่แสดงหัวข้อนี้
+              }
 
-                  final vocabDocs = snapshot.data?.docs ?? [];
-
-                  if (vocabDocs.isEmpty) {
-                    return SizedBox
-                        .shrink(); // ไม่มีคำศัพท์ไม่แสดงหัวข้อนี้
-                  }
-
-                  return Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Text(
-                          'หัวข้อ: $topic',
-                          style: Theme.of(context).textTheme.titleMedium,
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 8.0),
-                        Wrap(
-                          spacing: 12.0,
-                          runSpacing: 12.0,
-                          alignment: WrapAlignment.center,
-                          children: vocabDocs.map((doc) {
-                            final vocabData =
-                            doc.data() as Map<String, dynamic>;
-                            final word = vocabData['word'] ?? '';
-                            final type = vocabData['type'] ?? '';
-                            final meaning = vocabData['meaning'] ?? '';
-                            final exampleSentence =
-                                vocabData['example_sentence'] ?? '';
-                            final exampleTranslation =
-                                vocabData['example_translation'] ?? '';
-                            final hint = vocabData['hint'] ?? '';
-                            final hintTranslation =
-                                vocabData['hint_translation'] ?? '';
-                            final FlutterTts flutterTts = FlutterTts();
-
-                            return OutlinedButton(
-                              onPressed: () {
-                                _showVocabDialog(
-                                  context,
-                                  word,
-                                  type,
-                                  meaning,
-                                  exampleSentence,
-                                  exampleTranslation,
-                                  hint,
-                                  hintTranslation,
-                                  flutterTts,
-                                  topic,
-                                );
-                              },
-                              style: OutlinedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 16.0, vertical: 8.0),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12.0),
-                                ),
-                                side: BorderSide(
-                                    color: Theme.of(context).primaryColor),
-                              ),
-                              child: Text(word, textAlign: TextAlign.center),
-                            );
-                          }).toList(),
-                        ),
-                      ],
+              return Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text(
+                      'หัวข้อ: $topic',
+                      style: Theme.of(context).textTheme.titleMedium,
+                      textAlign: TextAlign.center,
                     ),
-                  );
-                },
+                    const SizedBox(height: 8.0),
+                    Wrap(
+                      spacing: 12.0,
+                      runSpacing: 12.0,
+                      alignment: WrapAlignment.center,
+                      children: vocabDocs.map((doc) {
+                        final vocabData = doc.data() as Map<String, dynamic>;
+                        final word = vocabData['word'] ?? '';
+                        final type = vocabData['type'] ?? '';
+                        final meaning = vocabData['meaning'] ?? '';
+                        final exampleSentence = vocabData['example_sentence'] ?? '';
+                        final exampleTranslation = vocabData['example_translation'] ?? '';
+                        final hint = vocabData['hint'] ?? '';
+                        final hintTranslation = vocabData['hint_translation'] ?? '';
+                        final FlutterTts flutterTts = FlutterTts();
+
+                        return OutlinedButton(
+                          onPressed: () {
+                            _showVocabDialog(
+                              context,
+                              doc,
+                              level,
+                              topic,
+                              word,
+                              type,
+                              meaning,
+                              exampleSentence,
+                              exampleTranslation,
+                              hint,
+                              hintTranslation,
+                              flutterTts,
+                            );
+                          },
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12.0),
+                            ),
+                            side: BorderSide(color: Theme.of(context).primaryColor),
+                          ),
+                          child: Text(word, textAlign: TextAlign.center),
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                ),
               );
             }).toList(),
           );
@@ -159,6 +169,9 @@ class VocabScreen extends StatelessWidget {
 
   void _showVocabDialog(
       BuildContext context,
+      DocumentSnapshot doc,
+      String level,
+      String topic,
       String word,
       String type,
       String meaning,
@@ -167,21 +180,19 @@ class VocabScreen extends StatelessWidget {
       String hint,
       String hintTranslation,
       FlutterTts flutterTts,
-      String topic,
       ) {
-    bool isShowingTranslation = false; // ย้ายตัวแปรมาที่นี่
+    bool isShowingTranslation = false; // ตัวแปรสถานะสำหรับการแสดงการแปล
 
     showDialog(
       context: context,
       builder: (BuildContext dialogContext) {
         return StatefulBuilder(
-          builder: (BuildContext context, StateSetter setState) {
+          builder: (BuildContext context, StateSetter setStateDialog) {
             return AlertDialog(
               title: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('$word - คำ$type',
-                      style: Theme.of(context).textTheme.titleLarge),
+                  Text('$word - คำ$type', style: Theme.of(context).textTheme.titleLarge),
                   IconButton(
                     icon: const Icon(Icons.close),
                     onPressed: () {
@@ -201,11 +212,9 @@ class VocabScreen extends StatelessWidget {
                       },
                     ),
                     const SizedBox(height: 10),
-                    Text('หมวดหมู่ : $topic',
-                        style: Theme.of(context).textTheme.bodyLarge),
+                    Text('หมวดหมู่ : $topic', style: Theme.of(context).textTheme.bodyLarge),
                     const SizedBox(height: 10),
-                    Text('ความหมาย : $meaning',
-                        style: Theme.of(context).textTheme.bodyLarge),
+                    Text('ความหมาย : $meaning', style: Theme.of(context).textTheme.bodyLarge),
                     const SizedBox(height: 10),
                     Text(
                       'ตัวอย่าง : ${isShowingTranslation ? exampleTranslation : exampleSentence}',
@@ -223,16 +232,30 @@ class VocabScreen extends StatelessWidget {
                 TextButton(
                   child: const Text('แปลภาษา'),
                   onPressed: () {
-                    setState(() {
+                    setStateDialog(() {
                       isShowingTranslation = !isShowingTranslation;
                     });
                   },
                 ),
                 TextButton(
-                  child: const Text('ลบออกจากคลัง',
-                      style: TextStyle(color: Colors.orange)),
-                  onPressed: () {
-                    // เพิ่มฟังก์ชันลบคำศัพท์ที่นี่
+                  child: const Text('ลบออกจากคลัง', style: TextStyle(color: Colors.orange)),
+                  onPressed: () async {
+                    // อัปเดต Firebase
+                    await FirebaseFirestore.instance
+                        .collection('users')
+                        .doc(userId)
+                        .collection(level)
+                        .doc(topic)
+                        .collection('vocabularies')
+                        .doc(doc.id)
+                        .update({'for_review': false});
+
+                    // ลบคำศัพท์ออกจากรายการ
+                    setState(() {
+                      vocabData[level]![topic]!.remove(doc);
+                    });
+
+                    Navigator.of(dialogContext).pop();
                   },
                 ),
               ],

@@ -71,7 +71,9 @@ class VocabScreen extends StatelessWidget {
                     .get(),
                 builder: (context, snapshot) {
                   if (snapshot.hasError) {
-                    return ListTile(title: Text('เกิดข้อผิดพลาดในการโหลดหัวข้อ: $topic'));
+                    return ListTile(
+                        title:
+                        Text('เกิดข้อผิดพลาดในการโหลดหัวข้อ: $topic'));
                   }
 
                   if (snapshot.connectionState == ConnectionState.waiting) {
@@ -81,7 +83,8 @@ class VocabScreen extends StatelessWidget {
                   final vocabDocs = snapshot.data?.docs ?? [];
 
                   if (vocabDocs.isEmpty) {
-                    return SizedBox.shrink(); // ไม่มีคำศัพท์ไม่แสดงหัวข้อนี้
+                    return SizedBox
+                        .shrink(); // ไม่มีคำศัพท์ไม่แสดงหัวข้อนี้
                   }
 
                   return Padding(
@@ -100,13 +103,18 @@ class VocabScreen extends StatelessWidget {
                           runSpacing: 12.0,
                           alignment: WrapAlignment.center,
                           children: vocabDocs.map((doc) {
-                            final vocabData = doc.data() as Map<String, dynamic>;
+                            final vocabData =
+                            doc.data() as Map<String, dynamic>;
                             final word = vocabData['word'] ?? '';
                             final type = vocabData['type'] ?? '';
                             final meaning = vocabData['meaning'] ?? '';
-                            final exampleSentence = vocabData['example_sentence'] ?? '';
-                            final exampleTranslation = vocabData['example_translation'] ?? '';
+                            final exampleSentence =
+                                vocabData['example_sentence'] ?? '';
+                            final exampleTranslation =
+                                vocabData['example_translation'] ?? '';
                             final hint = vocabData['hint'] ?? '';
+                            final hintTranslation =
+                                vocabData['hint_translation'] ?? '';
                             final FlutterTts flutterTts = FlutterTts();
 
                             return OutlinedButton(
@@ -119,16 +127,19 @@ class VocabScreen extends StatelessWidget {
                                   exampleSentence,
                                   exampleTranslation,
                                   hint,
+                                  hintTranslation,
                                   flutterTts,
-                                  topic, // ส่ง topic เพื่อแสดงหมวดหมู่
+                                  topic,
                                 );
                               },
                               style: OutlinedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16.0, vertical: 8.0),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12.0),
                                 ),
-                                side: BorderSide(color: Theme.of(context).primaryColor),
+                                side: BorderSide(
+                                    color: Theme.of(context).primaryColor),
                               ),
                               child: Text(word, textAlign: TextAlign.center),
                             );
@@ -154,61 +165,79 @@ class VocabScreen extends StatelessWidget {
       String exampleSentence,
       String exampleTranslation,
       String hint,
+      String hintTranslation,
       FlutterTts flutterTts,
-      String topic, // รับ topic
+      String topic,
       ) {
+    bool isShowingTranslation = false; // ย้ายตัวแปรมาที่นี่
+
     showDialog(
       context: context,
       builder: (BuildContext dialogContext) {
-        return AlertDialog(
-          title: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('$word - คำ$type', style: Theme.of(context).textTheme.titleLarge),
-              IconButton(
-                icon: const Icon(Icons.close),
-                onPressed: () {
-                  Navigator.of(dialogContext).pop();
-                },
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setState) {
+            return AlertDialog(
+              title: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('$word - คำ$type',
+                      style: Theme.of(context).textTheme.titleLarge),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () {
+                      Navigator.of(dialogContext).pop();
+                    },
+                  ),
+                ],
               ),
-            ],
-          ),
-          content: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.volume_up, color: Colors.blue),
-                  onPressed: () async {
-                    await flutterTts.speak(word);
+              content: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.volume_up, color: Colors.blue),
+                      onPressed: () async {
+                        await flutterTts.speak(word);
+                      },
+                    ),
+                    const SizedBox(height: 10),
+                    Text('หมวดหมู่ : $topic',
+                        style: Theme.of(context).textTheme.bodyLarge),
+                    const SizedBox(height: 10),
+                    Text('ความหมาย : $meaning',
+                        style: Theme.of(context).textTheme.bodyLarge),
+                    const SizedBox(height: 10),
+                    Text(
+                      'ตัวอย่าง : ${isShowingTranslation ? exampleTranslation : exampleSentence}',
+                      style: Theme.of(context).textTheme.bodyLarge,
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      'คำใบ้ : ${isShowingTranslation ? hintTranslation : hint}',
+                      style: Theme.of(context).textTheme.bodyLarge,
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  child: const Text('แปลภาษา'),
+                  onPressed: () {
+                    setState(() {
+                      isShowingTranslation = !isShowingTranslation;
+                    });
                   },
                 ),
-                const SizedBox(height: 10),
-                Text('หมวดหมู่ : $topic', style: Theme.of(context).textTheme.bodyLarge), // แสดงหมวดหมู่ตามหัวข้อ
-                const SizedBox(height: 10),
-                Text('ความหมาย : $meaning', style: Theme.of(context).textTheme.bodyLarge),
-                const SizedBox(height: 10),
-                Text('ตัวอย่าง : $exampleSentence', style: Theme.of(context).textTheme.bodyLarge),
-                const SizedBox(height: 5),
-                Text('คำแปล : $exampleTranslation', style: Theme.of(context).textTheme.bodyLarge),
-                const SizedBox(height: 10),
-                Text('คำใบ้ : $hint', style: Theme.of(context).textTheme.bodyLarge),
+                TextButton(
+                  child: const Text('ลบออกจากคลัง',
+                      style: TextStyle(color: Colors.orange)),
+                  onPressed: () {
+                    // เพิ่มฟังก์ชันลบคำศัพท์ที่นี่
+                  },
+                ),
               ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              child: const Text('แปลภาษา'),
-              onPressed: () {
-                // Add your translation action here
-              },
-            ),
-            TextButton(
-              child: const Text('ลบออกจากคลัง', style: TextStyle(color: Colors.orange)),
-              onPressed: () {
-              },
-            ),
-          ],
+            );
+          },
         );
       },
     );

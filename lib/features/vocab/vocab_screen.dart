@@ -100,7 +100,7 @@ class VocabScreenState extends State<VocabScreen> {
               final vocabDocs = vocabData[level]?[topic] ?? [];
 
               if (vocabDocs.isEmpty) {
-                return const SizedBox.shrink(); // ไม่มีคำศัพท์ไม่แสดงหัวข้อนี้
+                return const SizedBox.shrink(); // ไม่มีคำศัพท์ไม่แสดงหัวข้อ อย่าพึ่งลบ
               }
 
               return Padding(
@@ -181,7 +181,7 @@ class VocabScreenState extends State<VocabScreen> {
       String hintTranslation,
       FlutterTts flutterTts,
       ) {
-    bool isShowingTranslation = false; // ตัวแปรสถานะสำหรับการแสดงการแปล
+    bool isShowingTranslation = false; // ตัวแปรสถานะแสดงการแปล
 
     showDialog(
       context: context,
@@ -250,7 +250,7 @@ class VocabScreenState extends State<VocabScreen> {
                         .doc(doc.id)
                         .update({'for_review': false});
 
-                    // ลบคำศัพท์ออกจากรายการ
+                    // ลบคำศัพท์
                     setState(() {
                       vocabData[level]![topic]!.remove(doc);
                     });

@@ -122,7 +122,6 @@ class VocabScreenState extends State<VocabScreen> {
                   ),
                 ],
               ),
-              // เนื้อหาที่มีอยู่เดิม
               ...topics.map((topic) {
                 final vocabDocs = vocabData[level]?[topic] ?? [];
 

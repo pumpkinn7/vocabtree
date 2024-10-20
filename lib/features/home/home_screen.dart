@@ -12,7 +12,7 @@ class HomeScreen extends StatelessWidget {
         title: const Text('Home Screen'),
       ),
       body: const Center(
-        child: Text('This is the Home Screen'),
+        child: Text('หน้าหลัก <33'),
       ),
     );
   }

@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_tts/flutter_tts.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class AllVocabScreen extends StatefulWidget {
   final String level;
@@ -54,10 +55,12 @@ class AllVocabScreenState extends State<AllVocabScreen> {
   };
 
   Map<String, List<Map<String, dynamic>>> topicVocabMap = {};
+  String? userId;
 
   @override
   void initState() {
     super.initState();
+    userId = FirebaseAuth.instance.currentUser?.uid;
     _fetchAllVocabularies();
   }
 
@@ -161,8 +164,9 @@ class AllVocabScreenState extends State<AllVocabScreen> {
                   },
                 ),
                 TextButton(
-                  child: const Text('ปิด'),
-                  onPressed: () {
+                  child: const Text('เพิ่มเข้าคลังคำศัพท์'),
+                  onPressed: () async {
+                    await _addToVocabularyBank(vocabData);
                     Navigator.of(dialogContext).pop();
                   },
                 ),
@@ -172,6 +176,41 @@ class AllVocabScreenState extends State<AllVocabScreen> {
         );
       },
     );
+  }
+
+  Future<void> _addToVocabularyBank(Map<String, dynamic> vocabData) async {
+    if (userId == null) {
+      if (kDebugMode) {
+        print('ยังไม่ login');
+      }
+      return;
+    }
+
+    String level = widget.level;
+    String topic = vocabData['topic'];
+
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(userId)
+        .collection(level)
+        .doc(topic)
+        .collection('vocabularies')
+        .doc(vocabData['word'])
+        .set({
+      'userId': userId,
+      'level': level,
+      'topic': topic,
+      'word': vocabData['word'],
+      'meaning': vocabData['meaning'],
+      'type': vocabData['type'],
+      'example_sentence': vocabData['example_sentence'] ?? '',
+      'example_translation': vocabData['example_translation'] ?? '',
+      'hint': vocabData['hint'] ?? '',
+      'hint_translation': vocabData['hint_translation'] ?? '',
+      'for_review': true,
+      'is_known': false,
+      'timestamp': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
   }
 
   @override
@@ -192,7 +231,7 @@ class AllVocabScreenState extends State<AllVocabScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ชื่อหัวข้อ
+                // หัวข้อ
                 Padding(
                   padding: const EdgeInsets.all(8.0),
                   child: Text(
@@ -201,13 +240,14 @@ class AllVocabScreenState extends State<AllVocabScreen> {
                   ),
                 ),
                 const SizedBox(height: 8.0),
-                // แสดงคำศัพท์เป็นปุ่ม
+                // คำศัพท์เป็นปุ่ม
                 Wrap(
                   spacing: 12.0,
                   runSpacing: 12.0,
                   alignment: WrapAlignment.start,
                   children: vocabList.map((vocabData) {
                     final word = vocabData['word'] ?? '';
+
                     return OutlinedButton(
                       onPressed: () {
                         _showVocabDialog(vocabData);

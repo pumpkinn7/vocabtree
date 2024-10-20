@@ -55,13 +55,24 @@ class AllVocabScreenState extends State<AllVocabScreen> {
   };
 
   Map<String, List<Map<String, dynamic>>> topicVocabMap = {};
+  Map<String, List<Map<String, dynamic>>> filteredTopicVocabMap = {};
   String? userId;
+  final TextEditingController _searchController = TextEditingController();
+  String searchQuery = '';
 
   @override
   void initState() {
     super.initState();
     userId = FirebaseAuth.instance.currentUser?.uid;
     _fetchAllVocabularies();
+    _searchController.addListener(_filterVocabularies);
+  }
+
+  @override
+  void dispose() {
+    _searchController.removeListener(_filterVocabularies);
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _fetchAllVocabularies() async {
@@ -104,6 +115,36 @@ class AllVocabScreenState extends State<AllVocabScreen> {
 
     setState(() {
       topicVocabMap = vocabMap;
+      filteredTopicVocabMap = Map.from(vocabMap);
+    });
+  }
+
+  void _filterVocabularies() {
+    String query = _searchController.text.toLowerCase();
+
+    if (query.isEmpty) {
+      setState(() {
+        filteredTopicVocabMap = Map.from(topicVocabMap);
+      });
+      return;
+    }
+
+    Map<String, List<Map<String, dynamic>>> filteredMap = {};
+
+    topicVocabMap.forEach((topic, vocabList) {
+      List<Map<String, dynamic>> filteredList = vocabList.where((vocab) {
+        String word = (vocab['word'] ?? '').toString().toLowerCase();
+        String meaning = (vocab['meaning'] ?? '').toString().toLowerCase();
+        return word.contains(query) || meaning.contains(query);
+      }).toList();
+
+      if (filteredList.isNotEmpty) {
+        filteredMap[topic] = filteredList;
+      }
+    });
+
+    setState(() {
+      filteredTopicVocabMap = filteredMap;
     });
   }
 
@@ -219,56 +260,76 @@ class AllVocabScreenState extends State<AllVocabScreen> {
       appBar: AppBar(
         title: Text('คำศัพท์ทั้งหมด ระดับ ${widget.level}'),
       ),
-      body: topicVocabMap.isEmpty
-          ? const Center(child: CircularProgressIndicator())
-          : ListView(
-        children: topicVocabMap.entries.map((entry) {
-          String topic = entry.key;
-          List<Map<String, dynamic>> vocabList = entry.value;
-
-          return Padding(
+      body: Column(
+        children: [
+          // ช่องค้นหา
+          Padding(
             padding: const EdgeInsets.all(8.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // หัวข้อ
-                Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Text(
-                    topic.replaceAll('_', ' ').toUpperCase(),
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                ),
-                const SizedBox(height: 8.0),
-                // คำศัพท์เป็นปุ่ม
-                Wrap(
-                  spacing: 12.0,
-                  runSpacing: 12.0,
-                  alignment: WrapAlignment.start,
-                  children: vocabList.map((vocabData) {
-                    final word = vocabData['word'] ?? '';
-
-                    return OutlinedButton(
-                      onPressed: () {
-                        _showVocabDialog(vocabData);
-                      },
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16.0, vertical: 8.0),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12.0),
-                        ),
-                        side: BorderSide(
-                            color: Theme.of(context).primaryColor),
-                      ),
-                      child: Text(word, textAlign: TextAlign.center),
-                    );
-                  }).toList(),
-                ),
-              ],
+            child: TextField(
+              controller: _searchController,
+              decoration: const InputDecoration(
+                labelText: 'ค้นหาคำศัพท์หรือความหมาย',
+                prefixIcon: Icon(Icons.search),
+                border: OutlineInputBorder(),
+              ),
             ),
-          );
-        }).toList(),
+          ),
+          // แสดงรายการคำศัพท์
+          Expanded(
+            child: filteredTopicVocabMap.isEmpty
+                ? const Center(child: Text('ไม่พบคำศัพท์'))
+                : ListView(
+              children: filteredTopicVocabMap.entries.map((entry) {
+                String topic = entry.key;
+                List<Map<String, dynamic>> vocabList = entry.value;
+
+                return Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // แสดงชื่อหัวข้อ
+                      Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Text(
+                          topic.replaceAll('_', ' ').toUpperCase(),
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                      ),
+                      const SizedBox(height: 8.0),
+                      // แสดงคำศัพท์เป็นปุ่ม
+                      Wrap(
+                        spacing: 12.0,
+                        runSpacing: 12.0,
+                        alignment: WrapAlignment.start,
+                        children: vocabList.map((vocabData) {
+                          final word = vocabData['word'] ?? '';
+
+                          return OutlinedButton(
+                            onPressed: () {
+                              _showVocabDialog(vocabData);
+                            },
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16.0, vertical: 8.0),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12.0),
+                              ),
+                              side: BorderSide(
+                                  color: Theme.of(context).primaryColor),
+                            ),
+                            child:
+                            Text(word, textAlign: TextAlign.center),
+                          );
+                        }).toList(),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+        ],
       ),
     );
   }

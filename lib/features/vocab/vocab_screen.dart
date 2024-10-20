@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_tts/flutter_tts.dart';
+import 'all_vocab_screen.dart';
+
 
 class VocabScreen extends StatefulWidget {
   const VocabScreen({super.key});
@@ -96,71 +98,97 @@ class VocabScreenState extends State<VocabScreen> {
 
           return ExpansionTile(
             title: Text('ระดับ: $level'),
-            children: topics.map((topic) {
-              final vocabDocs = vocabData[level]?[topic] ?? [];
+            children: [
+              // เพิ่มปุ่ม "ดูทั้งหมด" และ "Flashcard"
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => AllVocabScreen(level: level),
+                        ),
+                      );
+                    },
+                    child: const Text('ดูทั้งหมด'),
+                  ),
+                  const SizedBox(width: 10),
+                  ElevatedButton(
+                    onPressed: () {
+                    },
+                    child: const Text('Flashcard'),
+                  ),
+                ],
+              ),
+              // เนื้อหาที่มีอยู่เดิม
+              ...topics.map((topic) {
+                final vocabDocs = vocabData[level]?[topic] ?? [];
 
-              if (vocabDocs.isEmpty) {
-                return const SizedBox.shrink(); // ไม่มีคำศัพท์ไม่แสดงหัวข้อ อย่าพึ่งลบ
-              }
+                if (vocabDocs.isEmpty) {
+                  return const SizedBox.shrink(); // ไม่มีคำศัพท์ไม่แสดงหัวข้อ อย่าพึ่งลบ
+                }
 
-              return Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Text(
-                      'หัวข้อ: $topic',
-                      style: Theme.of(context).textTheme.titleMedium,
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 8.0),
-                    Wrap(
-                      spacing: 12.0,
-                      runSpacing: 12.0,
-                      alignment: WrapAlignment.center,
-                      children: vocabDocs.map((doc) {
-                        final vocabData = doc.data() as Map<String, dynamic>;
-                        final word = vocabData['word'] ?? '';
-                        final type = vocabData['type'] ?? '';
-                        final meaning = vocabData['meaning'] ?? '';
-                        final exampleSentence = vocabData['example_sentence'] ?? '';
-                        final exampleTranslation = vocabData['example_translation'] ?? '';
-                        final hint = vocabData['hint'] ?? '';
-                        final hintTranslation = vocabData['hint_translation'] ?? '';
-                        final FlutterTts flutterTts = FlutterTts();
+                return Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Text(
+                        'หัวข้อ: $topic',
+                        style: Theme.of(context).textTheme.titleMedium,
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 8.0),
+                      Wrap(
+                        spacing: 12.0,
+                        runSpacing: 12.0,
+                        alignment: WrapAlignment.center,
+                        children: vocabDocs.map((doc) {
+                          final vocabData = doc.data() as Map<String, dynamic>;
+                          final word = vocabData['word'] ?? '';
+                          final type = vocabData['type'] ?? '';
+                          final meaning = vocabData['meaning'] ?? '';
+                          final exampleSentence = vocabData['example_sentence'] ?? '';
+                          final exampleTranslation = vocabData['example_translation'] ?? '';
+                          final hint = vocabData['hint'] ?? '';
+                          final hintTranslation = vocabData['hint_translation'] ?? '';
+                          final FlutterTts flutterTts = FlutterTts();
 
-                        return OutlinedButton(
-                          onPressed: () {
-                            _showVocabDialog(
-                              context,
-                              doc,
-                              level,
-                              topic,
-                              word,
-                              type,
-                              meaning,
-                              exampleSentence,
-                              exampleTranslation,
-                              hint,
-                              hintTranslation,
-                              flutterTts,
-                            );
-                          },
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12.0),
+                          return OutlinedButton(
+                            onPressed: () {
+                              _showVocabDialog(
+                                context,
+                                doc,
+                                level,
+                                topic,
+                                word,
+                                type,
+                                meaning,
+                                exampleSentence,
+                                exampleTranslation,
+                                hint,
+                                hintTranslation,
+                                flutterTts,
+                              );
+                            },
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12.0),
+                              ),
+                              side: BorderSide(color: Theme.of(context).primaryColor),
                             ),
-                            side: BorderSide(color: Theme.of(context).primaryColor),
-                          ),
-                          child: Text(word, textAlign: TextAlign.center),
-                        );
-                      }).toList(),
-                    ),
-                  ],
-                ),
-              );
-            }).toList(),
+                            child: Text(word, textAlign: TextAlign.center),
+                          );
+                        }).toList(),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+            ],
           );
         }).toList(),
       ),

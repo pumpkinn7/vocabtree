@@ -24,17 +24,16 @@ class _QuizTopicScreenState extends State<QuizTopicScreen> {
   final User? user = FirebaseAuth.instance.currentUser;
   late Future<List<QuizQuestionModel>> _questionsFuture;
 
-  // เก็บรายการคำถามหลังจากดึงและจัดเรียง
   List<QuizQuestionModel> _questions = [];
-
   int _currentQuestionIndex = 0;
   int _score = 0;
 
-  // หากต้องการใช้ Timer
   bool useTimer = true;
-  int totalTimeSeconds = 300; // เช่น 5 นาที สำหรับทั้ง Quiz
+  int totalTimeSeconds = 300; // 5 นาที
   Timer? _timer;
   int _timeLeft = 0;
+
+  String? _feedbackMessage;
 
   @override
   void initState() {
@@ -46,14 +45,9 @@ class _QuizTopicScreenState extends State<QuizTopicScreen> {
   }
 
   Future<List<QuizQuestionModel>> _loadQuestions() async {
-    // ดึงคำถามทุกประเภทจาก Firestore
     final cefrLevel = await FirebaseService.getCEFRLevelForTopic(widget.topic);
-    // สมมุติว่ามีฟังก์ชันใน firebase_service: getQuestionsForTopic(cefrLevel, topic)
     final allQuestions = await FirebaseService.getQuestionsForTopic(cefrLevel, widget.topic);
-
-    // ใช้ quiz_logic ในการเรียงและสุ่มคำถาม
     final arrangedQuestions = QuizLogic.arrangeAndShuffleQuestions(allQuestions);
-
     return arrangedQuestions;
   }
 
@@ -72,19 +66,33 @@ class _QuizTopicScreenState extends State<QuizTopicScreen> {
   }
 
   void _answerQuestion(bool correct) {
+    setState(() {
+      _feedbackMessage = correct ? 'ถูกต้อง!' : 'ตอบผิด!';
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(_feedbackMessage!),
+        duration: const Duration(seconds: 1),
+      ),
+    );
+
     if (correct) {
       _score++;
     }
-    _goToNextQuestionOrFinish();
+
+    Future.delayed(const Duration(seconds: 1), () {
+      _goToNextQuestionOrFinish();
+    });
   }
 
   void _goToNextQuestionOrFinish() {
     if (_currentQuestionIndex < _questions.length - 1) {
       setState(() {
         _currentQuestionIndex++;
+        _feedbackMessage = null;
       });
     } else {
-      // ทำเสร็จ quiz แล้ว
       _submitQuiz();
     }
   }
@@ -95,7 +103,6 @@ class _QuizTopicScreenState extends State<QuizTopicScreen> {
     final totalQuestions = _questions.length;
     final percentage = (correctAnswers / totalQuestions) * 100;
 
-    // ไปหน้า result_screen พร้อมส่งข้อมูล
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
@@ -112,25 +119,61 @@ class _QuizTopicScreenState extends State<QuizTopicScreen> {
   }
 
   Widget _buildQuestionWidget(QuizQuestionModel question) {
+    Widget questionWidget;
     switch (question.type) {
       case QuestionType.multipleChoice:
-        return MultipleChoiceWidget(
+        questionWidget = MultipleChoiceWidget(
+          key: ValueKey('multiple_$_currentQuestionIndex'),
           question: question,
           onAnswered: (correct) => _answerQuestion(correct),
         );
+        break;
       case QuestionType.dragAndDrop:
-        return DragAndDropWidget(
+        questionWidget = DragAndDropWidget(
+          key: ValueKey('drag_$_currentQuestionIndex'),
           question: question,
           onAnswered: (correct) => _answerQuestion(correct),
         );
+        break;
       case QuestionType.matching:
-        return MatchingQuizWidget(
+        questionWidget = MatchingQuizWidget(
+          key: ValueKey('matching_$_currentQuestionIndex'),
           question: question,
           onAnswered: (correct) => _answerQuestion(correct),
         );
+        break;
       default:
-        return const Center(child: Text('Unknown question type'));
+        questionWidget = const Center(child: Text('Unknown question type'));
     }
+    return questionWidget;
+  }
+
+  Future<bool> _onWillPop() async {
+    if (_currentQuestionIndex < _questions.length - 1) {
+      final shouldExit = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('ยืนยันการออก'),
+          content: const Text('คุณยังทำ Quiz ไม่เสร็จ ต้องการออกหรือไม่? คะแนนจะไม่ถูกบันทึก'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context, false);
+              },
+              child: const Text('ยกเลิก'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context, true);
+              },
+              child: const Text('ออก'),
+            ),
+          ],
+        ),
+      );
+      return shouldExit ?? false;
+    }
+    return true;
   }
 
   @override
@@ -141,62 +184,64 @@ class _QuizTopicScreenState extends State<QuizTopicScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: useTimer
-          ? AppBar(
-        title: Text('Topic: ${_formatTopicName(widget.topic)}'),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: Center(
-              child: Text(
-                _formatTime(_timeLeft),
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+    return WillPopScope(
+      onWillPop: _onWillPop,
+      child: Scaffold(
+        appBar: useTimer
+            ? AppBar(
+          title: Text('Topic: ${_formatTopicName(widget.topic)}'),
+          actions: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: Center(
+                child: Text(
+                  _formatTime(_timeLeft),
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
               ),
             ),
-          ),
-        ],
-      )
-          : AppBar(
-        title: Text('Topic: ${_formatTopicName(widget.topic)}'),
-      ),
-      body: FutureBuilder<List<QuizQuestionModel>>(
-        future: _questionsFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasError) {
-            return const Center(child: Text('Error loading questions'));
-          }
-          if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(child: Text('No questions available.'));
-          }
-
-          if (_questions.isEmpty) {
-            _questions = snapshot.data!;
-            if (useTimer && _timeLeft > 0) {
-              // Start timer once questions are loaded
-              _startTimer();
+          ],
+        )
+            : AppBar(
+          title: Text('Topic: ${_formatTopicName(widget.topic)}'),
+        ),
+        body: FutureBuilder<List<QuizQuestionModel>>(
+          future: _questionsFuture,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
             }
-          }
+            if (snapshot.hasError) {
+              return const Center(child: Text('Error loading questions'));
+            }
+            if (!snapshot.hasData || snapshot.data!.isEmpty) {
+              return const Center(child: Text('No questions available.'));
+            }
 
-          final question = _questions[_currentQuestionIndex];
+            if (_questions.isEmpty) {
+              _questions = snapshot.data!;
+              if (useTimer && _timeLeft > 0) {
+                _startTimer();
+              }
+            }
 
-          return Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              children: [
-                ProgressBar(
-                  current: _currentQuestionIndex + 1,
-                  total: _questions.length,
-                ),
-                const SizedBox(height: 16),
-                Expanded(child: _buildQuestionWidget(question)),
-              ],
-            ),
-          );
-        },
+            final question = _questions[_currentQuestionIndex];
+
+            return Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                children: [
+                  ProgressBar(
+                    current: _currentQuestionIndex + 1,
+                    total: _questions.length,
+                  ),
+                  const SizedBox(height: 16),
+                  Expanded(child: _buildQuestionWidget(question)),
+                ],
+              ),
+            );
+          },
+        ),
       ),
     );
   }

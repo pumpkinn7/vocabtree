@@ -1,227 +1,216 @@
-// quiz_topic_screen.dart
-// ignore_for_file: depend_on_referenced_packages, no_leading_underscores_for_local_identifiers, library_private_types_in_public_api
-
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter_tts/flutter_tts.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
+import '../model/quiz_question_model.dart';
+import '../services/firebase_service.dart';
+import '../services/quiz_logic.dart';
+import '../widgets/multiple_choice_widget.dart';
+import '../widgets/drag_and_drop_widget.dart';
+import '../widgets/matching_quiz_widget.dart';
+import '../widgets/progress_bar.dart';
+import 'result_screen.dart';
 
 class QuizTopicScreen extends StatefulWidget {
-  final String topic; // รับหัวข้อเป็นพารามิเตอร์
+  final String topic;
 
   const QuizTopicScreen({super.key, required this.topic});
 
   @override
-  _QuizTopicScreenState createState() => _QuizTopicScreenState();
+  State<QuizTopicScreen> createState() => _QuizTopicScreenState();
 }
 
 class _QuizTopicScreenState extends State<QuizTopicScreen> {
-  final FlutterTts flutterTts = FlutterTts();
-  List<DocumentSnapshot> quizzes = [];
-  int currentIndex = 0;
-  int correctAnswers = 0;
+  final User? user = FirebaseAuth.instance.currentUser;
+  late Future<List<QuizQuestionModel>> _questionsFuture;
+
+  // เก็บรายการคำถามหลังจากดึงและจัดเรียง
+  List<QuizQuestionModel> _questions = [];
+
+  int _currentQuestionIndex = 0;
+  int _score = 0;
+
+  // หากต้องการใช้ Timer
+  bool useTimer = true;
+  int totalTimeSeconds = 300; // เช่น 5 นาที สำหรับทั้ง Quiz
+  Timer? _timer;
+  int _timeLeft = 0;
 
   @override
   void initState() {
     super.initState();
-    _fetchQuizzes();
-  }
-
-  Future<void> _fetchQuizzes() async {
-    // ดึงควิซทั้งหมด
-    QuerySnapshot snapshot = await FirebaseFirestore.instance.collection('quizzes').get();
-    setState(() {
-      quizzes = snapshot.docs;
-    });
-  }
-
-  Future<void> _speak(String text) async {
-    await flutterTts.speak(text);
-  }
-
-  Future<void> _checkAnswer(bool isCorrect, String correctAnswer) async {
-    if (isCorrect) {
-      correctAnswers++;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('ตอบถูกต้อง!'),
-          backgroundColor: Colors.green,
-        ),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('ตอบผิด! คำตอบที่ถูกคือ $correctAnswer'),
-          backgroundColor: Colors.red,
-        ),
-      );
+    _questionsFuture = _loadQuestions();
+    if (useTimer) {
+      _timeLeft = totalTimeSeconds;
     }
+  }
 
-    await Future.delayed(const Duration(seconds: 2)); // รอ 2 วินาทีก่อนเปลี่ยนคำถาม
+  Future<List<QuizQuestionModel>> _loadQuestions() async {
+    // ดึงคำถามทุกประเภทจาก Firestore
+    final cefrLevel = await FirebaseService.getCEFRLevelForTopic(widget.topic);
+    // สมมุติว่ามีฟังก์ชันใน firebase_service: getQuestionsForTopic(cefrLevel, topic)
+    final allQuestions = await FirebaseService.getQuestionsForTopic(cefrLevel, widget.topic);
 
-    setState(() {
-      if (currentIndex < quizzes.length - 1) {
-        currentIndex++;
+    // ใช้ quiz_logic ในการเรียงและสุ่มคำถาม
+    final arrangedQuestions = QuizLogic.arrangeAndShuffleQuestions(allQuestions);
+
+    return arrangedQuestions;
+  }
+
+  void _startTimer() {
+    if (!useTimer) return;
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_timeLeft <= 0) {
+        timer.cancel();
+        _submitQuiz();
       } else {
-        // เมื่อทำควิซเสร็จสิ้น แสดงหน้าผลลัพธ์
-        _showResultDialog();
+        setState(() {
+          _timeLeft--;
+        });
       }
     });
   }
 
-  void _showResultDialog() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('ผลลัพธ์การทำควิซ'),
-          content: Text('คุณตอบถูก $correctAnswers จาก ${quizzes.length} ข้อ'),
-          actions: <Widget>[
-            TextButton(
-              child: const Text('ปิด'),
-              onPressed: () {
-                Navigator.of(context).pop();
-                Navigator.of(context).pop(); // กลับไปยังหน้าหลัก
-              },
-            ),
-            TextButton(
-              child: const Text('เริ่มใหม่'),
-              onPressed: () {
-                setState(() {
-                  currentIndex = 0;
-                  correctAnswers = 0;
-                });
-                Navigator.of(context).pop();
-              },
-            ),
-          ],
-        );
-      },
+  void _answerQuestion(bool correct) {
+    if (correct) {
+      _score++;
+    }
+    _goToNextQuestionOrFinish();
+  }
+
+  void _goToNextQuestionOrFinish() {
+    if (_currentQuestionIndex < _questions.length - 1) {
+      setState(() {
+        _currentQuestionIndex++;
+      });
+    } else {
+      // ทำเสร็จ quiz แล้ว
+      _submitQuiz();
+    }
+  }
+
+  void _submitQuiz() {
+    _timer?.cancel();
+    final correctAnswers = _score;
+    final totalQuestions = _questions.length;
+    final percentage = (correctAnswers / totalQuestions) * 100;
+
+    // ไปหน้า result_screen พร้อมส่งข้อมูล
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ResultScreen(
+          cefrLevel: FirebaseService.getCEFRLevelForTopicSync(widget.topic),
+          topic: widget.topic,
+          score: correctAnswers,
+          totalQuestions: totalQuestions,
+          percentage: percentage,
+          timeTaken: useTimer ? (totalTimeSeconds - _timeLeft) : null,
+        ),
+      ),
     );
+  }
+
+  Widget _buildQuestionWidget(QuizQuestionModel question) {
+    switch (question.type) {
+      case QuestionType.multipleChoice:
+        return MultipleChoiceWidget(
+          question: question,
+          onAnswered: (correct) => _answerQuestion(correct),
+        );
+      case QuestionType.dragAndDrop:
+        return DragAndDropWidget(
+          question: question,
+          onAnswered: (correct) => _answerQuestion(correct),
+        );
+      case QuestionType.matching:
+        return MatchingQuizWidget(
+          question: question,
+          onAnswered: (correct) => _answerQuestion(correct),
+        );
+      default:
+        return const Center(child: Text('Unknown question type'));
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    if (quizzes.isEmpty) {
-      return Scaffold(
-        appBar: AppBar(
-          title: Text('Quiz - ${widget.topic.replaceAll('_', ' ').toUpperCase()}'),
-        ),
-        body: const Center(child: CircularProgressIndicator()),
-      );
-    }
-
-    DocumentSnapshot currentQuiz = quizzes[currentIndex];
-    String question = currentQuiz['question'];
-    List<dynamic> options = currentQuiz['options'];
-    String correctAnswer = options.firstWhere((option) => option['isCorrect'])['option'];
-
     return Scaffold(
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.arrow_back),
-                  onPressed: () {
-                    Navigator.pop(context);
-                  },
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'Quiz - ${widget.topic.replaceAll('_', ' ').toUpperCase()}',
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.green,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'ฉันต้องทำอะไร? : ฟังเสียงและเลือกศัพท์ที่ถูกต้อง',
-              style: TextStyle(
-                fontSize: 16,
+      appBar: useTimer
+          ? AppBar(
+        title: Text('Topic: ${_formatTopicName(widget.topic)}'),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: Center(
+              child: Text(
+                _formatTime(_timeLeft),
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
             ),
-            const SizedBox(height: 8),
-            LinearProgressIndicator(
-              value: (currentIndex + 1) / quizzes.length,
-              backgroundColor: Colors.grey[300],
-              color: Colors.orange,
-              minHeight: 8,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'ข้อที่ ${currentIndex + 1} of ${quizzes.length}',
-              style: const TextStyle(fontSize: 14, color: Colors.grey),
-            ),
-            const SizedBox(height: 32),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+          ),
+        ],
+      )
+          : AppBar(
+        title: Text('Topic: ${_formatTopicName(widget.topic)}'),
+      ),
+      body: FutureBuilder<List<QuizQuestionModel>>(
+        future: _questionsFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError) {
+            return const Center(child: Text('Error loading questions'));
+          }
+          if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return const Center(child: Text('No questions available.'));
+          }
+
+          if (_questions.isEmpty) {
+            _questions = snapshot.data!;
+            if (useTimer && _timeLeft > 0) {
+              // Start timer once questions are loaded
+              _startTimer();
+            }
+          }
+
+          final question = _questions[_currentQuestionIndex];
+
+          return Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
               children: [
-                Column(
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.volume_up,
-                          size: 50, color: Colors.orange),
-                      onPressed: () {
-                        _speak(question);
-                      },
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'กดเพื่อฟังเสียง',
-                      style: TextStyle(fontSize: 16, color: Colors.grey),
-                    ),
-                  ],
+                ProgressBar(
+                  current: _currentQuestionIndex + 1,
+                  total: _questions.length,
                 ),
-                const SizedBox(width: 16),
-                Text(
-                  question,
-                  style: const TextStyle(
-                      fontSize: 28, fontWeight: FontWeight.bold),
-                ),
+                const SizedBox(height: 16),
+                Expanded(child: _buildQuestionWidget(question)),
               ],
             ),
-            const SizedBox(height: 32),
-            ...options.map<Widget>((option) {
-              return _buildAnswerButton(context, option['option'],
-                  option['isCorrect'], correctAnswer);
-            }).toList(),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
 
-  Widget _buildAnswerButton(
-      BuildContext context, String text, bool isCorrect, String correctAnswer) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: SizedBox(
-        width: double.infinity,
-        child: ElevatedButton(
-          onPressed: () {
-            _checkAnswer(isCorrect, correctAnswer);
-          },
-          style: ElevatedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            backgroundColor: Colors.white,
-            side: const BorderSide(color: Colors.grey),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
-          child: Text(
-            text,
-            style: const TextStyle(fontSize: 18, color: Colors.black),
-          ),
-        ),
-      ),
-    );
+  String _formatTopicName(String topicKey) {
+    return topicKey
+        .split('_')
+        .map((word) => word[0].toUpperCase() + word.substring(1))
+        .join(' ');
+  }
+
+  String _formatTime(int seconds) {
+    final m = (seconds ~/ 60).toString().padLeft(2, '0');
+    final s = (seconds % 60).toString().padLeft(2, '0');
+    return '$m:$s';
   }
 }

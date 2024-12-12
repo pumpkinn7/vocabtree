@@ -2,7 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
-
+import 'cefr_level_screen.dart';
 
 class ResultScreen extends StatefulWidget {
   final String cefrLevel;
@@ -28,7 +28,6 @@ class ResultScreen extends StatefulWidget {
 
 class _ResultScreenState extends State<ResultScreen> {
   final User? user = FirebaseAuth.instance.currentUser;
-  bool _unlockedNextTopic = false;
 
   @override
   void initState() {
@@ -59,17 +58,21 @@ class _ResultScreenState extends State<ResultScreen> {
   }
 
   Future<void> _checkUnlockNextTopic() async {
+    // หาก percentage >= 60% แสดงว่าปลดล็อคหัวข้อถัดไป
     if (widget.percentage >= 60.0) {
       setState(() {
-        _unlockedNextTopic = true;
       });
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final unlocked = widget.percentage >= 60.0;
+
     return Scaffold(
+      // ลบ AppBar back button ออก
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         title: const Text('ผลการทำ Quiz'),
       ),
       body: Padding(
@@ -99,7 +102,7 @@ class _ResultScreenState extends State<ResultScreen> {
                 style: const TextStyle(fontSize: 16),
               ),
             const SizedBox(height: 16),
-            if (_unlockedNextTopic)
+            if (unlocked)
               Text(
                 'ยินดีด้วย! คุณทำได้ >= 60% หัวข้อถัดไปปลดล็อคแล้ว!',
                 style: TextStyle(fontSize: 16, color: Colors.green[800], fontWeight: FontWeight.bold),
@@ -112,13 +115,37 @@ class _ResultScreenState extends State<ResultScreen> {
                 textAlign: TextAlign.center,
               ),
             const Spacer(),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
-              child: const Text('กลับไปยังหน้าเมนูหลัก'),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                // ปุ่ม ย้อนกลับ
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
+                  child: const Text('ย้อนกลับ'),
+                ),
+                // ปุ่ม หัวข้อถัดไป
+                ElevatedButton(
+                  onPressed: unlocked
+                      ? () {
+                    // หากผ่าน ≥60% ไปหน้า cefr_level_screen เพื่อเลือกหัวข้อถัดไป
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => CefrLevelScreen(cefrLevel: widget.cefrLevel),
+                      ),
+                    );
+                  }
+                      : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: unlocked ? Colors.green : Colors.grey,
+                  ),
+                  child: const Text('หัวข้อถัดไป'),
+                ),
+              ],
             ),
-
           ],
         ),
       ),

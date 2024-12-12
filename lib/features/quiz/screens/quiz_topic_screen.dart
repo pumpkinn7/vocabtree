@@ -70,10 +70,14 @@ class _QuizTopicScreenState extends State<QuizTopicScreen> {
       _feedbackMessage = correct ? 'ถูกต้อง!' : 'ตอบผิด!';
     });
 
+    // กำหนดสีพื้นหลัง SnackBar ตามผลลัพธ์
+    final snackBarColor = correct ? Colors.green : Colors.red;
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(_feedbackMessage!),
         duration: const Duration(seconds: 1),
+        backgroundColor: snackBarColor,
       ),
     );
 
@@ -158,13 +162,13 @@ class _QuizTopicScreenState extends State<QuizTopicScreen> {
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.pop(context, false);
+                Navigator.pop(context, false); // ไม่ออก
               },
               child: const Text('ยกเลิก'),
             ),
             TextButton(
               onPressed: () {
-                Navigator.pop(context, true);
+                Navigator.pop(context, true); // ออก
               },
               child: const Text('ออก'),
             ),
@@ -173,6 +177,7 @@ class _QuizTopicScreenState extends State<QuizTopicScreen> {
       );
       return shouldExit ?? false;
     }
+    // ทำเสร็จแล้วให้ออกได้เลย
     return true;
   }
 

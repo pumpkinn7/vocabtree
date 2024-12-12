@@ -35,6 +35,9 @@ class _QuizTopicScreenState extends State<QuizTopicScreen> {
 
   String? _feedbackMessage;
 
+  // เพิ่มตัวแปรเพื่อติดตามสถานะการทำ Quiz ว่าทำเสร็จหรือยัง
+  bool _isQuizFinished = false;
+
   @override
   void initState() {
     super.initState();
@@ -107,6 +110,10 @@ class _QuizTopicScreenState extends State<QuizTopicScreen> {
     final totalQuestions = _questions.length;
     final percentage = (correctAnswers / totalQuestions) * 100;
 
+    setState(() {
+      _isQuizFinished = true;
+    });
+
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
@@ -153,7 +160,7 @@ class _QuizTopicScreenState extends State<QuizTopicScreen> {
   }
 
   Future<bool> _onWillPop() async {
-    if (_currentQuestionIndex < _questions.length - 1) {
+    if (!_isQuizFinished) {
       final shouldExit = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
@@ -177,7 +184,7 @@ class _QuizTopicScreenState extends State<QuizTopicScreen> {
       );
       return shouldExit ?? false;
     }
-    // ทำเสร็จแล้วให้ออกได้เลย
+    // ถ้า Quiz ทำเสร็จแล้ว ออกได้เลย
     return true;
   }
 
@@ -190,7 +197,7 @@ class _QuizTopicScreenState extends State<QuizTopicScreen> {
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
-      onWillPop: _onWillPop,
+      onWillPop: _onWillPop, // ดักจับการกด Back
       child: Scaffold(
         appBar: useTimer
             ? AppBar(

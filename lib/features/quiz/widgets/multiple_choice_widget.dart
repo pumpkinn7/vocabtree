@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tts/flutter_tts.dart';
 
 import '../model/quiz_question_model.dart';
 
-class MultipleChoiceWidget extends StatelessWidget {
+class MultipleChoiceWidget extends StatefulWidget {
   final QuizQuestionModel question;
   final String? selectedOption;
   final ValueChanged<String?> onOptionSelected;
@@ -19,59 +20,98 @@ class MultipleChoiceWidget extends StatelessWidget {
   });
 
   @override
+  State<MultipleChoiceWidget> createState() => _MultipleChoiceWidgetState();
+}
+
+class _MultipleChoiceWidgetState extends State<MultipleChoiceWidget> {
+  late FlutterTts _flutterTts;
+
+  @override
+  void initState() {
+    super.initState();
+    _flutterTts = FlutterTts();
+    _flutterTts.setLanguage("en-US"); // ตั้งค่าให้เป็นภาษาอังกฤษ
+  }
+
+  Future<void> _speak(String text) async {
+    await _flutterTts.speak(text);
+  }
+
+  String _extractWord(String question) {
+    final regExp = RegExp(r"'(.*?)'"); // ดึงข้อความใน ' '
+    final match = regExp.firstMatch(question);
+    return match != null ? match.group(1)! : question; // ถ้าหาไม่เจอ ให้คืนคำถามเดิม
+  }
+
+  @override
+  void dispose() {
+    _flutterTts.stop();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final q = question;
+    final q = widget.question;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // ประโยคคำถาม
         Text(
-          q.question,
+          "What is the meaning of",
           style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 16),
+        // คำศัพท์และปุ่มฟังเสียง
+        Row(
+          children: [
+            IconButton(
+              icon: const Icon(Icons.volume_up, color: Colors.blue),
+              onPressed: () {
+                final word = _extractWord(q.question);
+                _speak(word); // เล่นเสียงเฉพาะคำศัพท์
+              },
+            ),
+            Expanded(
+              child: Text(
+                _extractWord(q.question), // แสดงเฉพาะคำศัพท์
+                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        // ตัวเลือกคำตอบ
         ...q.options.map((option) {
           Color? optionColor;
-          if (isAnswerChecked) {
+          if (widget.isAnswerChecked) {
             if (option == q.correctAnswer) {
               optionColor = Colors.green[200];
-            } else if (option == selectedOption && option != q.correctAnswer) {
+            } else if (option == widget.selectedOption && option != q.correctAnswer) {
               optionColor = Colors.red[200];
             }
           }
           return RadioListTile<String>(
             title: Text(option),
             value: option,
-            groupValue: selectedOption,
-            onChanged: isAnswerChecked
+            groupValue: widget.selectedOption,
+            onChanged: widget.isAnswerChecked
                 ? null
                 : (val) {
-              onOptionSelected(val);
+              widget.onOptionSelected(val);
             },
             tileColor: optionColor,
           );
         }),
         const SizedBox(height: 16),
-        if (q.partOfSpeech.isNotEmpty)
-          Text('Part of Speech: ${q.partOfSpeech}', style: const TextStyle(fontSize: 16)),
-        if (q.exampleSentence.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.only(top: 8.0),
-            child: Text('Example: ${q.exampleSentence}', style: const TextStyle(fontSize: 16)),
-          ),
-        if (q.translatedSentence.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.only(top: 8.0),
-            child: Text('แปล: ${q.translatedSentence}', style: const TextStyle(fontSize: 16, fontStyle: FontStyle.italic)),
-          ),
         // แสดงผลลัพธ์หลังการตรวจสอบ
-        if (isAnswerChecked)
+        if (widget.isAnswerChecked)
           Padding(
             padding: const EdgeInsets.only(top: 8.0),
             child: Text(
-              isCorrect ? 'ถูกต้อง!' : 'ตอบผิด!',
+              widget.isCorrect ? 'ถูกต้อง!' : 'ตอบผิด!',
               style: TextStyle(
-                color: isCorrect ? Colors.green : Colors.red,
+                color: widget.isCorrect ? Colors.green : Colors.red,
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
               ),

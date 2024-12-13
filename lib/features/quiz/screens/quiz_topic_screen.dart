@@ -33,10 +33,12 @@ class _QuizTopicScreenState extends State<QuizTopicScreen> {
   Timer? _timer;
   int _timeLeft = 0;
 
-  String? _feedbackMessage;
-
-  // เพิ่มตัวแปรเพื่อติดตามสถานะการทำ Quiz ว่าทำเสร็จหรือยัง
   bool _isQuizFinished = false;
+  bool _isAnswerChecked = false;
+  bool _isAnswerCorrect = false;
+
+  // Track selected answers
+  final Map<int, dynamic> _selectedAnswers = {}; // key: question index, value: selected answer
 
   @override
   void initState() {
@@ -68,36 +70,57 @@ class _QuizTopicScreenState extends State<QuizTopicScreen> {
     });
   }
 
-  void _answerQuestion(bool correct) {
-    setState(() {
-      _feedbackMessage = correct ? 'ถูกต้อง!' : 'ตอบผิด!';
-    });
+  void _checkAnswer() {
+    if (_isAnswerChecked) return;
 
-    // กำหนดสีพื้นหลัง SnackBar ตามผลลัพธ์
-    final snackBarColor = correct ? Colors.green : Colors.red;
+    final currentQuestion = _questions[_currentQuestionIndex];
+    final selectedAnswer = _selectedAnswers[_currentQuestionIndex];
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(_feedbackMessage!),
-        duration: const Duration(seconds: 1),
-        backgroundColor: snackBarColor,
-      ),
-    );
+    bool correct = false;
 
-    if (correct) {
-      _score++;
+    switch (currentQuestion.type) {
+      case QuestionType.multipleChoice:
+        correct = selectedAnswer == currentQuestion.correctAnswer;
+        break;
+      case QuestionType.dragAndDrop:
+      case QuestionType.matching:
+        if (selectedAnswer is Map<String, String?>) {
+          correct = true;
+          currentQuestion.correctMatches.forEach((key, value) {
+            if (selectedAnswer[key] != value) {
+              correct = false;
+            }
+          });
+        }
+        break;
     }
 
-    Future.delayed(const Duration(seconds: 1), () {
-      _goToNextQuestionOrFinish();
+    setState(() {
+      _isAnswerChecked = true;
+      _isAnswerCorrect = correct;
+      if (correct) {
+        _score++;
+      }
     });
   }
 
-  void _goToNextQuestionOrFinish() {
+  void _skipQuestion() {
+    if (_isAnswerChecked) return;
+
+    setState(() {
+      _isAnswerChecked = true;
+      _isAnswerCorrect = false;
+    });
+  }
+
+  void _nextQuestion() {
+    if (!_isAnswerChecked) return;
+
     if (_currentQuestionIndex < _questions.length - 1) {
       setState(() {
         _currentQuestionIndex++;
-        _feedbackMessage = null;
+        _isAnswerChecked = false;
+        _isAnswerCorrect = false;
       });
     } else {
       _submitQuiz();
@@ -129,34 +152,47 @@ class _QuizTopicScreenState extends State<QuizTopicScreen> {
     );
   }
 
-  Widget _buildQuestionWidget(QuizQuestionModel question) {
-    Widget questionWidget;
+  Widget _buildQuestionWidget(QuizQuestionModel question, int index) {
     switch (question.type) {
       case QuestionType.multipleChoice:
-        questionWidget = MultipleChoiceWidget(
-          key: ValueKey('multiple_$_currentQuestionIndex'),
+        return MultipleChoiceWidget(
           question: question,
-          onAnswered: (correct) => _answerQuestion(correct),
+          selectedOption: _selectedAnswers[index],
+          onOptionSelected: (option) {
+            setState(() {
+              _selectedAnswers[index] = option;
+            });
+          },
+          isAnswerChecked: _isAnswerChecked,
+          isCorrect: _isAnswerCorrect,
         );
-        break;
       case QuestionType.dragAndDrop:
-        questionWidget = DragAndDropWidget(
-          key: ValueKey('drag_$_currentQuestionIndex'),
+        return DragAndDropWidget(
           question: question,
-          onAnswered: (correct) => _answerQuestion(correct),
+          userMatches: _selectedAnswers[index] ?? {},
+          onUpdateMatches: (matches) {
+            setState(() {
+              _selectedAnswers[index] = matches;
+            });
+          },
+          isAnswerChecked: _isAnswerChecked,
+          isCorrect: _isAnswerCorrect,
         );
-        break;
       case QuestionType.matching:
-        questionWidget = MatchingQuizWidget(
-          key: ValueKey('matching_$_currentQuestionIndex'),
+        return MatchingQuizWidget(
           question: question,
-          onAnswered: (correct) => _answerQuestion(correct),
+          userMatches: _selectedAnswers[index] ?? {},
+          onUpdateMatches: (matches) {
+            setState(() {
+              _selectedAnswers[index] = matches;
+            });
+          },
+          isAnswerChecked: _isAnswerChecked,
+          isCorrect: _isAnswerCorrect,
         );
-        break;
       default:
-        questionWidget = const Center(child: Text('Unknown question type'));
+        return const Center(child: Text('Unknown question type'));
     }
-    return questionWidget;
   }
 
   Future<bool> _onWillPop() async {
@@ -217,45 +253,103 @@ class _QuizTopicScreenState extends State<QuizTopicScreen> {
             : AppBar(
           title: Text('Topic: ${_formatTopicName(widget.topic)}'),
         ),
-        body: FutureBuilder<List<QuizQuestionModel>>(
-          future: _questionsFuture,
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            if (snapshot.hasError) {
-              return const Center(child: Text('Error loading questions'));
-            }
-            if (!snapshot.hasData || snapshot.data!.isEmpty) {
-              return const Center(child: Text('No questions available.'));
-            }
-
-            if (_questions.isEmpty) {
-              _questions = snapshot.data!;
-              if (useTimer && _timeLeft > 0) {
-                _startTimer();
+        body: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: FutureBuilder<List<QuizQuestionModel>>(
+            future: _questionsFuture,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
               }
-            }
 
-            final question = _questions[_currentQuestionIndex];
+              if (snapshot.hasError) {
+                return const Center(child: Text('Error loading topics'));
+              }
 
-            return Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
+              final data = snapshot.data ?? [];
+              if (data.isEmpty) {
+                return const Center(child: Text('No questions available.'));
+              }
+
+              if (_questions.isEmpty) {
+                _questions = data;
+                if (useTimer && _timeLeft > 0) {
+                  _startTimer();
+                }
+              }
+
+              final question = _questions[_currentQuestionIndex];
+
+              return Column(
                 children: [
                   ProgressBar(
                     current: _currentQuestionIndex + 1,
                     total: _questions.length,
                   ),
                   const SizedBox(height: 16),
-                  Expanded(child: _buildQuestionWidget(question)),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: _buildQuestionWidget(question, _currentQuestionIndex),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  // ปุ่มด้านล่าง
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      ElevatedButton(
+                        onPressed: _isAnswerChecked ? null : _skipQuestion,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.grey,
+                          minimumSize: const Size(100, 50),
+                        ),
+                        child: const Text('ข้าม'),
+                      ),
+                      ElevatedButton(
+                        onPressed: (_isAnswerChecked || _hasAnswered()) // เพิ่มเงื่อนไขนี้
+                            ? _nextQuestion
+                            : (_hasSelectedAnswer() ? _checkAnswer : null),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: (_isAnswerChecked || _hasAnswered())
+                              ? Colors.blue
+                              : Colors.green,
+                          minimumSize: const Size(100, 50),
+                        ),
+                        child: Text(_isAnswerChecked ? 'ถัดไป' : 'ตรวจ'),
+                      ),
+                    ],
+                  ),
                 ],
-              ),
-            );
-          },
+              );
+            },
+          ),
         ),
       ),
     );
+  }
+
+  /// เช็คว่าผู้ใช้ได้เลือกคำตอบหรือยัง
+  bool _hasSelectedAnswer() {
+    final currentQuestion = _questions[_currentQuestionIndex];
+    switch (currentQuestion.type) {
+      case QuestionType.multipleChoice:
+        return _selectedAnswers[_currentQuestionIndex] != null;
+      case QuestionType.dragAndDrop:
+      case QuestionType.matching:
+        if (_selectedAnswers[_currentQuestionIndex] is Map<String, String?>) {
+          return (_selectedAnswers[_currentQuestionIndex] as Map<String, String?>)
+              .values
+              .every((value) => value != null);
+        }
+        return false;
+      default:
+        return false;
+    }
+  }
+
+  /// เช็คว่าผู้ใช้ได้ตอบคำถามในครั้งนี้แล้วหรือยัง (กรณีบางคำถามอาจต้องการการตอบหลายครั้ง)
+  bool _hasAnswered() {
+    return _isAnswerChecked;
   }
 
   String _formatTopicName(String topicKey) {

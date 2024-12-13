@@ -1,57 +1,26 @@
 import 'package:flutter/material.dart';
-import 'dart:math';
 
 import '../model/quiz_question_model.dart';
 
-class DragAndDropWidget extends StatefulWidget {
+class DragAndDropWidget extends StatelessWidget {
   final QuizQuestionModel question;
-  final ValueChanged<bool> onAnswered;
+  final Map<String, String?> userMatches;
+  final ValueChanged<Map<String, String?>> onUpdateMatches;
+  final bool isAnswerChecked;
+  final bool isCorrect;
 
   const DragAndDropWidget({
     super.key,
     required this.question,
-    required this.onAnswered,
+    required this.userMatches,
+    required this.onUpdateMatches,
+    required this.isAnswerChecked,
+    required this.isCorrect,
   });
 
   @override
-  State<DragAndDropWidget> createState() => _DragAndDropWidgetState();
-}
-
-class _DragAndDropWidgetState extends State<DragAndDropWidget> {
-  Map<String, String?> currentMatches = {};
-  List<String> shuffledTargets = [];
-
-  @override
-  void initState() {
-    super.initState();
-    for (var item in widget.question.draggableItems) {
-      currentMatches[item] = null;
-    }
-    shuffledTargets = List<String>.from(widget.question.targets);
-    shuffledTargets.shuffle(Random());
-  }
-
-  bool get allPlaced {
-    return currentMatches.values.every((target) => target != null);
-  }
-
-  void _checkAnswer() {
-    final correctMatches = widget.question.correctMatches;
-    bool correct = true;
-    for (var entry in currentMatches.entries) {
-      final item = entry.key;
-      final target = entry.value;
-      if (target == null || correctMatches[item] != target) {
-        correct = false;
-        break;
-      }
-    }
-    widget.onAnswered(correct);
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final q = widget.question;
+    final q = question;
 
     return SingleChildScrollView(
       child: Padding(
@@ -69,7 +38,6 @@ class _DragAndDropWidgetState extends State<DragAndDropWidget> {
               style: const TextStyle(fontSize: 16),
             ),
             const SizedBox(height: 16),
-
             // แสดงความหมาย: ด้านบน
             Text(
               'ความหมาย:',
@@ -78,24 +46,33 @@ class _DragAndDropWidgetState extends State<DragAndDropWidget> {
             Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: shuffledTargets.map((target) {
+              children: q.targets.map((target) {
+                bool isCorrectlyMatched = false;
+                if (isAnswerChecked) {
+                  // Find if the current target is correctly matched
+                  isCorrectlyMatched = q.correctMatches.entries.any((entry) => entry.value == target && entry.key == q.draggableItems.firstWhere((item) => userMatches[item] == target, orElse: () => ''));
+                }
+
                 return DragTarget<String>(
-                  onWillAccept: (data) => true,
-                  onAccept: (data) {
-                    setState(() {
-                      // เคลียร์ item เดิมที่เคยถูกวางบน target นี้ก่อน
-                      for (var key in currentMatches.keys) {
-                        if (currentMatches[key] == target) {
-                          currentMatches[key] = null;
-                        }
+                  onWillAccept: (data) => !isAnswerChecked,
+                  onAccept: isAnswerChecked
+                      ? null
+                      : (data) {
+                    final updatedMatches = Map<String, String?>.from(userMatches);
+                    // Clear any existing match for this target
+                    for (var item in q.draggableItems) {
+                      if (updatedMatches[item] == target) {
+                        updatedMatches[item] = null;
                       }
-                      currentMatches[data] = target;
-                    });
+                    }
+                    updatedMatches[data] = target;
+                    onUpdateMatches(updatedMatches);
                   },
                   builder: (context, candidateData, rejectedData) {
-                    final matchedItem = currentMatches.entries
-                        .firstWhere((e) => e.value == target, orElse: () => const MapEntry('', null))
-                        .key;
+                    final matchedItem = q.draggableItems.firstWhere(
+                          (item) => userMatches[item] == target,
+                      orElse: () => '',
+                    );
 
                     return Container(
                       padding: const EdgeInsets.all(8),
@@ -104,13 +81,20 @@ class _DragAndDropWidgetState extends State<DragAndDropWidget> {
                       decoration: BoxDecoration(
                         border: Border.all(color: Colors.grey),
                         borderRadius: BorderRadius.circular(8),
-                        color: matchedItem.isNotEmpty ? Colors.green[100] : Colors.white,
+                        color: matchedItem.isNotEmpty
+                            ? (isCorrectlyMatched ? Colors.green[100] : Colors.red[100])
+                            : Colors.white,
                       ),
                       child: Center(
                         child: Text(
                           target,
                           textAlign: TextAlign.center,
-                          style: const TextStyle(fontSize: 14),
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: isAnswerChecked
+                                ? (isCorrectlyMatched ? Colors.green : Colors.red)
+                                : Colors.black,
+                          ),
                         ),
                       ),
                     );
@@ -118,9 +102,7 @@ class _DragAndDropWidgetState extends State<DragAndDropWidget> {
                 );
               }).toList(),
             ),
-
             const SizedBox(height: 24),
-
             // แสดงคำศัพท์: ด้านล่าง
             Text(
               'คำศัพท์:',
@@ -130,38 +112,60 @@ class _DragAndDropWidgetState extends State<DragAndDropWidget> {
               spacing: 8,
               runSpacing: 8,
               children: q.draggableItems.map((item) {
+                bool isPlaced = userMatches[item] != null;
+                bool isCorrect = isAnswerChecked && q.correctMatches[item] == userMatches[item];
+
                 return Draggable<String>(
                   data: item,
                   feedback: _buildFeedbackItem(item),
                   childWhenDragging: _buildWhenDraggingItem(item),
-                  child: _buildDraggableItem(item, placed: currentMatches[item] != null),
+                  // ปิดการลากถ้าทำการตอบแล้ว
+                  ignoringFeedbackSemantics: isAnswerChecked,
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: isPlaced
+                          ? (isCorrect ? Colors.green[200] : Colors.red[200])
+                          : Colors.blue[100],
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.blue),
+                    ),
+                    child: Text(item, style: const TextStyle(fontSize: 14)),
+                  ),
                 );
               }).toList(),
             ),
-
             const SizedBox(height: 16),
-            Center(
-              child: ElevatedButton(
-                onPressed: allPlaced ? _checkAnswer : null,
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-                child: const Text('ตรวจคำตอบ'),
+            if (isAnswerChecked)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    isCorrect ? 'ถูกต้อง!' : 'ตอบผิด!',
+                    style: TextStyle(
+                      color: isCorrect ? Colors.green : Colors.red,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  if (!isCorrect)
+                    Text(
+                      'คำตอบที่ถูกต้อง:',
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                  if (!isCorrect)
+                    ...q.correctMatches.entries.map((entry) {
+                      return Text(
+                        '${entry.key} : ${entry.value}',
+                        style: const TextStyle(fontSize: 16),
+                      );
+                    }),
+                ],
               ),
-            ),
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildDraggableItem(String item, {bool placed = false}) {
-    return Container(
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: placed ? Colors.grey[300] : Colors.blue[100],
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.blue),
-      ),
-      child: Text(item, style: const TextStyle(fontSize: 14)),
     );
   }
 

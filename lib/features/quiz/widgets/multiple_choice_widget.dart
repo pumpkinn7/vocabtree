@@ -2,26 +2,25 @@ import 'package:flutter/material.dart';
 
 import '../model/quiz_question_model.dart';
 
-class MultipleChoiceWidget extends StatefulWidget {
+class MultipleChoiceWidget extends StatelessWidget {
   final QuizQuestionModel question;
-  final ValueChanged<bool> onAnswered;
+  final String? selectedOption;
+  final ValueChanged<String?> onOptionSelected;
+  final bool isAnswerChecked;
+  final bool isCorrect;
 
   const MultipleChoiceWidget({
     super.key,
     required this.question,
-    required this.onAnswered,
+    required this.selectedOption,
+    required this.onOptionSelected,
+    required this.isAnswerChecked,
+    required this.isCorrect,
   });
 
   @override
-  State<MultipleChoiceWidget> createState() => _MultipleChoiceWidgetState();
-}
-
-class _MultipleChoiceWidgetState extends State<MultipleChoiceWidget> {
-  String? _selectedOption;
-
-  @override
   Widget build(BuildContext context) {
-    final q = widget.question;
+    final q = question;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -32,19 +31,24 @@ class _MultipleChoiceWidgetState extends State<MultipleChoiceWidget> {
         ),
         const SizedBox(height: 16),
         ...q.options.map((option) {
+          Color? optionColor;
+          if (isAnswerChecked) {
+            if (option == q.correctAnswer) {
+              optionColor = Colors.green[200];
+            } else if (option == selectedOption && option != q.correctAnswer) {
+              optionColor = Colors.red[200];
+            }
+          }
           return RadioListTile<String>(
             title: Text(option),
             value: option,
-            groupValue: _selectedOption,
-            onChanged: (val) {
-              setState(() {
-                _selectedOption = val;
-              });
-              // เมื่อผู้ใช้เลือกคำตอบ ตรวจสอบความถูกต้อง
-              final correct = (val == q.correctAnswer);
-              // เรียก callback บอกไปว่าตอบถูกหรือผิด
-              widget.onAnswered(correct);
+            groupValue: selectedOption,
+            onChanged: isAnswerChecked
+                ? null
+                : (val) {
+              onOptionSelected(val);
             },
+            tileColor: optionColor,
           );
         }),
         const SizedBox(height: 16),
@@ -59,6 +63,19 @@ class _MultipleChoiceWidgetState extends State<MultipleChoiceWidget> {
           Padding(
             padding: const EdgeInsets.only(top: 8.0),
             child: Text('แปล: ${q.translatedSentence}', style: const TextStyle(fontSize: 16, fontStyle: FontStyle.italic)),
+          ),
+        // แสดงผลลัพธ์หลังการตรวจสอบ
+        if (isAnswerChecked)
+          Padding(
+            padding: const EdgeInsets.only(top: 8.0),
+            child: Text(
+              isCorrect ? 'ถูกต้อง!' : 'ตอบผิด!',
+              style: TextStyle(
+                color: isCorrect ? Colors.green : Colors.red,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
       ],
     );

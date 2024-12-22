@@ -4,12 +4,17 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:swipe_cards/swipe_cards.dart';
 
 import '../model/flashcard_topic_model.dart';
+import 'flashcard_summary_screen.dart'; // <- เพิ่มการ import หน้า Summary
 
 class FlashcardScreen extends StatefulWidget {
   final String topic;
   final String userId;
 
-  const FlashcardScreen({super.key, required this.topic, required this.userId});
+  const FlashcardScreen({
+    super.key,
+    required this.topic,
+    required this.userId,
+  });
 
   @override
   FlashcardScreenState createState() => FlashcardScreenState();
@@ -53,15 +58,18 @@ class FlashcardScreenState extends State<FlashcardScreen> {
         .where('is_known', isEqualTo: true)
         .get();
 
+    // เก็บคำศัพท์ที่ผู้ใช้รู้แล้ว
     List<String> knownWords = [];
     for (var doc in userKnownVocabSnapshot.docs) {
       knownWords.add(doc.id);
     }
 
+    // กรองคำศัพท์ที่ผู้ใช้รู้แล้วออก
     List<dynamic> filteredVocabularies = vocabularies
         .where((vocab) => !knownWords.contains(vocab['word']))
         .toList();
 
+    // สุ่มลำดับ
     filteredVocabularies.shuffle();
 
     setState(() {
@@ -83,7 +91,13 @@ class FlashcardScreenState extends State<FlashcardScreen> {
           },
         );
       }).toList();
+
       _matchEngine = MatchEngine(swipeItems: _swipeItems);
+
+      // ถ้าไม่มีการ์ดเหลือ => ไปหน้าสรุปทันที
+      if (_swipeItems.isEmpty) {
+        _navigateToSummary();
+      }
     });
   }
 
@@ -92,6 +106,74 @@ class FlashcardScreenState extends State<FlashcardScreen> {
       isShowingMeaning = false;
       currentIndex++;
     });
+  }
+
+  // เรียกใช้งานได้ใน onStackFinished หรือตอนที่ _swipeItems.isEmpty
+  Future<void> _navigateToSummary() async {
+    // นับจำนวนคำต่าง ๆ
+    String level = _getLevelFromTopic(widget.topic);
+    int knownCount = await _countKnownWords(level);
+    int reviewCount = await _countReviewWords(level);
+    int unknownCount = await _countUnknownWords(level);
+    int totalCount = knownCount + reviewCount + unknownCount;
+
+    // ไปหน้า FlashcardSummaryScreen
+    if (!mounted) return;
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) => FlashcardSummaryScreen(
+          userId: widget.userId,
+          topic: widget.topic,
+          level: level,
+          knownCount: knownCount,
+          reviewCount: reviewCount,
+          unknownCount: unknownCount,
+          totalCount: totalCount,
+        ),
+      ),
+    );
+  }
+
+  // นับจำนวนคำที่ is_known = true, for_review = false
+  Future<int> _countKnownWords(String level) async {
+    QuerySnapshot query = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(widget.userId)
+        .collection(level)
+        .doc(widget.topic)
+        .collection('vocabularies')
+        .where('is_known', isEqualTo: true)
+        .where('for_review', isEqualTo: false)
+        .get();
+    return query.docs.length;
+  }
+
+  // นับจำนวนคำที่ is_known = false, for_review = false
+  Future<int> _countUnknownWords(String level) async {
+    QuerySnapshot query = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(widget.userId)
+        .collection(level)
+        .doc(widget.topic)
+        .collection('vocabularies')
+        .where('is_known', isEqualTo: false)
+        .where('for_review', isEqualTo: false)
+        .get();
+    return query.docs.length;
+  }
+
+  // นับจำนวนคำที่ for_review = true (superlike)
+  Future<int> _countReviewWords(String level) async {
+    QuerySnapshot query = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(widget.userId)
+        .collection(level)
+        .doc(widget.topic)
+        .collection('vocabularies')
+        .where('for_review', isEqualTo: true)
+        .get();
+    return query.docs.length;
   }
 
   String _getLevelFromTopic(String topic) {
@@ -166,8 +248,6 @@ class FlashcardScreenState extends State<FlashcardScreen> {
     }, SetOptions(merge: true));
   }
 
-
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -202,7 +282,6 @@ class FlashcardScreenState extends State<FlashcardScreen> {
               matchEngine: _matchEngine,
               itemBuilder: (BuildContext context, int index) {
                 Flashcard flashcard = _swipeItems[index].content;
-
                 bool isNextCard = index == currentIndex + 1;
 
                 return Center(
@@ -218,7 +297,10 @@ class FlashcardScreenState extends State<FlashcardScreen> {
                   ),
                 );
               },
-              onStackFinished: () {},
+              onStackFinished: () {
+                // เมื่อปัดจนหมด
+                _navigateToSummary();
+              },
               itemChanged: (SwipeItem item, int index) {
                 setState(() {
                   isShowingMeaning = false;

@@ -3,7 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'all_vocab_screen.dart';
-
+import 'flashcard_for_review_screen.dart';
 
 class VocabScreen extends StatefulWidget {
   const VocabScreen({super.key});
@@ -99,34 +99,11 @@ class VocabScreenState extends State<VocabScreen> {
           return ExpansionTile(
             title: Text('ระดับ: $level'),
             children: [
-              // เพิ่มปุ่ม "ดูทั้งหมด" และ "Flashcard"
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  ElevatedButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => AllVocabScreen(level: level),
-                        ),
-                      );
-                    },
-                    child: const Text('ดูทั้งหมด'),
-                  ),
-                  const SizedBox(width: 10),
-                  ElevatedButton(
-                    onPressed: () {
-                    },
-                    child: const Text('Flashcard'),
-                  ),
-                ],
-              ),
               ...topics.map((topic) {
                 final vocabDocs = vocabData[level]?[topic] ?? [];
 
                 if (vocabDocs.isEmpty) {
-                  return const SizedBox.shrink(); // ไม่มีคำศัพท์ไม่แสดงหัวข้อ อย่าพึ่งลบ
+                  return const SizedBox.shrink(); // ไม่มีคำศัพท์ไม่แสดงหัวข้อ
                 }
 
                 return Padding(
@@ -140,6 +117,42 @@ class VocabScreenState extends State<VocabScreen> {
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 8.0),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          ElevatedButton(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => AllVocabScreen(level: level),
+                                ),
+                              );
+                            },
+                            child: const Text('ดูทั้งหมด'),
+                          ),
+                          const SizedBox(width: 10),
+                          ElevatedButton(
+                            onPressed: () async {
+                              await Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => FlashcardForReviewScreen(
+                                    level: level,
+                                    topic: topic,
+                                    userId: userId!,
+                                    vocabDocs: vocabDocs,
+                                  ),
+                                ),
+                              );
+                              // เมื่อปิด Flashcard กลับมา โหลดข้อมูลใหม่
+                              _fetchAllVocabularies();
+                            },
+                            child: const Text('Flashcard'),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8.0),
                       Wrap(
                         spacing: 12.0,
                         runSpacing: 12.0,
@@ -147,12 +160,6 @@ class VocabScreenState extends State<VocabScreen> {
                         children: vocabDocs.map((doc) {
                           final vocabData = doc.data() as Map<String, dynamic>;
                           final word = vocabData['word'] ?? '';
-                          final type = vocabData['type'] ?? '';
-                          final meaning = vocabData['meaning'] ?? '';
-                          final exampleSentence = vocabData['example_sentence'] ?? '';
-                          final exampleTranslation = vocabData['example_translation'] ?? '';
-                          final hint = vocabData['hint'] ?? '';
-                          final hintTranslation = vocabData['hint_translation'] ?? '';
                           final FlutterTts flutterTts = FlutterTts();
 
                           return OutlinedButton(
@@ -162,13 +169,7 @@ class VocabScreenState extends State<VocabScreen> {
                                 doc,
                                 level,
                                 topic,
-                                word,
-                                type,
-                                meaning,
-                                exampleSentence,
-                                exampleTranslation,
-                                hint,
-                                hintTranslation,
+                                vocabData,
                                 flutterTts,
                               );
                             },
@@ -199,16 +200,17 @@ class VocabScreenState extends State<VocabScreen> {
       DocumentSnapshot doc,
       String level,
       String topic,
-      String word,
-      String type,
-      String meaning,
-      String exampleSentence,
-      String exampleTranslation,
-      String hint,
-      String hintTranslation,
+      Map<String, dynamic> vocabData,
       FlutterTts flutterTts,
       ) {
-    bool isShowingTranslation = false; // ตัวแปรสถานะแสดงการแปล
+    final word = vocabData['word'] ?? '';
+    final type = vocabData['type'] ?? '';
+    final meaning = vocabData['meaning'] ?? '';
+    final exampleSentence = vocabData['example_sentence'] ?? '';
+    final exampleTranslation = vocabData['example_translation'] ?? '';
+    final hint = vocabData['hint'] ?? '';
+    final hintTranslation = vocabData['hint_translation'] ?? '';
+    bool isShowingTranslation = false;
 
     showDialog(
       context: context,
@@ -267,7 +269,6 @@ class VocabScreenState extends State<VocabScreen> {
                 TextButton(
                   child: const Text('ลบออกจากคลัง', style: TextStyle(color: Colors.orange)),
                   onPressed: () async {
-                    // อัปเดต Firebase
                     await FirebaseFirestore.instance
                         .collection('users')
                         .doc(userId)
@@ -277,12 +278,9 @@ class VocabScreenState extends State<VocabScreen> {
                         .doc(doc.id)
                         .update({'for_review': false});
 
-                    // ลบคำศัพท์
-                    setState(() {
-                      vocabData[level]![topic]!.remove(doc);
-                    });
+                    Navigator.of(dialogContext).pop(); // ปิด AlertDialog ก่อน
 
-                    Navigator.of(dialogContext).pop();
+                    _fetchAllVocabularies(); // อัปเดตข้อมูลหน้าจอ
                   },
                 ),
               ],

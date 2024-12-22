@@ -7,7 +7,7 @@ import 'package:vocabtree/core/theme/theme_provider.dart';
 import 'package:vocabtree/features/home/home_screen.dart';
 import 'package:vocabtree/features/profile/profile_screen.dart';
 import 'package:vocabtree/features/quiz/screens/quiz_screen.dart';
-import 'package:vocabtree/features/vocab/vocab_screen.dart';
+import 'package:vocabtree/features/vocab/screens/vocab_screen.dart';
 
 class BottomNavBar extends StatefulWidget {
   const BottomNavBar({super.key});

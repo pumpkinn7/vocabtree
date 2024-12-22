@@ -27,14 +27,8 @@ class FlashcardSummaryScreen extends StatefulWidget {
 
 class _FlashcardSummaryScreenState extends State<FlashcardSummaryScreen> {
   bool _isResetting = false;
-
-  /// เพิ่ม: สำหรับแสดงคำศัพท์ที่ไม่รู้ (is_known = false)
   List<Map<String, dynamic>> _unknownWords = [];
-
-  /// เพิ่ม: สำหรับเก็บคำศัพท์ (word) ที่ผู้ใช้เลือกไว้
   final Set<String> _selectedWords = {};
-
-  /// เพิ่ม: สำหรับสถานะกำลังเพิ่มเข้าคลัง
   bool _isAddingToBank = false;
 
   @override
@@ -43,7 +37,6 @@ class _FlashcardSummaryScreenState extends State<FlashcardSummaryScreen> {
     _fetchUnknownWords();
   }
 
-  /// ฟังก์ชันใหม่: ดึงคำศัพท์ที่ is_known = false, for_review = false จาก Firestore
   Future<void> _fetchUnknownWords() async {
     try {
       final querySnapshot = await FirebaseFirestore.instance
@@ -71,9 +64,8 @@ class _FlashcardSummaryScreenState extends State<FlashcardSummaryScreen> {
     }
   }
 
-  /// ฟังก์ชันใหม่: เมื่อผู้ใช้กด "เพิ่มเข้าคลังคำศัพท์"
   Future<void> _addSelectedWordsToBank() async {
-    if (_selectedWords.isEmpty) return; // ถ้าไม่มีคำที่ถูกเลือก ก็ไม่ต้องทำอะไร
+    if (_selectedWords.isEmpty) return;
 
     setState(() {
       _isAddingToBank = true;
@@ -87,19 +79,14 @@ class _FlashcardSummaryScreenState extends State<FlashcardSummaryScreen> {
           .doc(widget.topic)
           .collection('vocabularies');
 
-      // อัปเดต for_review = true เฉพาะคำที่อยู่ใน _selectedWords
       for (String word in _selectedWords) {
         await vocabRef.doc(word).update({
           'for_review': true,
         });
       }
 
-      // อัปเดต UI: ลบคำที่ถูกเลือกออกจาก _unknownWords
       _unknownWords.removeWhere((vocab) => _selectedWords.contains(vocab['word']));
-
-      // เคลียร์การเลือก
       _selectedWords.clear();
-
     } catch (e) {
       debugPrint('Error adding words to bank: $e');
     } finally {
@@ -111,14 +98,41 @@ class _FlashcardSummaryScreenState extends State<FlashcardSummaryScreen> {
     }
   }
 
-  /// (คงอยู่) ฟังก์ชันเดิม: Reset คำศัพท์ทั้งหมด
+  Future<void> _confirmReset() async {
+    final shouldReset = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('ยืนยันการรีเซ็ต'),
+          content: const Text(
+            'คุณแน่ใจหรือไม่ว่าต้องการรีเซ็ตคำศัพท์ทั้งหมด?\n'
+                'สถานะของคำศัพท์ทั้งหมดจะถูกล้างและเริ่มต้นใหม่อีกครั้ง.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('ยกเลิก'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('ยืนยัน'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldReset == true) {
+      _resetAllWords();
+    }
+  }
+
   Future<void> _resetAllWords() async {
     setState(() {
       _isResetting = true;
     });
 
     try {
-      // รีเซ็ตค่าทุกคำใน topic นี้ (is_known = false, for_review = false)
       final query = await FirebaseFirestore.instance
           .collection('users')
           .doc(widget.userId)
@@ -134,10 +148,8 @@ class _FlashcardSummaryScreenState extends State<FlashcardSummaryScreen> {
         });
       }
 
-      // หลัง Reset เสร็จ จะ pop กลับ
       if (!mounted) return;
       Navigator.pop(context);
-
     } catch (e) {
       debugPrint("Error resetting words: $e");
     } finally {
@@ -151,7 +163,6 @@ class _FlashcardSummaryScreenState extends State<FlashcardSummaryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Disabled หรือ Enabled ของปุ่ม "เพิ่มเข้าคลังคำศัพท์"
     final bool canAddToBank = _selectedWords.isNotEmpty && !_isAddingToBank;
 
     return Scaffold(
@@ -164,7 +175,6 @@ class _FlashcardSummaryScreenState extends State<FlashcardSummaryScreen> {
         padding: const EdgeInsets.all(24.0),
         child: Column(
           children: [
-            // ----- ส่วนสรุปสถิติ (เหมือนเดิม) -----
             Text("จำนวนคำศัพท์ทั้งหมด: ${widget.totalCount}"),
             const SizedBox(height: 8),
             Text("คำศัพท์ที่รู้ (Known): ${widget.knownCount}"),
@@ -173,8 +183,6 @@ class _FlashcardSummaryScreenState extends State<FlashcardSummaryScreen> {
             const SizedBox(height: 8),
             Text("คำศัพท์ที่ต้องทบทวน (Review): ${widget.reviewCount}"),
             const SizedBox(height: 24),
-
-            // ----- ส่วนใหม่: แสดงคำศัพท์ที่ไม่รู้ (is_known = false) -----
             const Divider(),
             const Text(
               "รายการคำศัพท์ที่ยังไม่รู้",
@@ -184,8 +192,6 @@ class _FlashcardSummaryScreenState extends State<FlashcardSummaryScreen> {
               ),
             ),
             const SizedBox(height: 8),
-
-            // ถ้าไม่มีคำศัพท์ไม่รู้ ก็แจ้งว่าไม่มี
             if (_unknownWords.isEmpty)
               const Text("ไม่มีคำศัพท์ที่ไม่รู้แล้ว!")
             else
@@ -199,8 +205,6 @@ class _FlashcardSummaryScreenState extends State<FlashcardSummaryScreen> {
                   return OutlinedButton(
                     onPressed: () {
                       setState(() {
-                        // ถ้าคำนี้ถูกเลือกแล้ว -> เอาออก
-                        // ถ้ายังไม่ถูกเลือก -> ใส่เข้าไป
                         if (isSelected) {
                           _selectedWords.remove(word);
                         } else {
@@ -214,27 +218,21 @@ class _FlashcardSummaryScreenState extends State<FlashcardSummaryScreen> {
                       backgroundColor:
                       isSelected ? Colors.blueAccent : Colors.white,
                       side: BorderSide(
-                          color:
-                          isSelected ? Colors.blue : Colors.grey),
+                          color: isSelected ? Colors.blue : Colors.grey),
                     ),
                     child: Text(word),
                   );
                 }).toList(),
               ),
-
             const SizedBox(height: 24),
-
-            // ----- แถวปุ่ม "เพิ่มเข้าคลังคำศัพท์" (ซ้าย) + Reset (ขวา) -----
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // ปุ่ม "เพิ่มเข้าคลังคำศัพท์"
                 ElevatedButton(
                   onPressed: canAddToBank ? _addSelectedWordsToBank : null,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.teal,
-                    disabledBackgroundColor:
-                    Colors.grey.shade300, // ปุ่มจาง
+                    disabledBackgroundColor: Colors.grey.shade300,
                   ),
                   child: _isAddingToBank
                       ? const SizedBox(
@@ -247,10 +245,8 @@ class _FlashcardSummaryScreenState extends State<FlashcardSummaryScreen> {
                   )
                       : const Text("เพิ่มเข้าคลังคำศัพท์"),
                 ),
-
-                // ปุ่ม "Reset" (เดิม)
                 ElevatedButton(
-                  onPressed: _resetAllWords,
+                  onPressed: _confirmReset,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.red,
                   ),

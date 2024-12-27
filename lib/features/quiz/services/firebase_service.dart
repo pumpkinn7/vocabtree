@@ -2,29 +2,16 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../model/quiz_question_model.dart';
 
 class FirebaseService {
-  // สมมติว่ามีการเก็บ mapping ระหว่าง topic กับ cefrLevel ใน collection 'quiz_topic_mapping'
-  // เอกสารเช่น: quiz_topic_mapping/{topicName} => { 'cefrLevel': 'B1' }
-  static Future<String> getCEFRLevelForTopic(String topic) async {
-    final doc = await FirebaseFirestore.instance
-        .collection('quiz_topic_mapping')
-        .doc(topic)
-        .get();
-    if (doc.exists) {
-      final data = doc.data() ?? {};
-      return data['cefrLevel'] as String? ?? 'B1';
-      // ถ้าหาไม่เจอให้ default เป็น B1 หรือปรับตามต้องการ
-    } else {
-      // ถ้าไม่มี mapping ก็ default เป็น B1 หรือหาวิธีอื่น
-      return 'B1';
-    }
+  // เก็บ Mapping ระหว่าง topic และ CEFR Level ใน Cache
+  static final Map<String, String> _topicLevelCache = {};
+
+  // ฟังก์ชันดึง CEFR Level แบบ Synchronous จาก Cache
+  static String getCEFRLevelForTopicSync(String topic) {
+    return _topicLevelCache[topic] ?? 'B1';
   }
 
-  // สำหรับการเรียกแบบ synchronous ถ้าจำเป็น (ควรหลีกเลี่ยง)
-  // สมมุติใช้ตัวแปร static เก็บ Mapping
-  // ในกรณีที่จำเป็นต้องมีฟังก์ชัน sync อาจใช้ FutureBuilder หรือรอข้อมูลให้พร้อมก่อน
-  static final Map<String, String> _topicLevelCache = {};
+  // ฟังก์ชัน preload ข้อมูล topic กับ CEFR Level
   static Future<void> preloadTopicLevels() async {
-    // ดึงข้อมูลทั้งหมดจาก quiz_topic_mapping มาเก็บใน cache
     final snap = await FirebaseFirestore.instance
         .collection('quiz_topic_mapping')
         .get();
@@ -36,13 +23,23 @@ class FirebaseService {
     }
   }
 
-  static String getCEFRLevelForTopicSync(String topic) {
-    return _topicLevelCache[topic] ?? 'B1';
+  // ฟังก์ชันดึง CEFR Level สำหรับ topic แบบ Asynchronous
+  static Future<String> getCEFRLevelForTopic(String topic) async {
+    final doc = await FirebaseFirestore.instance
+        .collection('quiz_topic_mapping')
+        .doc(topic)
+        .get();
+    if (doc.exists) {
+      final data = doc.data() ?? {};
+      return data['cefrLevel'] as String? ?? 'B1';
+    } else {
+      return 'B1';
+    }
   }
 
+  // ฟังก์ชันดึงคำถามสำหรับ topic ตาม CEFR Level
   static Future<List<QuizQuestionModel>> getQuestionsForTopic(String cefrLevel, String topic) async {
     List<QuizQuestionModel> questions = [];
-    // ประเภทคำถาม
     final questionTypes = ['multiple_choice', 'drag_and_drop', 'matching'];
 
     for (var qType in questionTypes) {
@@ -62,10 +59,10 @@ class FirebaseService {
         }
       }
     }
-
     return questions;
   }
 
+  // ฟังก์ชันแมปข้อมูลจาก Firestore เป็น QuizQuestionModel
   static QuizQuestionModel? _mapToQuizQuestionModel(String qType, Map<String, dynamic> data) {
     switch (qType) {
       case 'multiple_choice':
@@ -79,27 +76,54 @@ class FirebaseService {
           translatedSentence: data['translatedSentence'] as String? ?? '',
         );
       case 'drag_and_drop':
-      // drag_and_drop มี field: question, draggableItems, targets, correctMatches
         return QuizQuestionModel(
           type: QuestionType.dragAndDrop,
           question: data['question'] as String? ?? '',
           draggableItems: (data['draggableItems'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
           targets: (data['targets'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
           correctMatches: (data['correctMatches'] as Map<String, dynamic>?)
-              ?.map((k, v) => MapEntry(k, v.toString())) ?? {},
+              ?.map((k, v) => MapEntry(k, v.toString())) ??
+              {},
         );
       case 'matching':
-      // matching มี field: question, leftItems, rightItems, correctMatches
         return QuizQuestionModel(
           type: QuestionType.matching,
           question: data['question'] as String? ?? '',
           leftItems: (data['leftItems'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
           rightItems: (data['rightItems'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
           correctMatches: (data['correctMatches'] as Map<String, dynamic>?)
-              ?.map((k, v) => MapEntry(k, v.toString())) ?? {},
+              ?.map((k, v) => MapEntry(k, v.toString())) ??
+              {},
         );
       default:
         return null;
+    }
+  }
+
+  // ฟังก์ชันอัปเดตข้อมูลผู้ใช้เมื่อทำ Quiz สำเร็จ
+  static Future<void> updateUserProgress(
+      String userId,
+      String topic,
+      String rewardImageName,
+      String cefrLevel,
+      ) async {
+    final db = FirebaseFirestore.instance;
+    final userDoc = db.collection('users').doc(userId);
+    final progressDoc = userDoc.collection('progress').doc('progress');
+
+    // อัปเดต CEFR Level
+    await progressDoc.set({
+      'currentCEFRLevel': cefrLevel,
+      'currentLevelBackground': '${cefrLevel}_background',
+    }, SetOptions(merge: true));
+
+    // เพิ่ม Document ใหม่ใน subcollection unlockedRewards
+    if (rewardImageName.isNotEmpty) {
+      await progressDoc.collection('unlockedRewards').add({
+        'imageName': rewardImageName,
+        'unlockedAt': FieldValue.serverTimestamp(),
+        'topic': topic,
+      });
     }
   }
 }

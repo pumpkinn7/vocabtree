@@ -35,7 +35,7 @@ class QuizScreen extends StatelessWidget {
                 title: 'SPRING',
                 level: 'คำศัพท์ภาษาอังกฤษ B1',
                 difficulty: 'กลาง (Intermediate)',
-                color: Colors.green,
+                imagePath: 'assets/images/oak_6977599.png',
                 onTap: () {
                   Navigator.push(
                     context,
@@ -49,7 +49,7 @@ class QuizScreen extends StatelessWidget {
                 title: 'SUMMER',
                 level: 'คำศัพท์ภาษาอังกฤษ B2',
                 difficulty: 'กลาง (Intermediate)',
-                color: Colors.orange,
+                imagePath: 'assets/images/tree_6977578.png',
                 onTap: () {
                   Navigator.push(
                     context,
@@ -63,7 +63,7 @@ class QuizScreen extends StatelessWidget {
                 title: 'AUTUMN',
                 level: 'คำศัพท์ภาษาอังกฤษ C1',
                 difficulty: 'กลาง (Intermediate)',
-                color: Colors.red,
+                imagePath: 'assets/images/tree_6977585.png',
                 onTap: () {
                   Navigator.push(
                     context,
@@ -77,7 +77,7 @@ class QuizScreen extends StatelessWidget {
                 title: 'WINTER',
                 level: 'คำศัพท์ภาษาอังกฤษ C2',
                 difficulty: 'สูง (Advanced)',
-                color: Colors.blue,
+                imagePath: 'assets/images/tree_6977597.png',
                 onTap: () {
                   Navigator.push(
                     context,
@@ -99,7 +99,7 @@ class VocabularyItem extends StatelessWidget {
   final String title;
   final String level;
   final String difficulty;
-  final Color color;
+  final String imagePath;
   final VoidCallback onTap;
 
   const VocabularyItem({
@@ -107,7 +107,7 @@ class VocabularyItem extends StatelessWidget {
     required this.title,
     required this.level,
     required this.difficulty,
-    required this.color,
+    required this.imagePath,
     required this.onTap,
   });
 
@@ -128,7 +128,12 @@ class VocabularyItem extends StatelessWidget {
               Container(
                 width: 50,
                 height: 50,
-                color: color,
+                decoration: BoxDecoration(
+                  image: DecorationImage(
+                    image: AssetImage(imagePath),
+                    fit: BoxFit.cover,
+                  ),
+                ),
               ),
               const SizedBox(width: 16),
               Column(

@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:timelines/timelines.dart';
 
 import '../../flashcards/screens/flashcard_topic_screen.dart';
 import '../../quiz/screens/quiz_topic_screen.dart';
@@ -16,228 +17,254 @@ class CefrLevelScreen extends StatefulWidget {
 
 class _CefrLevelScreenState extends State<CefrLevelScreen> {
   final User? user = FirebaseAuth.instance.currentUser;
-  final levelsOrder = ['B1', 'B2', 'C1', 'C2'];
 
-  Future<Map<String, dynamic>> _fetchAllLevelsData() async {
-    final userId = user?.uid;
-    Map<String, List<String>> allLevelsTopics = {};
+  Future<Map<String, dynamic>> _fetchAllData() async {
+    final userId = user?.uid ?? '';
 
-    for (var level in levelsOrder) {
-      final cefrDoc = await FirebaseFirestore.instance
-          .collection('cefr_levels')
-          .doc(level)
-          .get();
-      final data = cefrDoc.data() ?? {};
-      final topicsMap = (data['topics'] ?? {}) as Map<String, dynamic>;
-      final topics = topicsMap.keys.toList()..sort();
-      allLevelsTopics[level] = topics;
-    }
+    // ดึงรายชื่อ topics
+    final cefrDoc = await FirebaseFirestore.instance
+        .collection('cefr_levels')
+        .doc(widget.cefrLevel)
+        .get();
+    final cefrData = cefrDoc.data() ?? {};
+    final topicsMap = (cefrData['topics'] ?? {}) as Map<String, dynamic>;
+    final topics = topicsMap.keys.toList()..sort();
 
-    Map<String, Map<String, double>> userTopicScores = {};
-    if (userId != null) {
-      final historySnapshot = await FirebaseFirestore.instance
+    // ดึงคะแนนสูงสุดของแต่ละ topic
+    Map<String, double> topicMaxScores = {};
+    if (userId.isNotEmpty) {
+      final historySnap = await FirebaseFirestore.instance
           .collection('users')
           .doc(userId)
           .collection('quizHistory')
           .get();
+      for (var doc in historySnap.docs) {
+        final data = doc.data();
+        final level = data['cefrLevel'] as String? ?? '';
+        final topic = data['topic'] as String? ?? '';
+        final percentage = (data['percentage'] as num?)?.toDouble() ?? 0.0;
 
-      for (var doc in historySnapshot.docs) {
-        final histData = doc.data();
-        final level = histData['cefrLevel'] as String?;
-        final topic = histData['topic'] as String?;
-        final percentage = ((histData['percentage'] ?? 0) as num).toDouble();
-        if (level != null && topic != null) {
-          userTopicScores.putIfAbsent(level, () => {});
-          userTopicScores[level]![topic] = userTopicScores[level]![topic] == null
-              ? percentage
-              : (userTopicScores[level]![topic]! > percentage
-              ? userTopicScores[level]![topic]!
-              : percentage);
+        if (level == widget.cefrLevel && topic.isNotEmpty) {
+          if (!topicMaxScores.containsKey(topic) ||
+              topicMaxScores[topic]! < percentage) {
+            topicMaxScores[topic] = percentage;
+          }
         }
+      }
+    }
+
+    // ดึงรูปภาพต้นไม้
+    final rewardsSnap =
+    await FirebaseFirestore.instance.collection('topic_rewards').get();
+    Map<String, String> topicImages = {};
+    for (var doc in rewardsSnap.docs) {
+      final t = doc.id;
+      final imageName = doc.data()['imageName'] as String? ?? '';
+      if (imageName.isNotEmpty) {
+        topicImages[t] = 'assets/images/$imageName.png';
       }
     }
 
     return {
-      'allLevelsTopics': allLevelsTopics,
-      'userTopicScores': userTopicScores,
+      'topics': topics,
+      'topicMaxScores': topicMaxScores,
+      'topicImages': topicImages,
     };
   }
 
-  bool _isTopicUnlockedWithLevelsOrder(
-      List<String> currentLevelTopics,
-      int index,
-      Map<String, List<String>> allLevelsTopics,
-      Map<String, Map<String, double>> userTopicScores,
-      ) {
-    final currentLevel = widget.cefrLevel;
-    final currentLevelIndex = levelsOrder.indexOf(currentLevel);
-
-    if (currentLevelIndex == -1) {
-      // ถ้าไม่พบ level ในลิสต์ ให้ปลดล็อคไปก่อน
-      return true;
-    }
-
-    if (currentLevelIndex == 0) {
-      // ระดับแรก (B1)
-      if (index == 0) {
-        return true;
-      } else {
-        final prevTopic = currentLevelTopics[index - 1];
-        final prevScore = userTopicScores[currentLevel]?[prevTopic] ?? -1;
-        return prevScore >= 60.0;
-      }
-    } else {
-      // ระดับ B2, C1, C2
-      if (index == 0) {
-        // topic แรกของระดับปัจจุบัน ต้องตรวจระดับก่อนหน้า
-        final previousLevel = levelsOrder[currentLevelIndex - 1];
-        final previousLevelTopics = allLevelsTopics[previousLevel] ?? [];
-        if (previousLevelTopics.isEmpty) {
-          return true;
-        }
-        final lastTopicPrevLevel = previousLevelTopics.last;
-        final lastTopicScore = userTopicScores[previousLevel]?[lastTopicPrevLevel] ?? -1;
-        return lastTopicScore >= 60.0;
-      } else {
-        final prevTopic = currentLevelTopics[index - 1];
-        final prevScore = userTopicScores[currentLevel]?[prevTopic] ?? -1;
-        return prevScore >= 60.0;
-      }
-    }
+  bool _isUnlocked(String topic, Map<String, double> topicMaxScores) {
+    final score = topicMaxScores[topic] ?? 0.0;
+    return score >= 60.0;
   }
 
-  String _formatTopicName(String topicKey) {
-    return topicKey
-        .split('_')
-        .map((word) => word[0].toUpperCase() + word.substring(1))
-        .join(' ');
-  }
-
-  Widget _buildProgressItem(
-      BuildContext context, {
-        required String title,
-        VoidCallback? onFlashcardPressed,
-        VoidCallback? onQuizPressed,
-        required bool isUnlocked,
-      }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Container(
-        padding: const EdgeInsets.all(16.0),
-        decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey),
-          borderRadius: BorderRadius.circular(8),
-          color: isUnlocked ? Colors.white : Colors.grey[200],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            if (!isUnlocked)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8.0),
-                child: Text(
-                  'Topic นี้ถูกล็อคอยู่! คุณต้องทำ Topic ก่อนหน้าให้ได้อย่างน้อย 60% เพื่อปลดล็อค (รวมถึงการผ่านระดับก่อนหน้าด้วย)',
-                  style: TextStyle(color: Colors.red[800], fontSize: 14),
-                ),
-              ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                ElevatedButton(
-                  onPressed: isUnlocked ? onFlashcardPressed : null,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: isUnlocked ? Colors.orange : Colors.grey,
-                  ),
-                  child: const Text('Flashcard'),
-                ),
-                ElevatedButton(
-                  onPressed: isUnlocked ? onQuizPressed : null,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: isUnlocked ? Colors.blue : Colors.grey,
-                  ),
-                  child: const Text('Quiz'),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
+  String _formatTopicName(String key, int index) {
+    return '${index + 1}. '
+        '${key.split('_').map((w) => w[0].toUpperCase() + w.substring(1)).join(' ')}';
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        leading: IconButton( // เปลี่ยนจาก pushReplacement เป็น pop
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () {
-            Navigator.pop(context); // กลับไปยังหน้าเดิมที่มี bottom_navbar
-          },
+    return WillPopScope(
+      onWillPop: () async {
+        // ป้องกันการย้อนกลับไปยังหน้าหลัก
+        Navigator.pop(context); // หรือจัดการกลับไปยังหน้าที่ต้องการ
+        return false; // ป้องกันการย้อนกลับเริ่มต้น
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text('คำศัพท์ภาษาอังกฤษระดับ ${widget.cefrLevel}'),
         ),
-        title: Text(
-          'คำศัพท์ภาษาอังกฤษระดับ ${widget.cefrLevel}',
-          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-        ),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: FutureBuilder<Map<String, dynamic>>(
-          future: _fetchAllLevelsData(),
+        body: FutureBuilder<Map<String, dynamic>>(
+          future: _fetchAllData(),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
             }
-
             if (snapshot.hasError) {
-              return const Center(child: Text('Error loading topics'));
+              return const Center(child: Text('Error loading data.'));
             }
 
             final data = snapshot.data ?? {};
-            final allLevelsTopics = data['allLevelsTopics'] as Map<String, List<String>>? ?? {};
-            final userTopicScores = data['userTopicScores'] as Map<String, Map<String, double>>? ?? {};
-            final topics = allLevelsTopics[widget.cefrLevel] ?? [];
+            final topics = data['topics'] as List<String>? ?? [];
+            final topicMaxScores =
+                data['topicMaxScores'] as Map<String, double>? ?? {};
+            final topicImages = data['topicImages'] as Map<String, String>? ?? {};
 
             if (topics.isEmpty) {
               return const Center(child: Text('No topics available.'));
             }
 
-            return ListView.builder(
-              itemCount: topics.length,
-              itemBuilder: (context, index) {
-                final topicKey = topics[index];
-                final isUnlocked = _isTopicUnlockedWithLevelsOrder(topics, index, allLevelsTopics, userTopicScores);
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: Timeline.tileBuilder(
+                theme: TimelineThemeData(
+                  nodePosition: 0.1,
+                  connectorTheme: const ConnectorThemeData(
+                    thickness: 2.0,
+                  ),
+                ),
+                builder: TimelineTileBuilder.connected(
+                  connectionDirection: ConnectionDirection.before,
+                  itemCount: topics.length,
+                  contentsBuilder: (context, index) {
+                    final topicKey = topics[index];
+                    final unlocked = _isUnlocked(topicKey, topicMaxScores);
+                    final imagePath = topicImages[topicKey];
 
-                return _buildProgressItem(
-                  context,
-                  title: '${index + 1}. ${_formatTopicName(topicKey)}',
-                  onFlashcardPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => FlashcardScreen(
-                          topic: topicKey,
-                          userId: user?.uid ?? '',
-                        ),
+                    return Opacity(
+                      opacity: unlocked ? 1.0 : 0.5,
+                      child: Stack(
+                        children: [
+                          Container(
+                            margin: const EdgeInsets.symmetric(
+                              vertical: 12.0,
+                              horizontal: 8.0,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Colors.black12,
+                                  blurRadius: 4,
+                                  spreadRadius: 2,
+                                  offset: Offset(0, 2),
+                                )
+                              ],
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                      CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          _formatTopicName(topicKey, index),
+                                          style: const TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Row(
+                                          children: [
+                                            TextButton(
+                                              onPressed: unlocked
+                                                  ? () {
+                                                Navigator.push(
+                                                  context,
+                                                  MaterialPageRoute(
+                                                    builder: (context) =>
+                                                        FlashcardScreen(
+                                                          topic: topicKey,
+                                                          userId:
+                                                          user?.uid ?? '',
+                                                        ),
+                                                  ),
+                                                );
+                                              }
+                                                  : null,
+                                              child: const Text('Flashcard'),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            TextButton(
+                                              onPressed: unlocked
+                                                  ? () {
+                                                Navigator.push(
+                                                  context,
+                                                  MaterialPageRoute(
+                                                    builder: (context) =>
+                                                        QuizTopicScreen(
+                                                          topic: topicKey,
+                                                        ),
+                                                  ),
+                                                );
+                                              }
+                                                  : null,
+                                              child: const Text('Quiz'),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  if (imagePath != null)
+                                    Column(
+                                      children: [
+                                        ClipRRect(
+                                          borderRadius:
+                                          BorderRadius.circular(8.0),
+                                          child: Image.asset(
+                                            imagePath,
+                                            width: 60,
+                                            height: 60,
+                                            fit: BoxFit.cover,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        const Text('การปลดล็อค'),
+                                      ],
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          if (!unlocked)
+                            Positioned.fill(
+                              child: Align(
+                                alignment: Alignment.center,
+                                child: Icon(
+                                  Icons.lock,
+                                  size: 50,
+                                  color: Colors.grey.withOpacity(0.8),
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
                     );
                   },
-                  onQuizPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => QuizTopicScreen(topic: topicKey),
-                      ),
+                  indicatorBuilder: (context, index) {
+                    final topicKey = topics[index];
+                    final unlocked = _isUnlocked(topicKey, topicMaxScores);
+                    return DotIndicator(
+                      color: unlocked ? Colors.green : Colors.grey,
+                      size: 20.0,
                     );
                   },
-                  isUnlocked: isUnlocked,
-                );
-              },
+                  connectorBuilder: (context, index, type) {
+                    final topicKey = topics[index];
+                    final unlocked = _isUnlocked(topicKey, topicMaxScores);
+                    return SolidLineConnector(
+                      color: unlocked ? Colors.green : Colors.grey,
+                    );
+                  },
+                ),
+              ),
             );
           },
         ),

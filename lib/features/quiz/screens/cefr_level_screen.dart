@@ -21,16 +21,17 @@ class _CefrLevelScreenState extends State<CefrLevelScreen> {
   Future<Map<String, dynamic>> _fetchAllData() async {
     final userId = user?.uid ?? '';
 
-    // ดึงรายชื่อ topics
+    // 1) ดึงรายชื่อ topics ของ CEFR นี้
     final cefrDoc = await FirebaseFirestore.instance
         .collection('cefr_levels')
         .doc(widget.cefrLevel)
         .get();
     final cefrData = cefrDoc.data() ?? {};
     final topicsMap = (cefrData['topics'] ?? {}) as Map<String, dynamic>;
+    // เรียงชื่อ topic ให้เป็นลำดับที่ต้องการ
     final topics = topicsMap.keys.toList()..sort();
 
-    // ดึงคะแนนสูงสุดของแต่ละ topic
+    // 2) ดึงคะแนนสูงสุดของแต่ละ topic จาก quizHistory
     Map<String, double> topicMaxScores = {};
     if (userId.isNotEmpty) {
       final historySnap = await FirebaseFirestore.instance
@@ -38,13 +39,16 @@ class _CefrLevelScreenState extends State<CefrLevelScreen> {
           .doc(userId)
           .collection('quizHistory')
           .get();
+
       for (var doc in historySnap.docs) {
         final data = doc.data();
         final level = data['cefrLevel'] as String? ?? '';
         final topic = data['topic'] as String? ?? '';
         final percentage = (data['percentage'] as num?)?.toDouble() ?? 0.0;
 
+        // เช็คว่า quizHistory นี้ตรงกับ CEFR ปัจจุบันไหม
         if (level == widget.cefrLevel && topic.isNotEmpty) {
+          // เก็บค่า percentage สูงสุดของ topic นั้น ๆ
           if (!topicMaxScores.containsKey(topic) ||
               topicMaxScores[topic]! < percentage) {
             topicMaxScores[topic] = percentage;
@@ -53,7 +57,7 @@ class _CefrLevelScreenState extends State<CefrLevelScreen> {
       }
     }
 
-    // ดึงรูปภาพต้นไม้
+    // 3) ดึงชื่อรูปภาพ (รางวัล) ของแต่ละ topic (ถ้ามี)
     final rewardsSnap =
     await FirebaseFirestore.instance.collection('topic_rewards').get();
     Map<String, String> topicImages = {};
@@ -66,15 +70,37 @@ class _CefrLevelScreenState extends State<CefrLevelScreen> {
     }
 
     return {
-      'topics': topics,
-      'topicMaxScores': topicMaxScores,
-      'topicImages': topicImages,
+      'topics': topics,                // List<String>
+      'topicMaxScores': topicMaxScores, // Map<String, double>
+      'topicImages': topicImages,      // Map<String, String>
     };
   }
 
-  bool _isUnlocked(String topic, Map<String, double> topicMaxScores) {
-    final score = topicMaxScores[topic] ?? 0.0;
-    return score >= 60.0;
+  /// ฟังก์ชันใหม่: เช็คว่าหัวข้อนี้ถูกปลดล็อคหรือยัง
+  /// - ถ้าเป็น topic แรก (index == 0) และชื่อว่า daily_life => ปลดล็อคเสมอ
+  /// - ถ้าไม่ใช่หัวข้อแรก => ต้องดูว่าหัวข้อก่อนหน้าผ่าน >= 60 หรือไม่
+  bool _isUnlocked({
+    required String topic,
+    required List<String> sortedTopics,
+    required int index,
+    required Map<String, double> topicMaxScores,
+  }) {
+    // ถ้าเป็นหัวข้อแรก และเรากำหนดให้ daily_life ปลดล็อคเสมอ
+    if (index == 0 && topic == 'daily_life') {
+      return true;
+    }
+
+    // ถ้าเป็นหัวข้อแรก (index == 0) แต่ไม่ใช่ daily_life ก็อาจจะล็อค/ปลดล็อคตาม logic อื่น
+    if (index == 0) {
+      // ถ้าต้องการปลดล็อคตลอด ไม่ว่า topic อะไร
+      return true;
+    }
+
+    // ไม่ใช่หัวข้อแรก => ต้องผ่านหัวข้อก่อนหน้า >= 60
+    final prevTopic = sortedTopics[index - 1];
+    final prevScore = topicMaxScores[prevTopic] ?? 0.0;
+    // ถ้าหัวข้อก่อนหน้า (prevTopic) >= 60 => ปลดล็อค
+    return prevScore >= 60.0;
   }
 
   String _formatTopicName(String key, int index) {
@@ -84,11 +110,12 @@ class _CefrLevelScreenState extends State<CefrLevelScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // ป้องกันการ pop ออกจาก CEFR Screen แล้วกลับไปหน้าไหนสักหน้า
+    // (แล้วแต่ความต้องการ ถ้าไม่ต้องการ block กลับ ก็ลบ WillPopScope ออก)
     return WillPopScope(
       onWillPop: () async {
-        // ป้องกันการย้อนกลับไปยังหน้าหลัก
-        Navigator.pop(context); // หรือจัดการกลับไปยังหน้าที่ต้องการ
-        return false; // ป้องกันการย้อนกลับเริ่มต้น
+        Navigator.pop(context);
+        return false;
       },
       child: Scaffold(
         appBar: AppBar(
@@ -128,7 +155,15 @@ class _CefrLevelScreenState extends State<CefrLevelScreen> {
                   itemCount: topics.length,
                   contentsBuilder: (context, index) {
                     final topicKey = topics[index];
-                    final unlocked = _isUnlocked(topicKey, topicMaxScores);
+
+                    // ใช้ฟังก์ชัน _isUnlocked แบบใหม่
+                    final unlocked = _isUnlocked(
+                      topic: topicKey,
+                      sortedTopics: topics,
+                      index: index,
+                      topicMaxScores: topicMaxScores,
+                    );
+
                     final imagePath = topicImages[topicKey];
 
                     return Opacity(
@@ -157,6 +192,7 @@ class _CefrLevelScreenState extends State<CefrLevelScreen> {
                               child: Row(
                                 crossAxisAlignment: CrossAxisAlignment.center,
                                 children: [
+                                  // ด้านซ้ายเป็นชื่อหัวข้อ + ปุ่ม flashcard/quiz
                                   Expanded(
                                     child: Column(
                                       crossAxisAlignment:
@@ -185,7 +221,10 @@ class _CefrLevelScreenState extends State<CefrLevelScreen> {
                                                           user?.uid ?? '',
                                                         ),
                                                   ),
-                                                );
+                                                ).then((_) {
+                                                  // กลับมาแล้วรีเฟรช
+                                                  setState(() {});
+                                                });
                                               }
                                                   : null,
                                               child: const Text('Flashcard'),
@@ -202,7 +241,10 @@ class _CefrLevelScreenState extends State<CefrLevelScreen> {
                                                           topic: topicKey,
                                                         ),
                                                   ),
-                                                );
+                                                ).then((_) {
+                                                  // กลับมาแล้วรีเฟรช
+                                                  setState(() {});
+                                                });
                                               }
                                                   : null,
                                               child: const Text('Quiz'),
@@ -212,6 +254,7 @@ class _CefrLevelScreenState extends State<CefrLevelScreen> {
                                       ],
                                     ),
                                   ),
+                                  // ด้านขวาถ้ามีภาพ reward
                                   if (imagePath != null)
                                     Column(
                                       children: [
@@ -233,6 +276,7 @@ class _CefrLevelScreenState extends State<CefrLevelScreen> {
                               ),
                             ),
                           ),
+                          // ถ้า locked ใส่ไอคอนกุญแจ
                           if (!unlocked)
                             Positioned.fill(
                               child: Align(
@@ -248,17 +292,29 @@ class _CefrLevelScreenState extends State<CefrLevelScreen> {
                       ),
                     );
                   },
+                  // จุด indicator
                   indicatorBuilder: (context, index) {
                     final topicKey = topics[index];
-                    final unlocked = _isUnlocked(topicKey, topicMaxScores);
+                    final unlocked = _isUnlocked(
+                      topic: topicKey,
+                      sortedTopics: topics,
+                      index: index,
+                      topicMaxScores: topicMaxScores,
+                    );
                     return DotIndicator(
                       color: unlocked ? Colors.green : Colors.grey,
                       size: 20.0,
                     );
                   },
+                  // เส้นเชื่อมต่อระหว่างหัวข้อ
                   connectorBuilder: (context, index, type) {
                     final topicKey = topics[index];
-                    final unlocked = _isUnlocked(topicKey, topicMaxScores);
+                    final unlocked = _isUnlocked(
+                      topic: topicKey,
+                      sortedTopics: topics,
+                      index: index,
+                      topicMaxScores: topicMaxScores,
+                    );
                     return SolidLineConnector(
                       color: unlocked ? Colors.green : Colors.grey,
                     );

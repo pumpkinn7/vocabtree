@@ -38,6 +38,29 @@ class _QuizTopicScreenState extends State<QuizTopicScreen> {
   bool _isQuizFinished = false;
   bool _isAnswerChecked = false;
   bool _isAnswerCorrect = false;
+  /// เช็คว่าผู้ใช้ได้เลือกคำตอบหรือยัง
+  bool _hasSelectedAnswer() {
+    final currentQuestion = _questions[_currentQuestionIndex];
+    switch (currentQuestion.type) {
+      case QuestionType.multipleChoice:
+        return _selectedAnswers[_currentQuestionIndex] != null;
+      case QuestionType.dragAndDrop:
+      case QuestionType.matching:
+        if (_selectedAnswers[_currentQuestionIndex] is Map<String, String?>) {
+          return (_selectedAnswers[_currentQuestionIndex] as Map<String, String?>)
+              .values
+              .every((value) => value != null);
+        }
+        return false;
+      default:
+        return false;
+    }
+  }
+
+  /// เช็คว่าผู้ใช้ได้ตอบคำถามในครั้งนี้แล้วหรือยัง
+  bool _hasAnswered() {
+    return _isAnswerChecked;
+  }
 
   final Map<int, dynamic> _selectedAnswers = {}; // key: question index, value: selected answer
 
@@ -107,6 +130,15 @@ class _QuizTopicScreenState extends State<QuizTopicScreen> {
     });
   }
 
+  void _skipQuestion() {
+    if (_isAnswerChecked) return;
+
+    setState(() {
+      _isAnswerChecked = true;
+      _isAnswerCorrect = false;
+    });
+  }
+
   void _nextQuestion() {
     if (!_isAnswerChecked) return;
 
@@ -131,13 +163,12 @@ class _QuizTopicScreenState extends State<QuizTopicScreen> {
       _isQuizFinished = true;
     });
 
-    // อัปเดตสถานะใน Firestore
     if (user != null) {
       FirebaseService.manageProgress(
         user!.uid,
         widget.cefrLevel,
         widget.topic,
-        percentage, // เพิ่มอาร์กิวเมนต์ percentage
+        percentage,
       );
     }
 
@@ -155,7 +186,6 @@ class _QuizTopicScreenState extends State<QuizTopicScreen> {
       ),
     );
   }
-
 
   @override
   void dispose() {
@@ -254,12 +284,24 @@ class _QuizTopicScreenState extends State<QuizTopicScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       ElevatedButton(
-                        onPressed: !_isAnswerChecked ? _nextQuestion : null,
-                        child: const Text('ถัดไป'),
+                        onPressed: _isAnswerChecked ? null : _skipQuestion,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.grey,
+                          minimumSize: const Size(100, 50),
+                        ),
+                        child: const Text('ข้าม'),
                       ),
                       ElevatedButton(
-                        onPressed: _isAnswerChecked ? _nextQuestion : _checkAnswer,
-                        child: const Text('ตรวจ'),
+                        onPressed: (_isAnswerChecked || _hasAnswered())
+                            ? _nextQuestion
+                            : (_hasSelectedAnswer() ? _checkAnswer : null),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: (_isAnswerChecked || _hasAnswered())
+                              ? Colors.blue
+                              : Colors.green,
+                          minimumSize: const Size(100, 50),
+                        ),
+                        child: Text(_isAnswerChecked ? 'ถัดไป' : 'ตรวจ'),
                       ),
                     ],
                   ),

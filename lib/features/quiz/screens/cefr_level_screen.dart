@@ -236,10 +236,10 @@ class _CefrLevelScreenState extends State<CefrLevelScreen> {
                                                 Navigator.push(
                                                   context,
                                                   MaterialPageRoute(
-                                                    builder: (context) =>
-                                                        QuizTopicScreen(
-                                                          topic: topicKey,
-                                                        ),
+                                                    builder: (context) => QuizTopicScreen(
+                                                      topic: topicKey,
+                                                      cefrLevel: widget.cefrLevel, // ส่งค่า cefrLevel ด้วย
+                                                    ),
                                                   ),
                                                 ).then((_) {
                                                   // กลับมาแล้วรีเฟรช

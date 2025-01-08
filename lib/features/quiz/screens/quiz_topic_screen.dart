@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -13,8 +14,8 @@ import 'result_screen.dart';
 
 class QuizTopicScreen extends StatefulWidget {
   final String topic;
-
-  const QuizTopicScreen({super.key, required this.topic});
+  final String cefrLevel;
+  const QuizTopicScreen({super.key, required this.topic, required this.cefrLevel});
 
   @override
   State<QuizTopicScreen> createState() => _QuizTopicScreenState();
@@ -50,11 +51,16 @@ class _QuizTopicScreenState extends State<QuizTopicScreen> {
   }
 
   Future<List<QuizQuestionModel>> _loadQuestions() async {
-    final cefrLevel = await FirebaseService.getCEFRLevelForTopic(widget.topic);
-    final allQuestions = await FirebaseService.getQuestionsForTopic(cefrLevel, widget.topic);
+    if (kDebugMode) {
+      print('Loading questions for topic: ${widget.topic}, CEFR Level: ${widget.cefrLevel}');
+    } // Debug log
+
+    final allQuestions = await FirebaseService.getQuestionsForTopic(widget.cefrLevel, widget.topic);
     final arrangedQuestions = QuizLogic.arrangeAndShuffleQuestions(allQuestions);
     return arrangedQuestions;
   }
+
+
 
   void _startTimer() {
     if (!useTimer) return;

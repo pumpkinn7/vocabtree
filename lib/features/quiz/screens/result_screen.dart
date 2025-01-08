@@ -190,6 +190,7 @@ class _ResultScreenState extends State<ResultScreen> {
                         MaterialPageRoute(
                           builder: (context) => QuizTopicScreen(
                             topic: nextTopic,
+                            cefrLevel: widget.cefrLevel,
                           ),
                         ),
                       );

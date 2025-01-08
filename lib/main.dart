@@ -15,16 +15,15 @@ import 'package:vocabtree/features/auth/screens/login_screen.dart';
 import 'package:vocabtree/features/auth/screens/otp_verification_screen.dart';
 import 'package:vocabtree/features/auth/screens/register_screen.dart';
 
+import '../features/quiz/services/firebase_service.dart'; // Import FirebaseService
 import 'core/config/firebase_options.dart';
 
 void main() {
   runZonedGuarded(() async {
-    // เริ่ม Flutter bindings ใน Zone เดียวกัน
     WidgetsFlutterBinding.ensureInitialized();
 
     FlutterError.onError = (FlutterErrorDetails details) {
       FlutterError.presentError(details);
-      // ดักจับ Error Flutter framework อย่าลบ
       if (kDebugMode) {
         print('Flutter Error: ${details.exceptionAsString()}');
         print('Stack Trace: ${details.stack}');
@@ -36,6 +35,10 @@ void main() {
     );
 
     ThemeMode themeMode = await _getInitialThemeMode();
+
+    // โหลดข้อมูลเริ่มต้น
+    await FirebaseService.preloadTopicLevels(); // โหลดหัวข้อและระดับ CEFR
+    await _initializeUserProgress(); // สร้างสถานะผู้ใช้ถ้าไม่มีข้อมูล
 
     runApp(MyApp(initialThemeMode: themeMode));
   }, (error, stackTrace) {
@@ -80,17 +83,40 @@ Future<ThemeMode> _getInitialThemeMode() async {
   return ThemeMode.system;
 }
 
+Future<void> _initializeUserProgress() async {
+  final user = FirebaseAuth.instance.currentUser;
+  if (user == null) return;
+
+  final userId = user.uid;
+  final progressDoc = FirebaseFirestore.instance
+      .collection('users')
+      .doc(userId)
+      .collection('progress')
+      .doc('unlockedTopics');
+
+  final snapshot = await progressDoc.get();
+  if (!snapshot.exists) {
+    // สร้างสถานะปลดล็อกเริ่มต้น
+    await progressDoc.set(
+      FirebaseService.cefrTopics.map((level, topics) {
+        final initialUnlock = level == 'B1' ? {'daily_life': true} : {};
+        return MapEntry(level, {
+          for (var topic in topics) topic: initialUnlock[topic] ?? false,
+        });
+      }),
+    );
+  }
+}
 class MyApp extends StatefulWidget {
   final ThemeMode initialThemeMode;
 
   const MyApp({super.key, required this.initialThemeMode});
 
   @override
-  // ignore: library_private_types_in_public_api
-  _MyAppState createState() => _MyAppState();
+  MyAppState createState() => MyAppState(); // เปลี่ยนจาก _MyAppState เป็น MyAppState
 }
 
-class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
+class MyAppState extends State<MyApp> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
@@ -107,19 +133,6 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       print('App disposed');
     }
     super.dispose();
-  }
-
-  @override
-  //อย่าพึ่งลบ Lifecycle !!! เก็บไว้ลองเอาไปใส่ดักจับด้านบน
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (kDebugMode) {
-      print('AppLifecycleState changed to $state');
-    }
-    if (state == AppLifecycleState.resumed) {
-      if (kDebugMode) {
-        print('App resumed');
-      }
-    }
   }
 
   @override
@@ -161,6 +174,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     );
   }
 }
+
 
 class RootWidget extends StatelessWidget {
   const RootWidget({super.key});

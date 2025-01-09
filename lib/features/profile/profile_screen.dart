@@ -1,15 +1,11 @@
-// ignore_for_file: unused_element
-
 import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:day_night_switcher/day_night_switcher.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:logger/logger.dart';
 import 'package:provider/provider.dart';
 import 'package:vocabtree/core/theme/text_styles.dart';
 import 'package:vocabtree/core/theme/theme_provider.dart';
@@ -24,13 +20,11 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   final AuthService _authService = AuthService();
-  final Logger _logger = Logger();
   Map<String, dynamic>? userData;
   Map<String, dynamic>? profileData;
   bool isLoading = true;
   String? errorMessage;
 
-  //sensor email ไม่ให้แสดงข้อความเต็ม
   String _maskEmail(String email) {
     if (email.isEmpty) return '';
 
@@ -42,7 +36,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     if (username.length > 4) {
       username =
-          '${username.substring(0, 2)}****${username.substring(username.length - 2)}';
+      '${username.substring(0, 2)}****${username.substring(username.length - 2)}';
     } else {
       username = username.replaceRange(1, null, '***');
     }
@@ -58,8 +52,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   void _showReportProblemDialog() {
     String? selectedProblem;
-    final TextEditingController customProblemController =
-        TextEditingController();
+    final TextEditingController customProblemController = TextEditingController();
     final TextEditingController detailsController = TextEditingController();
 
     showDialog(
@@ -141,107 +134,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  void _showFriendsDialog() {
-    final TextEditingController friendController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              title: const Text('รายชื่อเพื่อน', style: AppTextStyles.headline),
-              content: SizedBox(
-                width: double.maxFinite,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TextField(
-                      controller: friendController,
-                      decoration: const InputDecoration(
-                        hintText: 'ชื่อเพื่อน',
-                        hintStyle: AppTextStyles.inputText,
-                      ),
-                      style: AppTextStyles.inputText,
-                    ),
-                    ElevatedButton(
-                      child:
-                          const Text('เพิ่มเพื่อน', style: AppTextStyles.label),
-                      onPressed: () {
-                        _addFriend(friendController.text, setState);
-                        friendController.clear();
-                      },
-                    ),
-                    const SizedBox(height: 20),
-                    Expanded(
-                      child: FutureBuilder<DocumentSnapshot>(
-                        future: FirebaseFirestore.instance
-                            .collection('profiles')
-                            .doc(FirebaseAuth.instance.currentUser!.uid)
-                            .get(),
-                        builder: (BuildContext context,
-                            AsyncSnapshot<DocumentSnapshot> snapshot) {
-                          if (snapshot.connectionState ==
-                              ConnectionState.waiting) {
-                            return const Center(
-                                child: CircularProgressIndicator());
-                          }
-
-                          if (snapshot.hasError) {
-                            return const Text('เกิดข้อผิดพลาดในการโหลดข้อมูล',
-                                style: AppTextStyles.inputText);
-                          }
-
-                          if (!snapshot.hasData || !snapshot.data!.exists) {
-                            return const Text('ไม่พบข้อมูลผู้ใช้',
-                                style: AppTextStyles.inputText);
-                          }
-
-                          List<dynamic> friends =
-                              snapshot.data!.get('friends') ?? [];
-
-                          if (friends.isEmpty) {
-                            return const Text('ยังไม่มีรายชื่อเพื่อน',
-                                style: AppTextStyles.inputText);
-                          }
-
-                          return ListView.builder(
-                            shrinkWrap: true,
-                            itemCount: friends.length,
-                            itemBuilder: (context, index) {
-                              return ListTile(
-                                title: Text(friends[index],
-                                    style: AppTextStyles.inputText),
-                                trailing: IconButton(
-                                  icon: const Icon(Icons.delete,
-                                      color: Colors.red),
-                                  onPressed: () =>
-                                      _removeFriend(friends[index], setState),
-                                ),
-                              );
-                            },
-                          );
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              actions: <Widget>[
-                TextButton(
-                  child: const Text('ปิด', style: AppTextStyles.label),
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
   void _showManageAccountDialog() {
     showDialog(
       context: context,
@@ -271,7 +163,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   backgroundColor: Colors.red,
                 ),
                 child:
-                    const Text('ลบบัญชีผู้ใช้งาน', style: AppTextStyles.label),
+                const Text('ลบบัญชีผู้ใช้งาน', style: AppTextStyles.label),
               ),
             ],
           ),
@@ -297,18 +189,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
               content:
-                  Text('คำขอรีเซ็ตรหัสผ่านถูกส่งแล้ว กรุณาตรวจสอบอีเมลของคุณ')),
+              Text('คำขอรีเซ็ตรหัสผ่านถูกส่งแล้ว กรุณาตรวจสอบอีเมลของคุณ')),
         );
 
         Navigator.of(context).pushReplacementNamed('/login');
       } catch (e) {
-        if (kDebugMode) {
-          print('เกิดข้อผิดพลาดในการออกจากระบบ: $e');
-        }
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
               content:
-                  Text('เกิดข้อผิดพลาดในการออกจากระบบ กรุณาลองใหม่อีกครั้ง')),
+              Text('เกิดข้อผิดพลาดในการออกจากระบบ กรุณาลองใหม่อีกครั้ง')),
         );
       }
     }
@@ -328,56 +217,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         const SnackBar(content: Text('รายงานถูกส่งเรียบร้อยแล้ว')),
       );
     } catch (e) {
-      if (kDebugMode) {
-        print('เกิดข้อผิดพลาดในการส่งรายงาน: $e');
-      }
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
             content: Text('เกิดข้อผิดพลาดในการส่งรายงาน กรุณาลองใหม่อีกครั้ง')),
-      );
-    }
-  }
-
-  Future<void> _addFriend(String friendName, StateSetter setState) async {
-    if (friendName.isNotEmpty) {
-      try {
-        final userDoc = FirebaseFirestore.instance
-            .collection('profiles')
-            .doc(FirebaseAuth.instance.currentUser!.uid);
-
-        await userDoc.update({
-          'friends': FieldValue.arrayUnion([friendName])
-        });
-
-        setState(() {});
-      } catch (e) {
-        if (kDebugMode) {
-          print('Error adding friend: $e');
-        }
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('เกิดข้อผิดพลาดในการเพิ่มเพื่อน')),
-        );
-      }
-    }
-  }
-
-  Future<void> _removeFriend(String friendName, StateSetter setState) async {
-    try {
-      final userDoc = FirebaseFirestore.instance
-          .collection('profiles')
-          .doc(FirebaseAuth.instance.currentUser!.uid);
-
-      await userDoc.update({
-        'friends': FieldValue.arrayRemove([friendName])
-      });
-
-      setState(() {});
-    } catch (e) {
-      if (kDebugMode) {
-        print('Error removing friend: $e');
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('เกิดข้อผิดพลาดในการลบเพื่อน')),
       );
     }
   }
@@ -387,16 +229,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
       User? user = FirebaseAuth.instance.currentUser;
       if (user != null) {
         DocumentSnapshot<Map<String, dynamic>> userSnapshot =
-            await FirebaseFirestore.instance
-                .collection('users')
-                .doc(user.uid)
-                .get();
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
 
         DocumentSnapshot<Map<String, dynamic>> profileSnapshot =
-            await FirebaseFirestore.instance
-                .collection('profiles')
-                .doc(user.uid)
-                .get();
+        await FirebaseFirestore.instance
+            .collection('profiles')
+            .doc(user.uid)
+            .get();
 
         setState(() {
           userData = userSnapshot.data();
@@ -410,7 +252,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         });
       }
     } catch (e) {
-      _logger.e('Error loading user data: $e');
       setState(() {
         isLoading = false;
         errorMessage = 'Failed to load user data. Please try again.';
@@ -426,11 +267,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       await _authService.signOut();
       Navigator.of(context).pushReplacementNamed('/login');
     } catch (e) {
-      _logger.e('Error signing out: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
             content:
-                Text('เกิดข้อผิดพลาดในการออกจากระบบ กรุณาลองใหม่อีกครั้ง')),
+            Text('เกิดข้อผิดพลาดในการออกจากระบบ กรุณาลองใหม่อีกครั้ง')),
       );
     }
   }
@@ -459,9 +299,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
           userData?['profileImageUrl'] = downloadUrl;
         });
       } catch (e) {
-        if (kDebugMode) {
-          print('Error uploading profile picture: $e');
-        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content:
+              Text('เกิดข้อผิดพลาดในการอัพโหลดรูปภาพ กรุณาลองใหม่อีกครั้ง')),
+        );
       }
     }
   }
@@ -478,7 +320,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         });
       }
     } catch (e) {
-      _logger.e('Error updating user theme preference: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -515,7 +356,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       try {
         User? user = FirebaseAuth.instance.currentUser;
         if (user != null) {
-          // ลบข้อมูลผู้ใช้
           await FirebaseFirestore.instance
               .collection('users')
               .doc(user.uid)
@@ -525,42 +365,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
               .doc(user.uid)
               .delete();
 
-          // ลบรูปโปรไฟล์
           final storageRef = FirebaseStorage.instance
               .ref()
               .child('profile_images')
               .child('${user.uid}.jpg');
           try {
-            // ตรวจสอบว่ามีไฟล์
             await storageRef.getDownloadURL();
-            // ถ้าไม่เกิด error แสดงว่าไฟล์มีอยู่ ให้ทำการลบ
             await storageRef.delete();
-            if (kDebugMode) {
-              print('Profile picture deleted successfully');
-            }
           } catch (e) {
             if (e is FirebaseException && e.code == 'object-not-found') {
-              if (kDebugMode) {
-                print('Profile picture does not exist');
-              }
-            } else {
-              if (kDebugMode) {
-                print('Error deleting profile picture: $e');
-              }
+              // ไม่ต้องทำอะไรถ้าไม่พบรูปภาพ
             }
           }
 
           await user.delete();
           await FirebaseAuth.instance.signOut();
 
-          // กลับไปหน้า Login
           Navigator.of(context)
               .pushNamedAndRemoveUntil('/', (Route<dynamic> route) => false);
         }
       } catch (e) {
-        if (kDebugMode) {
-          print('Error deleting account: $e');
-        }
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
               content: Text('เกิดข้อผิดพลาดในการลบบัญชี กรุณาลองใหม่อีกครั้ง')),
@@ -754,7 +578,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       children: [
         Expanded(
           child: _buildButton('แก้ไขเพื่อน', onPressed: () {
-            _showFriendsDialog();
+            // TODO: Implement friend management functionality
           }),
         ),
         const SizedBox(width: 10),

@@ -1,5 +1,4 @@
 import 'dart:io';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:day_night_switcher/day_night_switcher.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -10,6 +9,7 @@ import 'package:provider/provider.dart';
 import 'package:vocabtree/core/theme/text_styles.dart';
 import 'package:vocabtree/core/theme/theme_provider.dart';
 import 'package:vocabtree/features/auth/services/auth_service.dart';
+import 'package:vocabtree/features/profile/screens/edit_friend_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -27,20 +27,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   String _maskEmail(String email) {
     if (email.isEmpty) return '';
-
     final parts = email.split('@');
     if (parts.length != 2) return email;
-
     String username = parts[0];
     String domain = parts[1];
-
     if (username.length > 4) {
       username =
       '${username.substring(0, 2)}****${username.substring(username.length - 2)}';
     } else {
       username = username.replaceRange(1, null, '***');
     }
-
     return '$username@$domain';
   }
 
@@ -52,9 +48,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   void _showReportProblemDialog() {
     String? selectedProblem;
-    final TextEditingController customProblemController = TextEditingController();
+    final TextEditingController customProblemController =
+    TextEditingController();
     final TextEditingController detailsController = TextEditingController();
-
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -185,19 +181,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (result == true) {
       try {
         await FirebaseAuth.instance.signOut();
-
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-              content:
-              Text('คำขอรีเซ็ตรหัสผ่านถูกส่งแล้ว กรุณาตรวจสอบอีเมลของคุณ')),
+            content: Text(
+                'คำขอรีเซ็ตรหัสผ่านถูกส่งแล้ว กรุณาตรวจสอบอีเมลของคุณ'),
+          ),
         );
-
         Navigator.of(context).pushReplacementNamed('/login');
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-              content:
-              Text('เกิดข้อผิดพลาดในการออกจากระบบ กรุณาลองใหม่อีกครั้ง')),
+            content: Text('เกิดข้อผิดพลาดในการออกจากระบบ กรุณาลองใหม่อีกครั้ง'),
+          ),
         );
       }
     }
@@ -233,13 +228,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
             .collection('users')
             .doc(user.uid)
             .get();
-
         DocumentSnapshot<Map<String, dynamic>> profileSnapshot =
         await FirebaseFirestore.instance
             .collection('profiles')
             .doc(user.uid)
             .get();
-
         setState(() {
           userData = userSnapshot.data();
           profileData = profileSnapshot.data();
@@ -278,31 +271,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _uploadProfilePicture() async {
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-
     if (pickedFile != null && FirebaseAuth.instance.currentUser != null) {
       final file = File(pickedFile.path);
       final fileName = '${FirebaseAuth.instance.currentUser!.uid}.jpg';
-
       try {
         final uploadTask = FirebaseStorage.instance
             .ref('profile_images/$fileName')
             .putFile(file);
         final snapshot = await uploadTask;
         final downloadUrl = await snapshot.ref.getDownloadURL();
-
         await FirebaseFirestore.instance
             .collection('users')
             .doc(FirebaseAuth.instance.currentUser!.uid)
             .update({'profileImageUrl': downloadUrl});
-
         setState(() {
           userData?['profileImageUrl'] = downloadUrl;
         });
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-              content:
-              Text('เกิดข้อผิดพลาดในการอัพโหลดรูปภาพ กรุณาลองใหม่อีกครั้ง')),
+              content: Text('เกิดข้อผิดพลาดในการอัพโหลดรูปภาพ กรุณาลองใหม่อีกครั้ง')),
         );
       }
     }
@@ -323,8 +311,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-              content: Text(
-                  'เกิดข้อผิดพลาดในการบันทึกการตั้งค่า กรุณาลองใหม่อีกครั้ง')),
+              content:
+              Text('เกิดข้อผิดพลาดในการบันทึกการตั้งค่า กรุณาลองใหม่อีกครั้ง')),
         );
       }
     }
@@ -351,7 +339,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         );
       },
     );
-
     if (confirmDelete == true) {
       try {
         User? user = FirebaseAuth.instance.currentUser;
@@ -364,7 +351,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               .collection('profiles')
               .doc(user.uid)
               .delete();
-
           final storageRef = FirebaseStorage.instance
               .ref()
               .child('profile_images')
@@ -373,14 +359,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
             await storageRef.getDownloadURL();
             await storageRef.delete();
           } catch (e) {
-            if (e is FirebaseException && e.code == 'object-not-found') {
-              // ไม่ต้องทำอะไรถ้าไม่พบรูปภาพ
-            }
+            if (e is FirebaseException && e.code == 'object-not-found') {}
           }
-
           await user.delete();
           await FirebaseAuth.instance.signOut();
-
           Navigator.of(context)
               .pushNamedAndRemoveUntil('/', (Route<dynamic> route) => false);
         }
@@ -396,23 +378,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
-
     if (isLoading) {
       return const Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(),
-        ),
+        body: Center(child: CircularProgressIndicator()),
       );
     }
-
     if (errorMessage != null) {
       return Scaffold(
-        body: Center(
-          child: Text(errorMessage!),
-        ),
+        body: Center(child: Text(errorMessage!)),
       );
     }
-
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
@@ -426,13 +401,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const SizedBox(height: 20),
               _buildProfileSection(),
               const SizedBox(height: 30),
-              _buildTextFieldContainer('ชื่อผู้ใช้งาน',
-                  profileData?['username'] ?? 'เกิดข้อผิดพลาดในการดึงข้อมูล!'),
+              _buildTextFieldContainer(
+                'ชื่อผู้ใช้งาน',
+                profileData?['username'] ?? 'เกิดข้อผิดพลาดในการดึงข้อมูล!',
+              ),
               const SizedBox(height: 5),
               _buildTextFieldContainer(
-                  'อีเมลของฉัน',
-                  _maskEmail(FirebaseAuth.instance.currentUser?.email ??
-                      'เกิดข้อผิดพลาดในการดึงข้อมูล!')),
+                'อีเมลของฉัน',
+                _maskEmail(
+                  FirebaseAuth.instance.currentUser?.email ??
+                      'เกิดข้อผิดพลาดในการดึงข้อมูล!',
+                ),
+              ),
               const SizedBox(height: 30),
               _buildDisplayModeSwitch(themeProvider),
               const SizedBox(height: 20),
@@ -451,10 +431,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       alignment: Alignment.topRight,
       child: TextButton(
         onPressed: _showReportProblemDialog,
-        child: Text(
-          label,
-          style: AppTextStyles.label.copyWith(color: color),
-        ),
+        child: Text(label, style: AppTextStyles.label.copyWith(color: color)),
       ),
     );
   }
@@ -504,11 +481,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               backgroundColor: Colors.grey[700],
               radius: 20,
               child: IconButton(
-                icon: const Icon(
-                  Icons.camera_alt,
-                  size: 20,
-                  color: Colors.white,
-                ),
+                icon: const Icon(Icons.camera_alt, size: 20, color: Colors.white),
                 onPressed: _uploadProfilePicture,
               ),
             ),
@@ -524,10 +497,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       children: [
         Padding(
           padding: const EdgeInsets.only(left: 23, top: 5),
-          child: Text(
-            label,
-            style: AppTextStyles.label,
-          ),
+          child: Text(label, style: AppTextStyles.label),
         ),
         Container(
           width: double.infinity,
@@ -539,10 +509,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           child: Align(
             alignment: Alignment.centerLeft,
-            child: Text(
-              text,
-              style: AppTextStyles.inputText,
-            ),
+            child: Text(text, style: AppTextStyles.inputText),
           ),
         ),
       ],
@@ -553,10 +520,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
-        const Text(
-          'การแสดงผลหน้าจอ',
-          style: AppTextStyles.label,
-        ),
+        const Text('การแสดงผลหน้าจอ', style: AppTextStyles.label),
         const SizedBox(width: 5),
         SizedBox(
           width: 65,
@@ -577,15 +541,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Expanded(
-          child: _buildButton('แก้ไขเพื่อน', onPressed: () {
-            // TODO: Implement friend management functionality
-          }),
+          child: _buildButton(
+            'แก้ไขเพื่อน',
+            onPressed: () {
+              final currentUser = FirebaseAuth.instance.currentUser;
+              if (currentUser != null) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        EditFriendScreen(currentUserId: currentUser.uid),
+                  ),
+                );
+              }
+            },
+          ),
         ),
         const SizedBox(width: 10),
         Expanded(
-          child: _buildButton('จัดการบัญชี', onPressed: () {
-            _showManageAccountDialog();
-          }),
+          child: _buildButton(
+            'จัดการบัญชี',
+            onPressed: _showManageAccountDialog,
+          ),
         ),
       ],
     );

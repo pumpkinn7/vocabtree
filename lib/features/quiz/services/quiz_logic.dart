@@ -3,7 +3,6 @@ import 'dart:math';
 import '../model/quiz_question_model.dart';
 
 class QuizLogic {
-  /// จัดเรียงและสุ่มคำถาม
   /// - เรียงประเภท MultipleChoice -> DragAndDrop -> Matching
   /// - สุ่มคำถามภายในแต่ละประเภท
   static List<QuizQuestionModel> arrangeAndShuffleQuestions(List<QuizQuestionModel> questions) {

@@ -36,6 +36,7 @@ class _ResultScreenState extends State<ResultScreen> {
     super.initState();
     _saveQuizResult();
   }
+
   Future<String> _getRewardImageName(String topic) async {
     try {
       final doc = await FirebaseFirestore.instance
@@ -95,11 +96,6 @@ class _ResultScreenState extends State<ResultScreen> {
       widget.percentage,
     );
   }
-
-
-
-
-
 
   Future<String?> _getNextTopic() async {
     // ดึงลำดับหัวข้อจาก FirebaseService.cefrTopics
@@ -171,14 +167,8 @@ class _ResultScreenState extends State<ResultScreen> {
               children: [
                 ElevatedButton(
                   onPressed: () {
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => CefrLevelScreen(
-                          cefrLevel: widget.cefrLevel,
-                        ),
-                      ),
-                    );
+                    // ใช้ Navigator.pop(context) เพื่อกลับไปยังหน้าก่อนหน้า
+                    Navigator.pop(context);
                   },
                   style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
                   child: const Text('ย้อนกลับ'),

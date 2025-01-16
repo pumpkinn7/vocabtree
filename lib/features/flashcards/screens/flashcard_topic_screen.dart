@@ -4,7 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:swipe_cards/swipe_cards.dart';
 
 import '../model/flashcard_topic_model.dart';
-import 'flashcard_summary_screen.dart'; // <- เพิ่มการ import หน้า Summary
+import 'flashcard_summary_screen.dart';
 
 class FlashcardScreen extends StatefulWidget {
   final String topic;
@@ -37,18 +37,14 @@ class FlashcardScreenState extends State<FlashcardScreen> {
 
   Future<void> _fetchFlashcards() async {
     String level = _getLevelFromTopic(widget.topic);
-
     DocumentSnapshot levelSnapshot = await FirebaseFirestore.instance
         .collection('cefr_levels')
         .doc(level)
         .get();
-
     Map<String, dynamic> topics =
     (levelSnapshot.data() as Map<String, dynamic>)['topics'];
-
     List<dynamic> vocabularies =
     topics[widget.topic]['vocabularies'] as List<dynamic>;
-
     QuerySnapshot userKnownVocabSnapshot = await FirebaseFirestore.instance
         .collection('users')
         .doc(widget.userId)
@@ -57,21 +53,14 @@ class FlashcardScreenState extends State<FlashcardScreen> {
         .collection('vocabularies')
         .where('is_known', isEqualTo: true)
         .get();
-
-    // เก็บคำศัพท์ที่ผู้ใช้รู้แล้ว
     List<String> knownWords = [];
     for (var doc in userKnownVocabSnapshot.docs) {
       knownWords.add(doc.id);
     }
-
-    // กรองคำศัพท์ที่ผู้ใช้รู้แล้วออก
     List<dynamic> filteredVocabularies = vocabularies
         .where((vocab) => !knownWords.contains(vocab['word']))
         .toList();
-
-    // สุ่มลำดับ
     filteredVocabularies.shuffle();
-
     setState(() {
       _swipeItems = filteredVocabularies.map((vocab) {
         Flashcard flashcard = Flashcard.fromMap(vocab);
@@ -91,10 +80,7 @@ class FlashcardScreenState extends State<FlashcardScreen> {
           },
         );
       }).toList();
-
       _matchEngine = MatchEngine(swipeItems: _swipeItems);
-
-      // ถ้าไม่มีการ์ดเหลือ => ไปหน้าสรุปทันที
       if (_swipeItems.isEmpty) {
         _navigateToSummary();
       }
@@ -108,16 +94,12 @@ class FlashcardScreenState extends State<FlashcardScreen> {
     });
   }
 
-  // เรียกใช้งานได้ใน onStackFinished หรือตอนที่ _swipeItems.isEmpty
   Future<void> _navigateToSummary() async {
-    // นับจำนวนคำต่าง ๆ
     String level = _getLevelFromTopic(widget.topic);
     int knownCount = await _countKnownWords(level);
     int reviewCount = await _countReviewWords(level);
     int unknownCount = await _countUnknownWords(level);
     int totalCount = knownCount + reviewCount + unknownCount;
-
-    // ไปหน้า FlashcardSummaryScreen
     if (!mounted) return;
     Navigator.pushReplacement(
       context,
@@ -135,7 +117,6 @@ class FlashcardScreenState extends State<FlashcardScreen> {
     );
   }
 
-  // นับจำนวนคำที่ is_known = true, for_review = false
   Future<int> _countKnownWords(String level) async {
     QuerySnapshot query = await FirebaseFirestore.instance
         .collection('users')
@@ -149,7 +130,6 @@ class FlashcardScreenState extends State<FlashcardScreen> {
     return query.docs.length;
   }
 
-  // นับจำนวนคำที่ is_known = false, for_review = false
   Future<int> _countUnknownWords(String level) async {
     QuerySnapshot query = await FirebaseFirestore.instance
         .collection('users')
@@ -163,7 +143,6 @@ class FlashcardScreenState extends State<FlashcardScreen> {
     return query.docs.length;
   }
 
-  // นับจำนวนคำที่ for_review = true (superlike)
   Future<int> _countReviewWords(String level) async {
     QuerySnapshot query = await FirebaseFirestore.instance
         .collection('users')
@@ -223,7 +202,6 @@ class FlashcardScreenState extends State<FlashcardScreen> {
       Flashcard flashcard, bool isKnown, bool forReview) async {
     String userId = widget.userId;
     String level = _getLevelFromTopic(widget.topic);
-
     await FirebaseFirestore.instance
         .collection('users')
         .doc(userId)
@@ -250,6 +228,21 @@ class FlashcardScreenState extends State<FlashcardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    String level = _getLevelFromTopic(widget.topic);
+    String bgImagePath;
+    switch (level) {
+      case 'B2':
+        bgImagePath = 'assets/images/summer.png';
+        break;
+      case 'C1':
+        bgImagePath = 'assets/images/autumn.png';
+        break;
+      case 'C2':
+        bgImagePath = 'assets/images/winter.png';
+        break;
+      default:
+        bgImagePath = 'assets/images/spring.png';
+    }
     return Scaffold(
       appBar: AppBar(
         title: Column(
@@ -273,85 +266,124 @@ class FlashcardScreenState extends State<FlashcardScreen> {
           ],
         ),
       ),
-      body: _swipeItems.isEmpty
-          ? const Center(child: CircularProgressIndicator())
-          : Column(
-        children: [
-          Expanded(
-            child: SwipeCards(
-              matchEngine: _matchEngine,
-              itemBuilder: (BuildContext context, int index) {
-                Flashcard flashcard = _swipeItems[index].content;
-                bool isNextCard = index == currentIndex + 1;
-
-                return Center(
-                  child: SizedBox(
-                    width: MediaQuery.of(context).size.width * 0.85,
-                    height: MediaQuery.of(context).size.height * 0.65,
-                    child: FlashcardItem(
-                      flashcard: flashcard,
-                      currentIndex: index + 1,
-                      totalItems: _swipeItems.length,
-                      showMeaning: isShowingMeaning && !isNextCard,
-                    ),
-                  ),
-                );
-              },
-              onStackFinished: () {
-                // เมื่อปัดจนหมด
-                _navigateToSummary();
-              },
-              itemChanged: (SwipeItem item, int index) {
-                setState(() {
-                  isShowingMeaning = false;
-                });
-              },
-              upSwipeAllowed: true,
-            ),
+      body: Container(
+        decoration: BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage(bgImagePath),
+            fit: BoxFit.cover,
           ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              IconButton(
-                icon: const Icon(Icons.close, color: Colors.red),
-                onPressed: () {
-                  _matchEngine.currentItem?.nope();
+        ),
+        child: _swipeItems.isEmpty
+            ? const Center(child: CircularProgressIndicator())
+            : Column(
+          children: [
+            Expanded(
+              child: SwipeCards(
+                matchEngine: _matchEngine,
+                itemBuilder: (BuildContext context, int index) {
+                  Flashcard flashcard = _swipeItems[index].content;
+                  bool isNextCard = index == currentIndex + 1;
+                  return Center(
+                    child: SizedBox(
+                      width: MediaQuery.of(context).size.width * 0.85,
+                      height: MediaQuery.of(context).size.height * 0.65,
+                      child: FlashcardItem(
+                        flashcard: flashcard,
+                        currentIndex: index + 1,
+                        totalItems: _swipeItems.length,
+                        showMeaning: isShowingMeaning && !isNextCard,
+                      ),
+                    ),
+                  );
                 },
-              ),
-              IconButton(
-                icon: const Icon(Icons.volume_up, color: Colors.blue),
-                onPressed: () {
-                  final currentItem = _matchEngine.currentItem;
-                  if (currentItem != null) {
-                    final flashcard = currentItem.content as Flashcard;
-                    _speak(flashcard.word);
-                  }
+                onStackFinished: () {
+                  _navigateToSummary();
                 },
-              ),
-              IconButton(
-                icon: const Icon(Icons.backpack, color: Colors.orange),
-                onPressed: () {
-                  _matchEngine.currentItem?.superLike();
-                },
-              ),
-              IconButton(
-                icon: const Icon(Icons.translate, color: Colors.teal),
-                onPressed: () {
+                itemChanged: (SwipeItem item, int index) {
                   setState(() {
-                    isShowingMeaning = !isShowingMeaning;
+                    isShowingMeaning = false;
                   });
                 },
+                upSwipeAllowed: true,
               ),
-              IconButton(
-                icon: const Icon(Icons.check, color: Colors.green),
-                onPressed: () {
-                  _matchEngine.currentItem?.like();
-                },
+            ),
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.3),
+                borderRadius: BorderRadius.circular(16),
               ),
-            ],
-          ),
-          const SizedBox(height: 16),
-        ],
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  GestureDetector(
+                    onTap: () {
+                      _matchEngine.currentItem?.nope();
+                    },
+                    child: Image.asset(
+                      'assets/images/Flashcard-1.png',
+                      width: 40,
+                      height: 40,
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () {
+                      final currentItem = _matchEngine.currentItem;
+                      if (currentItem != null) {
+                        final flashcard =
+                        currentItem.content as Flashcard;
+                        _speak(flashcard.word);
+                      }
+                    },
+                    child: Image.asset(
+                      'assets/images/Flashcard-2.png',
+                      width: 50,
+                      height: 50,
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () {
+                      _matchEngine.currentItem?.superLike();
+                    },
+                    child: Image.asset(
+                      'assets/images/Flashcard-3.png',
+                      width: 60,
+                      height: 60,
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        isShowingMeaning = !isShowingMeaning;
+                      });
+                    },
+                    child: Image.asset(
+                      'assets/images/Flashcard-4.png',
+                      width: 50,
+                      height: 50,
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () {
+                      _matchEngine.currentItem?.like();
+                    },
+                    child: Image.asset(
+                      'assets/images/Flashcard-5.png',
+                      width: 40,
+                      height: 40,
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -377,9 +409,9 @@ class FlashcardItem extends StatelessWidget {
       child: SizedBox(
         width: MediaQuery.of(context).size.width * 0.85,
         child: Container(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.grey[200],
+            color: Colors.white.withOpacity(0.5),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Stack(

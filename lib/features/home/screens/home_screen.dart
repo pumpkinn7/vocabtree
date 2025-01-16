@@ -3,6 +3,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:card_swiper/card_swiper.dart';
 
+import '../widgets/profile_card.dart';
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -18,7 +20,7 @@ class _HomeScreenState extends State<HomeScreen> {
   DateTime? createdAt;
   String profileImageUrl = '';
 
-  // รายชื่อเพื่อน (ดึงจาก Firestore)
+  // รายชื่อเพื่อนดึงจาก Firestore
   List<Map<String, dynamic>> friendList = [];
 
   bool isLoading = true;
@@ -30,7 +32,6 @@ class _HomeScreenState extends State<HomeScreen> {
     _fetchData();
   }
 
-  /// ฟังก์ชันหลักในการดึงข้อมูลผู้ใช้และเพื่อนจาก Firebase
   Future<void> _fetchData() async {
     if (currentUser == null) {
       setState(() {
@@ -42,8 +43,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
     try {
       final userId = currentUser!.uid;
-
-      // 1) ดึงข้อมูลผู้ใช้จาก users collection
       final userDoc = await FirebaseFirestore.instance
           .collection('users')
           .doc(userId)
@@ -54,7 +53,6 @@ class _HomeScreenState extends State<HomeScreen> {
         profileImageUrl = data['profileImageUrl'] ?? '';
       }
 
-      // 2) ดึงข้อมูลจาก profiles collection เพื่อรับ createdAt
       final profileDoc = await FirebaseFirestore.instance
           .collection('profiles')
           .doc(userId)
@@ -67,16 +65,17 @@ class _HomeScreenState extends State<HomeScreen> {
         }
       }
 
-      // 3) ดึงข้อมูลเพื่อนจาก /friends/{userId}
+      // ดึงเพื่อนจาก /friends/{userId}
       final friendsDoc = await FirebaseFirestore.instance
           .collection('friends')
           .doc(userId)
           .get();
 
-      // friendIds คือ array ของ userId เพื่อนแต่ละคน
-      final friendIds = (friendsDoc.data()?['friends'] as List<dynamic>? ?? []);
 
-      // วนลูปดึงข้อมูลแต่ละเพื่อน
+      final friendIds =
+      (friendsDoc.data()?['friends'] as List<dynamic>? ?? []);
+
+      // วนลูปดึงข้อมูลเพื่อนทั้งหมด อันนี้อย่าพึ่งลบ
       List<Map<String, dynamic>> tempFriendList = [];
       for (var fid in friendIds) {
         final friendUserDoc = await FirebaseFirestore.instance
@@ -86,7 +85,7 @@ class _HomeScreenState extends State<HomeScreen> {
         if (!friendUserDoc.exists) continue;
         final fData = friendUserDoc.data() ?? {};
 
-        // ดึงข้อมูลจาก profiles collection เพื่อรับ createdAt ของเพื่อน
+        // ดึงข้อมูลจาก profiles collection รับ createdAt เพื่อน
         final friendProfileDoc = await FirebaseFirestore.instance
             .collection('profiles')
             .doc(fid)
@@ -103,7 +102,7 @@ class _HomeScreenState extends State<HomeScreen> {
         tempFriendList.add({
           'userId': fid,
           'username': fData['username'] ?? 'No Name',
-          'createdAt': friendCreatedAt, // เป็น DateTime? แล้ว
+          'createdAt': friendCreatedAt,
           'profileImageUrl': fData['profileImageUrl'] ?? '',
         });
       }
@@ -120,7 +119,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  /// สร้างหน้า UI โดยใช้ CardSwiper
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
@@ -136,14 +134,14 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
 
-    // สร้างรายการ Page (profile) ที่ต้องการแสดง
+    // รวมข้อมูลผู้ใช้ไว้ List กับเพื่อน
     final List<Map<String, dynamic>> pagesData = [
       {
         'username': username,
         'createdAt': createdAt,
         'profileImageUrl': profileImageUrl,
       },
-      ...friendList, // เอาเพื่อนมาต่อท้าย
+      ...friendList,
     ];
 
     return Scaffold(
@@ -153,73 +151,23 @@ class _HomeScreenState extends State<HomeScreen> {
       body: Column(
         children: [
           const SizedBox(height: 16),
-          // Swiper ส่วนหลัก
           Expanded(
             child: Swiper(
               itemCount: pagesData.length,
               itemBuilder: (BuildContext context, int index) {
                 final data = pagesData[index];
-                return _buildProfileCard(
-                  data['username'] ?? 'No Name',
-                  data['createdAt'] as DateTime?,
-                  data['profileImageUrl'] ?? '',
+                return ProfileCard(
+                  name: data['username'] ?? 'No Name',
+                  joinedAt: data['createdAt'] as DateTime?,
+                  imageUrl: data['profileImageUrl'] ?? '',
                 );
               },
               viewportFraction: 0.8,
               scale: 0.9,
-              loop: true, // เลื่อนได้แบบวนลูป
-              // ลบ SwiperPagination ออก
-              // pagination: const SwiperPagination(
-              //   builder: DotSwiperPaginationBuilder(
-              //     activeColor: Colors.blueGrey,
-              //     color: Colors.grey,
-              //     size: 8,
-              //     activeSize: 8,
-              //   ),
-              // ),
+              loop: true, // เลื่อนวนลูป
             ),
           ),
-
-          // ลบ Row สำหรับ dot indicators ออกแล้ว เพราะเราไม่ต้องการให้แสดง
         ],
-      ),
-    );
-  }
-
-  /// สร้าง Card สำหรับแสดงข้อมูลโปรไฟล์แต่ละคน
-  Widget _buildProfileCard(String name, DateTime? joinedAt, String imageUrl) {
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 20, horizontal: 10),
-      elevation: 3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // รูปโปรไฟล์
-            CircleAvatar(
-              radius: 50,
-              backgroundColor: Colors.grey[300],
-              backgroundImage: imageUrl.isNotEmpty ? NetworkImage(imageUrl) : null,
-              child: imageUrl.isEmpty
-                  ? const Icon(Icons.person, size: 40)
-                  : null,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              name,
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              joinedAt != null
-                  ? 'เข้าร่วมเมื่อ: ${joinedAt.day}/${joinedAt.month}/${joinedAt.year}'
-                  : 'ไม่ทราบวันที่เข้าร่วม',
-              style: const TextStyle(fontSize: 16, color: Colors.black54),
-            ),
-          ],
-        ),
       ),
     );
   }

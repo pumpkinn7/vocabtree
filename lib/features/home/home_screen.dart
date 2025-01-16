@@ -1,11 +1,7 @@
-// lib/pages/home/home_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-
-import '../quiz/model/user_progress_model.dart';
-import '../quiz/services/firebase_service.dart';
+import 'package:card_swiper/card_swiper.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -22,22 +18,11 @@ class _HomeScreenState extends State<HomeScreen> {
   DateTime? createdAt;
   String profileImageUrl = '';
 
-  // ความคืบหน้าของผู้ใช้ (เช่น ปลดล็อกกี่หัวข้อในแต่ละ CEFR)
-  UserProgressModel? userProgress;
-
   // รายชื่อเพื่อน (ดึงจาก Firestore)
   List<Map<String, dynamic>> friendList = [];
 
   bool isLoading = true;
   String? errorMessage;
-
-  // สำหรับจับคู่ฤดูกาล <-> CEFR Level
-  final Map<String, String> seasonCefrMap = {
-    'Spring': 'B1',
-    'Summer': 'B2',
-    'Autumn': 'C1',
-    'Winter': 'C2',
-  };
 
   @override
   void initState() {
@@ -82,26 +67,7 @@ class _HomeScreenState extends State<HomeScreen> {
         }
       }
 
-      // 3) ดึงความคืบหน้าผู้ใช้ (unlockedTopics)
-      final progressDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(userId)
-          .collection('progress')
-          .doc('unlockedTopics')
-          .get();
-
-      if (progressDoc.exists) {
-        userProgress = UserProgressModel.fromMap(progressDoc.data() ?? {});
-      } else {
-        // ถ้าไม่มีเอกสารนี้ อาจกำหนดค่า default
-        userProgress = UserProgressModel(
-          highestUnlockedLevel: 'B1',
-          passedTopicsCount: {},
-          topicUnlockStatus: {},
-        );
-      }
-
-      // 4) ดึงข้อมูลเพื่อนจาก /friends/{userId}
+      // 3) ดึงข้อมูลเพื่อนจาก /friends/{userId}
       final friendsDoc = await FirebaseFirestore.instance
           .collection('friends')
           .doc(userId)
@@ -134,31 +100,11 @@ class _HomeScreenState extends State<HomeScreen> {
           }
         }
 
-        // ดึงความคืบหน้าของเพื่อนแต่ละคน
-        final friendProgressDoc = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(fid)
-            .collection('progress')
-            .doc('unlockedTopics')
-            .get();
-
-        UserProgressModel? fProgress;
-        if (friendProgressDoc.exists) {
-          fProgress = UserProgressModel.fromMap(friendProgressDoc.data() ?? {});
-        } else {
-          fProgress = UserProgressModel(
-            highestUnlockedLevel: 'B1',
-            passedTopicsCount: {},
-            topicUnlockStatus: {},
-          );
-        }
-
         tempFriendList.add({
           'userId': fid,
           'username': fData['username'] ?? 'No Name',
           'createdAt': friendCreatedAt, // เป็น DateTime? แล้ว
           'profileImageUrl': fData['profileImageUrl'] ?? '',
-          'progress': fProgress,
         });
       }
 
@@ -174,9 +120,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  /// สร้าง PageView โดย
-  /// - หน้าแรก (index == 0) = User Page
-  /// - หน้าถัดไป (index >= 1) = Friend Page ของแต่ละคน
+  /// สร้างหน้า UI โดยใช้ CardSwiper
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
@@ -192,142 +136,91 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
 
-    // จำนวนหน้าทั้งหมด = 1 (ผู้ใช้) + friendList.length
-    final pageCount = friendList.length + 1;
+    // สร้างรายการ Page (profile) ที่ต้องการแสดง
+    final List<Map<String, dynamic>> pagesData = [
+      {
+        'username': username,
+        'createdAt': createdAt,
+        'profileImageUrl': profileImageUrl,
+      },
+      ...friendList, // เอาเพื่อนมาต่อท้าย
+    ];
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Home Screen'),
       ),
-      body: PageView.builder(
-        itemCount: pageCount,
-        itemBuilder: (context, index) {
-          if (index == 0) {
-            // หน้าแรกเป็น User Page
-            return _buildUserPage();
-          } else {
-            // หน้าถัดไปเป็น Friend Page
-            final friend = friendList[index - 1];
-            return _buildFriendPage(friend);
-          }
-        },
-      ),
-    );
-  }
-
-  /// ส่วน UI ของ User Page
-  Widget _buildUserPage() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
+      body: Column(
         children: [
-          // รูปโปรไฟล์
-          CircleAvatar(
-            radius: 50,
-            backgroundColor: Colors.grey[300],
-            backgroundImage:
-            profileImageUrl.isNotEmpty ? NetworkImage(profileImageUrl) : null,
-            child:
-            profileImageUrl.isEmpty ? const Icon(Icons.person, size: 40) : null,
-          ),
           const SizedBox(height: 16),
-          Text(
-            username,
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          // Swiper ส่วนหลัก
+          Expanded(
+            child: Swiper(
+              itemCount: pagesData.length,
+              itemBuilder: (BuildContext context, int index) {
+                final data = pagesData[index];
+                return _buildProfileCard(
+                  data['username'] ?? 'No Name',
+                  data['createdAt'] as DateTime?,
+                  data['profileImageUrl'] ?? '',
+                );
+              },
+              viewportFraction: 0.8,
+              scale: 0.9,
+              loop: true, // เลื่อนได้แบบวนลูป
+              // ลบ SwiperPagination ออก
+              // pagination: const SwiperPagination(
+              //   builder: DotSwiperPaginationBuilder(
+              //     activeColor: Colors.blueGrey,
+              //     color: Colors.grey,
+              //     size: 8,
+              //     activeSize: 8,
+              //   ),
+              // ),
+            ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            createdAt != null
-                ? 'เข้าร่วมเมื่อ: ${createdAt!.day}/${createdAt!.month}/${createdAt!.year}'
-                : 'ไม่ทราบวันที่เข้าร่วม',
-          ),
-          const SizedBox(height: 16),
-          // ข้อความความสำเร็จ
-          Text(
-            'ครอบครอง: ${_sumPassedTopics(userProgress)} ต้นไม้',
-            style: const TextStyle(fontSize: 16),
-          ),
-          const SizedBox(height: 16),
-          // แสดงจำนวนหัวข้อที่ปลดล็อกตามฤดูกาล
-          _buildSeasonCefrWidget(userProgress),
+
+          // ลบ Row สำหรับ dot indicators ออกแล้ว เพราะเราไม่ต้องการให้แสดง
         ],
       ),
     );
   }
 
-  /// ส่วน UI ของ Friend Page
-  Widget _buildFriendPage(Map<String, dynamic> friend) {
-    final friendUsername = friend['username'] as String? ?? 'No Name';
-    final friendProfile = friend['profileImageUrl'] as String? ?? '';
-    final friendCreatedAt = friend['createdAt'] as DateTime?;
-    final friendProgress = friend['progress'] as UserProgressModel?;
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        children: [
-          // รูปโปรไฟล์เพื่อน
-          CircleAvatar(
-            radius: 50,
-            backgroundColor: Colors.grey[300],
-            backgroundImage:
-            friendProfile.isNotEmpty ? NetworkImage(friendProfile) : null,
-            child: friendProfile.isEmpty
-                ? const Icon(Icons.person, size: 40)
-                : null,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            friendUsername,
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            friendCreatedAt != null
-                ? 'เข้าร่วมเมื่อ: ${friendCreatedAt.day}/${friendCreatedAt.month}/${friendCreatedAt.year}'
-                : 'ไม่ทราบวันที่เข้าร่วม',
-          ),
-          const SizedBox(height: 16),
-          // ข้อความความสำเร็จ
-          Text(
-            'ครอบครอง: ${_sumPassedTopics(friendProgress)} ต้นไม้',
-            style: const TextStyle(fontSize: 16),
-          ),
-          const SizedBox(height: 16),
-          // หัวข้อ CEFR ตามฤดูกาล
-          _buildSeasonCefrWidget(friendProgress),
-        ],
+  /// สร้าง Card สำหรับแสดงข้อมูลโปรไฟล์แต่ละคน
+  Widget _buildProfileCard(String name, DateTime? joinedAt, String imageUrl) {
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 20, horizontal: 10),
+      elevation: 3,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // รูปโปรไฟล์
+            CircleAvatar(
+              radius: 50,
+              backgroundColor: Colors.grey[300],
+              backgroundImage: imageUrl.isNotEmpty ? NetworkImage(imageUrl) : null,
+              child: imageUrl.isEmpty
+                  ? const Icon(Icons.person, size: 40)
+                  : null,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              name,
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              joinedAt != null
+                  ? 'เข้าร่วมเมื่อ: ${joinedAt.day}/${joinedAt.month}/${joinedAt.year}'
+                  : 'ไม่ทราบวันที่เข้าร่วม',
+              style: const TextStyle(fontSize: 16, color: Colors.black54),
+            ),
+          ],
+        ),
       ),
     );
-  }
-
-  /// แสดงข้อมูลหัวข้อ CEFR ตามฤดูกาล (Spring, Summer, Autumn, Winter)
-  Widget _buildSeasonCefrWidget(UserProgressModel? progress) {
-    if (progress == null) {
-      return const Text('ไม่พบข้อมูลความคืบหน้า');
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: seasonCefrMap.entries.map((entry) {
-        final season = entry.key;      // Spring, Summer, Autumn, Winter
-        final cefrLevel = entry.value; // B1, B2, C1, C2
-
-        // ดึงจำนวนที่ผ่านแล้ว
-        final unlockedCount = progress.passedTopicsCount[cefrLevel] ?? 0;
-        // ดึงหัวข้อทั้งหมดในระดับนี้ จาก FirebaseService
-        final totalTopics = FirebaseService.cefrTopics[cefrLevel]?.length ?? 0;
-
-        return Text('$season: $unlockedCount of $totalTopics');
-      }).toList(),
-    );
-  }
-
-  /// รวมจำนวน topic ที่ผ่านทั้งหมดใน passedTopicsCount
-  int _sumPassedTopics(UserProgressModel? progress) {
-    if (progress == null) return 0;
-    // สมมุติว่าใน passedTopicsCount เราเก็บเป็น {'B1': 3, 'B2': 1, ...}
-    // ก็รวมทุกค่า
-    return progress.passedTopicsCount.values.fold(0, (a, b) => a + b);
   }
 }

@@ -172,7 +172,12 @@ class _EditFriendScreenState extends State<EditFriendScreen>
             itemCount: searchResults.length,
             itemBuilder: (context, index) {
               final user = searchResults[index];
+              final userId = user['userId'];
               final profileImage = user['profileImage'] ?? '';
+
+              // ตรวจสอบ userId ไม่ใช่ currentUserId
+              final isCurrentUser = userId == widget.currentUserId;
+
               return ListTile(
                 leading: CircleAvatar(
                   backgroundImage: profileImage.isNotEmpty
@@ -182,16 +187,18 @@ class _EditFriendScreenState extends State<EditFriendScreen>
                 ),
                 title: Text(user['name'] ?? ''),
                 subtitle: Text(user['email'] ?? ''),
-                trailing: ElevatedButton(
+                trailing: isCurrentUser
+                    ? const Text(
+                  'คุณ',
+                  style: TextStyle(color: Colors.grey),
+                )
+                    : ElevatedButton(
                   onPressed: () async {
-                    final userId = user['userId'];
-                    if (userId != null) {
-                      await sendFriendRequest(userId);
-                      if (!mounted) return;
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('ส่งคำขอแล้ว')),
-                      );
-                    }
+                    await sendFriendRequest(userId);
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('ส่งคำขอแล้ว')),
+                    );
                   },
                   child: const Text('ส่งคำขอ'),
                 ),
@@ -202,6 +209,7 @@ class _EditFriendScreenState extends State<EditFriendScreen>
       ],
     );
   }
+
 
   Widget buildReceivedRequestsTab() {
     return StreamBuilder<QuerySnapshot>(

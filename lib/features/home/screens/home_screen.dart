@@ -15,12 +15,12 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final User? currentUser = FirebaseAuth.instance.currentUser;
 
-  // ข้อมูลผู้ใช้
   String username = '';
   DateTime? createdAt;
   String profileImageUrl = '';
+  Map<String, dynamic> userUnlockedTopics = {};
+  int userRewardCount = 0;
 
-  // รายชื่อเพื่อนดึงจาก Firestore
   List<Map<String, dynamic>> friendList = [];
 
   bool isLoading = true;
@@ -36,13 +36,15 @@ class _HomeScreenState extends State<HomeScreen> {
     if (currentUser == null) {
       setState(() {
         isLoading = false;
-        errorMessage = 'ผู้ใช้งานยังไม่ได้เข้าสู่ระบบ';
+        errorMessage = 'ยังมั่ยยได้เข้าสู่ระบบบ';
       });
       return;
     }
 
     try {
       final userId = currentUser!.uid;
+
+      // ดึงข้อมูล user
       final userDoc = await FirebaseFirestore.instance
           .collection('users')
           .doc(userId)
@@ -53,6 +55,7 @@ class _HomeScreenState extends State<HomeScreen> {
         profileImageUrl = data['profileImageUrl'] ?? '';
       }
 
+      // ดึง profiles รับค่า createdAt
       final profileDoc = await FirebaseFirestore.instance
           .collection('profiles')
           .doc(userId)
@@ -65,19 +68,34 @@ class _HomeScreenState extends State<HomeScreen> {
         }
       }
 
-      // ดึงเพื่อนจาก /friends/{userId}
+      // ดึง progress/unlockedTopics ของ user
+      final progressDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('progress')
+          .doc('unlockedTopics')
+          .get();
+      userUnlockedTopics = progressDoc.data() ?? {};
+
+      // ดึง reward ของ user
+      final rewardsSnap = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('rewards')
+          .get();
+      userRewardCount = rewardsSnap.size;
+
+      // ดึงเพื่อน /friends/{userId}
       final friendsDoc = await FirebaseFirestore.instance
           .collection('friends')
           .doc(userId)
           .get();
-
-
       final friendIds =
       (friendsDoc.data()?['friends'] as List<dynamic>? ?? []);
 
-      // วนลูปดึงข้อมูลเพื่อนทั้งหมด อันนี้อย่าพึ่งลบ
       List<Map<String, dynamic>> tempFriendList = [];
       for (var fid in friendIds) {
+        // ข้อมูลพื้นฐานของเพื่อน
         final friendUserDoc = await FirebaseFirestore.instance
             .collection('users')
             .doc(fid)
@@ -85,7 +103,7 @@ class _HomeScreenState extends State<HomeScreen> {
         if (!friendUserDoc.exists) continue;
         final fData = friendUserDoc.data() ?? {};
 
-        // ดึงข้อมูลจาก profiles collection รับ createdAt เพื่อน
+        // createdAt เพื่อน
         final friendProfileDoc = await FirebaseFirestore.instance
             .collection('profiles')
             .doc(fid)
@@ -99,11 +117,30 @@ class _HomeScreenState extends State<HomeScreen> {
           }
         }
 
+        // unlockedTopics เพื่อน
+        final friendProgressDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(fid)
+            .collection('progress')
+            .doc('unlockedTopics')
+            .get();
+        final friendUnlockedTopics = friendProgressDoc.data() ?? {};
+
+        // reward เพื่อน
+        final friendRewardsSnap = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(fid)
+            .collection('rewards')
+            .get();
+        final friendRewardCount = friendRewardsSnap.size;
+
         tempFriendList.add({
           'userId': fid,
           'username': fData['username'] ?? 'No Name',
           'createdAt': friendCreatedAt,
           'profileImageUrl': fData['profileImageUrl'] ?? '',
+          'unlockedTopics': friendUnlockedTopics,
+          'rewardCount': friendRewardCount,
         });
       }
 
@@ -134,14 +171,25 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
 
-    // รวมข้อมูลผู้ใช้ไว้ List กับเพื่อน
     final List<Map<String, dynamic>> pagesData = [
       {
         'username': username,
         'createdAt': createdAt,
         'profileImageUrl': profileImageUrl,
+        'unlockedTopics': userUnlockedTopics,
+        'isUser': true,
+        'rewardCount': userRewardCount, // user
       },
-      ...friendList,
+      ...friendList.map((f) {
+        return {
+          'username': f['username'],
+          'createdAt': f['createdAt'],
+          'profileImageUrl': f['profileImageUrl'],
+          'unlockedTopics': f['unlockedTopics'] ?? {},
+          'isUser': false,
+          'rewardCount': f['rewardCount'] ?? 0,
+        };
+      }),
     ];
 
     return Scaffold(
@@ -160,11 +208,15 @@ class _HomeScreenState extends State<HomeScreen> {
                   name: data['username'] ?? 'No Name',
                   joinedAt: data['createdAt'] as DateTime?,
                   imageUrl: data['profileImageUrl'] ?? '',
+                  unlockedTopics: data['unlockedTopics'] as Map<String, dynamic>? ?? {},
+                  isUser: data['isUser'] as bool? ?? false,
+                  // ส่ง rewardCount ให้ ProfileCard
+                  rewardCount: data['rewardCount'] as int? ?? 0,
                 );
               },
               viewportFraction: 0.8,
               scale: 0.9,
-              loop: true, // เลื่อนวนลูป
+              loop: true,
             ),
           ),
         ],

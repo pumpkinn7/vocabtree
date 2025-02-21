@@ -3,7 +3,7 @@ import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
-import '../model/quiz_question_model.dart';
+import '../models/quiz_question_model.dart';
 
 class FirebaseService {
   // เก็บลำดับหัวข้อของแต่ละระดับ CEFR

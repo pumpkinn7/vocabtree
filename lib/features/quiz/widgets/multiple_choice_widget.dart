@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../model/quiz_question_model.dart';
+import '../models/quiz_question_model.dart';
 import 'quiz_detail_dialog.dart';
 
 class MultipleChoiceWidget extends StatelessWidget {
@@ -20,7 +20,8 @@ class MultipleChoiceWidget extends StatelessWidget {
   });
 
   String _formatCEFR(String? cefr) {
-    return (cefr == null || cefr.contains('›')) ? 'N/A' : cefr;
+    // ถ้า cefr เป็น null หรือมีเครื่องหมาย › หรือเป็นค่าว่าง ให้แสดง N/A
+    return (cefr == null || cefr.isEmpty || cefr.contains('›')) ? 'N/A' : cefr;
   }
 
   @override

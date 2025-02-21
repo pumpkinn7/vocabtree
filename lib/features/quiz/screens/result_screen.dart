@@ -1,10 +1,14 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:vocabtree/features/quiz/services/firebase_service.dart';
+import 'package:vocabtree/features/quiz/widgets/top_wrong_words.dart';
 
-import 'cefr_level_screen.dart';
-import '../services/firebase_service.dart';
 import '../../quiz/screens/quiz_topic_screen.dart';
+import '../models/quiz_question_model.dart';
+import '../models/quiz_result.dart';
+import '../services/result_service.dart';
+import '../widgets/cefr_chart.dart';
+import '../widgets/score_progress.dart';
 
 class ResultScreen extends StatefulWidget {
   final String cefrLevel;
@@ -12,7 +16,8 @@ class ResultScreen extends StatefulWidget {
   final int score;
   final int totalQuestions;
   final double percentage;
-  final int? timeTaken;
+  final Map<String, int> cefrDistribution;
+  final List<QuizQuestionModel> wrongAnswers;
 
   const ResultScreen({
     super.key,
@@ -21,7 +26,8 @@ class ResultScreen extends StatefulWidget {
     required this.score,
     required this.totalQuestions,
     required this.percentage,
-    this.timeTaken,
+    required this.cefrDistribution,
+    required this.wrongAnswers,
   });
 
   @override
@@ -30,178 +36,134 @@ class ResultScreen extends StatefulWidget {
 
 class _ResultScreenState extends State<ResultScreen> {
   final User? user = FirebaseAuth.instance.currentUser;
+  List<Map<String, dynamic>> recentQuizzes = [];
+  List<Map<String, dynamic>> topWrongWords = [];
+  double? previousAverage;
 
   @override
   void initState() {
     super.initState();
-    _saveQuizResult();
+    _initialize();
   }
 
-  Future<String> _getRewardImageName(String topic) async {
-    try {
-      final doc = await FirebaseFirestore.instance
-          .collection('topic_rewards')
-          .doc(topic)
-          .get();
-
-      if (doc.exists) {
-        final data = doc.data();
-        return data?['imageName'] as String? ?? "";
-      }
-    } catch (e) {
-      debugPrint('Error fetching reward image: $e');
-    }
-    return "";
-  }
-
-  Future<void> _saveQuizResult() async {
+  Future<void> _initialize() async {
     if (user == null) return;
-    final userId = user!.uid;
 
-    final quizData = {
-      'cefrLevel': widget.cefrLevel,
-      'topic': widget.topic,
-      'score': widget.score,
-      'totalQuestions': widget.totalQuestions,
-      'percentage': widget.percentage,
-      'timeTaken': widget.timeTaken ?? 0,
-      'doneAt': FieldValue.serverTimestamp(),
-    };
-
-    // บันทึกผลลัพธ์การทำ Quiz ลง Firestore
-    await FirebaseFirestore.instance
-        .collection('users')
-        .doc(userId)
-        .collection('quizHistory')
-        .add(quizData);
-
-    // ดึงชื่อรูปภาพรางวัลของหัวข้อ (ถ้ามี)
-    final rewardImageName = await _getRewardImageName(widget.topic);
-
-    // บันทึกรางวัลลงใน Firestore ถ้ามี rewardImageName
-    if (rewardImageName.isNotEmpty) {
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(userId)
-          .collection('rewards')
-          .doc(widget.topic)
-          .set({'rewardImageName': rewardImageName});
-    }
-
-    // อัปเดตความคืบหน้าผู้ใช้ใน Firestore
-    await FirebaseService.manageProgress(
-      userId,
-      widget.cefrLevel,
-      widget.topic,
-      widget.percentage,
+    // บันทึกผลลัพธ์
+    await ResultService.saveQuizResult(
+      QuizResult(
+        userId: user!.uid,
+        topic: widget.topic,
+        score: widget.score,
+        totalQuestions: widget.totalQuestions,
+        percentage: widget.percentage,
+        wrongAnswers: widget.wrongAnswers.map((q) => q.mainWord).toList(),
+      ),
     );
+
+    // ดึงข้อมูลคำที่ตอบผิดบ่อย
+    final wrongWords = await ResultService.getTopWrongWords(user!.uid);
+
+    if (mounted) {
+      setState(() {
+        topWrongWords = wrongWords;
+      });
+    }
   }
 
-  Future<String?> _getNextTopic() async {
-    // ดึงลำดับหัวข้อจาก FirebaseService.cefrTopics
-    final topics = FirebaseService.cefrTopics[widget.cefrLevel] ?? [];
-    final currentIndex = topics.indexOf(widget.topic);
-    if (currentIndex != -1 && currentIndex + 1 < topics.length) {
-      return topics[currentIndex + 1];
-    }
-    return null; // ไม่มีหัวข้อถัดไป
+  void _showAllWrongWords() {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog.fullscreen(
+        child: Scaffold(
+          appBar: AppBar(
+            title: const Text('คำศัพท์ที่ตอบผิดทั้งหมด'),
+            leading: IconButton(
+              icon: const Icon(Icons.close),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ),
+          body: FutureBuilder<List<Map<String, dynamic>>>(
+            future: ResultService.getTopWrongWords(
+              user?.uid ?? '',
+              limit: 100, // หรือจำนวนที่ต้องการ
+            ),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+
+              final words = snapshot.data ?? [];
+              return ListView.builder(
+                itemCount: words.length,
+                itemBuilder: (context, index) {
+                  final word = words[index];
+                  return ListTile(
+                    title: Text(word['word']),
+                    trailing: Text('ตอบผิด ${word['wrongCount']} ครั้ง'),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final unlocked = widget.percentage >= 60.0;
-
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        title: const Text('ผลการทำ Quiz'),
+        title: const Text('ผลการทำแบบทดสอบ'),
       ),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Level: ${widget.cefrLevel}',
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            Text(
-              'Topic: ${_formatTopicName(widget.topic)}',
+              'หมวดหมู่: ${_formatTopicName(widget.topic)}',
               style: const TextStyle(fontSize: 18),
             ),
             const SizedBox(height: 16),
-            Text(
-              'คะแนน: ${widget.score}/${widget.totalQuestions}',
-              style: const TextStyle(fontSize: 18),
+
+            // 1. สัดส่วนระดับ CEFR
+            const Text(
+              'สัดส่วนระดับ CEFR',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-            Text(
-              'เปอร์เซ็นต์: ${widget.percentage.toStringAsFixed(2)}%',
-              style: const TextStyle(fontSize: 18),
-            ),
-            if (widget.timeTaken != null)
-              Text(
-                'เวลาที่ใช้: ${_formatTime(widget.timeTaken!)}',
-                style: const TextStyle(fontSize: 16),
+            CefrChart(cefrDistribution: widget.cefrDistribution),
+            const SizedBox(height: 24),
+
+            // 2. คำศัพท์ที่ตอบผิดบ่อย
+            if (topWrongWords.isNotEmpty) ...[
+              TopWrongWords(
+                wrongWords: topWrongWords,
+                onViewAllPressed: _showAllWrongWords,
               ),
-            const SizedBox(height: 16),
-            if (unlocked)
-              Text(
-                'ยินดีด้วย! คุณทำได้ >= 60% หัวข้อถัดไปปลดล็อคแล้ว!',
-                style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.green[800],
-                    fontWeight: FontWeight.bold),
-                textAlign: TextAlign.center,
-              )
-            else
-              Text(
-                'คุณได้ไม่ถึง 60% หัวข้อต่อไปยังไม่ปลดล็อค\nลองใหม่อีกครั้ง!',
-                style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.red[800],
-                    fontWeight: FontWeight.bold),
-                textAlign: TextAlign.center,
-              ),
-            const Spacer(),
+              const SizedBox(height: 24),
+            ],
+
+            // 3. Progress Bar สัดส่วนตอบถูก/ผิด
+            ScoreProgress(percentage: widget.percentage),
+            const SizedBox(height: 24),
+
+            // 4. ปุ่มดำเนินการต่อ
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 ElevatedButton(
-                  onPressed: () {
-                    // ใช้ Navigator.pop(context) เพื่อกลับไปยังหน้าก่อนหน้า
-                    Navigator.pop(context);
-                  },
+                  onPressed: () => Navigator.pop(context),
                   style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
                   child: const Text('ย้อนกลับ'),
                 ),
-
                 ElevatedButton(
-                  onPressed: unlocked
-                      ? () async {
-                    String? nextTopic = await _getNextTopic();
-                    if (nextTopic != null) {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => QuizTopicScreen(
-                            topic: nextTopic,
-                            cefrLevel: widget.cefrLevel,
-                          ),
-                        ),
-                      );
-                    } else {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => CefrLevelScreen(
-                            cefrLevel: widget.cefrLevel,
-                          ),
-                        ),
-                      );
-                    }
-                  }
-                      : null,
+                  onPressed: widget.percentage >= 60.0 ? _goToNextTopic : null,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: unlocked ? Colors.green : Colors.grey,
+                    backgroundColor:
+                        widget.percentage >= 60.0 ? Colors.green : Colors.grey,
                   ),
                   child: const Text('หัวข้อถัดไป'),
                 ),
@@ -213,16 +175,34 @@ class _ResultScreenState extends State<ResultScreen> {
     );
   }
 
+  Future<void> _goToNextTopic() async {
+    final nextTopic = await _getNextTopic();
+    if (nextTopic != null && mounted) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => QuizTopicScreen(
+            topic: nextTopic,
+            cefrLevel: widget.cefrLevel,
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<String?> _getNextTopic() async {
+    final topics = FirebaseService.cefrTopics[widget.cefrLevel] ?? [];
+    final currentIndex = topics.indexOf(widget.topic);
+    if (currentIndex != -1 && currentIndex + 1 < topics.length) {
+      return topics[currentIndex + 1];
+    }
+    return null;
+  }
+
   String _formatTopicName(String topicKey) {
     return topicKey
         .split('_')
         .map((w) => w[0].toUpperCase() + w.substring(1))
         .join(' ');
-  }
-
-  String _formatTime(int seconds) {
-    final m = (seconds ~/ 60).toString().padLeft(2, '0');
-    final s = (seconds % 60).toString().padLeft(2, '0');
-    return '$m:$s นาที';
   }
 }

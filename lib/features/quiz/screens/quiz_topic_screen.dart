@@ -5,7 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:vocabtree/features/quiz/widgets/slide_up_panel.dart';
 
-import '../model/quiz_question_model.dart';
+import '../models/quiz_question_model.dart';
 import '../services/firebase_service.dart';
 import '../services/quiz_logic.dart';
 import '../widgets/multiple_choice_widget.dart';
@@ -31,30 +31,18 @@ class _QuizTopicScreenState extends State<QuizTopicScreen> {
   int _currentQuestionIndex = 0;
   int _score = 0;
 
-  bool useTimer = true;
-  int totalTimeSeconds = 900; // 15 นาที
-  Timer? _timer;
-  int _timeLeft = 0;
-
   bool _isQuizFinished = false;
   bool _isAnswerChecked = false;
   bool _isAnswerCorrect = false;
 
-  /// เช็คว่าผู้ใช้ได้เลือกคำตอบหรือยัง
-  bool _hasSelectedAnswer() {
-    return _selectedAnswers[_currentQuestionIndex] != null;
-  }
+  final List<QuizQuestionModel> wrongAnswers = [];
 
-  final Map<int, dynamic> _selectedAnswers =
-      {}; // key: question index, value: selected answer
+  final Map<int, dynamic> _selectedAnswers = {};
 
   @override
   void initState() {
     super.initState();
     _questionsFuture = _loadQuestions();
-    if (useTimer) {
-      _timeLeft = totalTimeSeconds;
-    }
   }
 
   Future<List<QuizQuestionModel>> _loadQuestions() async {
@@ -68,34 +56,21 @@ class _QuizTopicScreenState extends State<QuizTopicScreen> {
     return QuizLogic.arrangeAndShuffleQuestions(allQuestions);
   }
 
-  void _startTimer() {
-    if (!useTimer) return;
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (_timeLeft <= 0) {
-        timer.cancel();
-        _submitQuiz();
-      } else {
-        setState(() {
-          _timeLeft--;
-        });
-      }
-    });
-  }
-
   void _checkAnswer() {
     if (_isAnswerChecked) return;
 
     final currentQuestion = _questions[_currentQuestionIndex];
     final selectedAnswer = _selectedAnswers[_currentQuestionIndex];
 
-    bool correct = selectedAnswer ==
-        currentQuestion.mainWord; // Changed from correctAnswer
+    bool correct = selectedAnswer == currentQuestion.mainWord;
 
     setState(() {
       _isAnswerChecked = true;
       _isAnswerCorrect = correct;
       if (correct) {
         _score++;
+      } else {
+        wrongAnswers.add(currentQuestion); // เพิ่มคำที่ตอบผิดเข้าไปในลิสต์
       }
     });
   }
@@ -124,7 +99,6 @@ class _QuizTopicScreenState extends State<QuizTopicScreen> {
   }
 
   void _submitQuiz() {
-    _timer?.cancel();
     final correctAnswers = _score;
     final totalQuestions = _questions.length;
     final percentage = (correctAnswers / totalQuestions) * 100;
@@ -142,6 +116,12 @@ class _QuizTopicScreenState extends State<QuizTopicScreen> {
       );
     }
 
+    Map<String, int> cefrDistribution = {};
+    for (var question in _questions) {
+      final cefr = question.senses[0]['cefr'] as String? ?? 'N/A';
+      cefrDistribution[cefr] = (cefrDistribution[cefr] ?? 0) + 1;
+    }
+
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
@@ -151,7 +131,8 @@ class _QuizTopicScreenState extends State<QuizTopicScreen> {
           score: correctAnswers,
           totalQuestions: totalQuestions,
           percentage: percentage,
-          timeTaken: useTimer ? (totalTimeSeconds - _timeLeft) : null,
+          cefrDistribution: cefrDistribution,
+          wrongAnswers: wrongAnswers,
         ),
       ),
     );
@@ -159,8 +140,11 @@ class _QuizTopicScreenState extends State<QuizTopicScreen> {
 
   @override
   void dispose() {
-    _timer?.cancel();
     super.dispose();
+  }
+
+  bool _hasSelectedAnswer() {
+    return _selectedAnswers[_currentQuestionIndex] != null;
   }
 
   @override
@@ -176,15 +160,11 @@ class _QuizTopicScreenState extends State<QuizTopicScreen> {
                   'คุณยังทำ Quiz ไม่เสร็จ ต้องการออกหรือไม่? คะแนนจะไม่ถูกบันทึก'),
               actions: [
                 TextButton(
-                  onPressed: () {
-                    Navigator.pop(context, false);
-                  },
+                  onPressed: () => Navigator.pop(context, false),
                   child: const Text('ยกเลิก'),
                 ),
                 TextButton(
-                  onPressed: () {
-                    Navigator.pop(context, true);
-                  },
+                  onPressed: () => Navigator.pop(context, true),
                   child: const Text('ออก'),
                 ),
               ],
@@ -196,21 +176,8 @@ class _QuizTopicScreenState extends State<QuizTopicScreen> {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: Text('Topic: ${_formatTopicName(widget.topic)}'),
-          actions: useTimer
-              ? [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                    child: Center(
-                      child: Text(
-                        _formatTime(_timeLeft),
-                        style: const TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ),
-                ]
-              : null,
+          title: Text(
+              'หมวดหมู่: ${_formatTopicName(widget.topic)}'), // เปลี่ยนจาก Topic:
         ),
         body: Padding(
           padding: const EdgeInsets.all(16.0),
@@ -232,9 +199,6 @@ class _QuizTopicScreenState extends State<QuizTopicScreen> {
 
               if (_questions.isEmpty) {
                 _questions = data;
-                if (useTimer && _timeLeft > 0) {
-                  _startTimer();
-                }
               }
 
               final question = _questions[_currentQuestionIndex];
@@ -313,12 +277,6 @@ class _QuizTopicScreenState extends State<QuizTopicScreen> {
         .split('_')
         .map((word) => word[0].toUpperCase() + word.substring(1))
         .join(' ');
-  }
-
-  String _formatTime(int seconds) {
-    final m = (seconds ~/ 60).toString().padLeft(2, '0');
-    final s = (seconds % 60).toString().padLeft(2, '0');
-    return '$m:$s';
   }
 
   Widget _buildQuestionWidget(QuizQuestionModel question, int index) {

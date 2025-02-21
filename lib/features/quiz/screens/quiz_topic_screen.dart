@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:vocabtree/features/quiz/widgets/slide_up_panel.dart';
 
 import '../model/quiz_question_model.dart';
 import '../services/firebase_service.dart';
@@ -31,7 +32,7 @@ class _QuizTopicScreenState extends State<QuizTopicScreen> {
   int _score = 0;
 
   bool useTimer = true;
-  int totalTimeSeconds = 300; // 5 นาที
+  int totalTimeSeconds = 900; // 15 นาที
   Timer? _timer;
   int _timeLeft = 0;
 
@@ -42,11 +43,6 @@ class _QuizTopicScreenState extends State<QuizTopicScreen> {
   /// เช็คว่าผู้ใช้ได้เลือกคำตอบหรือยัง
   bool _hasSelectedAnswer() {
     return _selectedAnswers[_currentQuestionIndex] != null;
-  }
-
-  /// เช็คว่าผู้ใช้ได้ตอบคำถามในครั้งนี้แล้วหรือยัง
-  bool _hasAnswered() {
-    return _isAnswerChecked;
   }
 
   final Map<int, dynamic> _selectedAnswers =
@@ -243,45 +239,66 @@ class _QuizTopicScreenState extends State<QuizTopicScreen> {
 
               final question = _questions[_currentQuestionIndex];
 
-              return Column(
+              return Stack(
                 children: [
-                  ProgressBar(
-                    current: _currentQuestionIndex + 1,
-                    total: _questions.length,
-                  ),
-                  const SizedBox(height: 16),
-                  Expanded(
-                    child: SingleChildScrollView(
-                      child:
-                          _buildQuestionWidget(question, _currentQuestionIndex),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  Column(
                     children: [
-                      ElevatedButton(
-                        onPressed: _isAnswerChecked ? null : _skipQuestion,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.grey,
-                          minimumSize: const Size(100, 50),
+                      Expanded(
+                        child: Column(
+                          children: [
+                            ProgressBar(
+                              current: _currentQuestionIndex + 1,
+                              total: _questions.length,
+                            ),
+                            const SizedBox(height: 16),
+                            Expanded(
+                              child: SingleChildScrollView(
+                                child: _buildQuestionWidget(
+                                    question, _currentQuestionIndex),
+                              ),
+                            ),
+                          ],
                         ),
-                        child: const Text('ข้าม'),
                       ),
-                      ElevatedButton(
-                        onPressed: (_isAnswerChecked || _hasAnswered())
-                            ? _nextQuestion
-                            : (_hasSelectedAnswer() ? _checkAnswer : null),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: (_isAnswerChecked || _hasAnswered())
-                              ? Colors.blue
-                              : Colors.green,
-                          minimumSize: const Size(100, 50),
+                      if (!_isAnswerChecked)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 16),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              ElevatedButton(
+                                onPressed: _skipQuestion,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.grey,
+                                  minimumSize: const Size(100, 50),
+                                ),
+                                child: const Text('ข้าม'),
+                              ),
+                              ElevatedButton(
+                                onPressed:
+                                    _hasSelectedAnswer() ? _checkAnswer : null,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.green,
+                                  minimumSize: const Size(100, 50),
+                                ),
+                                child: const Text('ตรวจ'),
+                              ),
+                            ],
+                          ),
                         ),
-                        child: Text(_isAnswerChecked ? 'ถัดไป' : 'ตรวจ'),
-                      ),
                     ],
                   ),
+                  if (_isAnswerChecked)
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      child: SlideUpPanel(
+                        isCorrect: _isAnswerCorrect,
+                        correctAnswer: question.mainWord,
+                        onNextPressed: _nextQuestion,
+                      ),
+                    ),
                 ],
               );
             },

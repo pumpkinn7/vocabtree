@@ -1,14 +1,13 @@
 import 'dart:async';
+
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
 import '../model/quiz_question_model.dart';
 import '../services/firebase_service.dart';
 import '../services/quiz_logic.dart';
 import '../widgets/multiple_choice_widget.dart';
-import '../widgets/drag_and_drop_widget.dart';
-import '../widgets/matching_quiz_widget.dart';
 import '../widgets/progress_bar.dart';
 import 'result_screen.dart';
 
@@ -16,7 +15,8 @@ class QuizTopicScreen extends StatefulWidget {
   final String topic;
   final String cefrLevel;
 
-  const QuizTopicScreen({super.key, required this.topic, required this.cefrLevel});
+  const QuizTopicScreen(
+      {super.key, required this.topic, required this.cefrLevel});
 
   @override
   State<QuizTopicScreen> createState() => _QuizTopicScreenState();
@@ -38,23 +38,10 @@ class _QuizTopicScreenState extends State<QuizTopicScreen> {
   bool _isQuizFinished = false;
   bool _isAnswerChecked = false;
   bool _isAnswerCorrect = false;
+
   /// เช็คว่าผู้ใช้ได้เลือกคำตอบหรือยัง
   bool _hasSelectedAnswer() {
-    final currentQuestion = _questions[_currentQuestionIndex];
-    switch (currentQuestion.type) {
-      case QuestionType.multipleChoice:
-        return _selectedAnswers[_currentQuestionIndex] != null;
-      case QuestionType.dragAndDrop:
-      case QuestionType.matching:
-        if (_selectedAnswers[_currentQuestionIndex] is Map<String, String?>) {
-          return (_selectedAnswers[_currentQuestionIndex] as Map<String, String?>)
-              .values
-              .every((value) => value != null);
-        }
-        return false;
-      default:
-        return false;
-    }
+    return _selectedAnswers[_currentQuestionIndex] != null;
   }
 
   /// เช็คว่าผู้ใช้ได้ตอบคำถามในครั้งนี้แล้วหรือยัง
@@ -62,7 +49,8 @@ class _QuizTopicScreenState extends State<QuizTopicScreen> {
     return _isAnswerChecked;
   }
 
-  final Map<int, dynamic> _selectedAnswers = {}; // key: question index, value: selected answer
+  final Map<int, dynamic> _selectedAnswers =
+      {}; // key: question index, value: selected answer
 
   @override
   void initState() {
@@ -75,10 +63,12 @@ class _QuizTopicScreenState extends State<QuizTopicScreen> {
 
   Future<List<QuizQuestionModel>> _loadQuestions() async {
     if (kDebugMode) {
-      print('Loading questions for topic: ${widget.topic}, CEFR Level: ${widget.cefrLevel}');
+      print(
+          'Loading questions for topic: ${widget.topic}, CEFR Level: ${widget.cefrLevel}');
     }
 
-    final allQuestions = await FirebaseService.getQuestionsForTopic(widget.cefrLevel, widget.topic);
+    final allQuestions = await FirebaseService.getQuestionsForTopic(
+        widget.cefrLevel, widget.topic);
     return QuizLogic.arrangeAndShuffleQuestions(allQuestions);
   }
 
@@ -102,24 +92,8 @@ class _QuizTopicScreenState extends State<QuizTopicScreen> {
     final currentQuestion = _questions[_currentQuestionIndex];
     final selectedAnswer = _selectedAnswers[_currentQuestionIndex];
 
-    bool correct = false;
-
-    switch (currentQuestion.type) {
-      case QuestionType.multipleChoice:
-        correct = selectedAnswer == currentQuestion.correctAnswer;
-        break;
-      case QuestionType.dragAndDrop:
-      case QuestionType.matching:
-        if (selectedAnswer is Map<String, String?>) {
-          correct = true;
-          currentQuestion.correctMatches.forEach((key, value) {
-            if (selectedAnswer[key] != value) {
-              correct = false;
-            }
-          });
-        }
-        break;
-    }
+    bool correct = selectedAnswer ==
+        currentQuestion.mainWord; // Changed from correctAnswer
 
     setState(() {
       _isAnswerChecked = true;
@@ -202,7 +176,8 @@ class _QuizTopicScreenState extends State<QuizTopicScreen> {
             context: context,
             builder: (context) => AlertDialog(
               title: const Text('ยืนยันการออก'),
-              content: const Text('คุณยังทำ Quiz ไม่เสร็จ ต้องการออกหรือไม่? คะแนนจะไม่ถูกบันทึก'),
+              content: const Text(
+                  'คุณยังทำ Quiz ไม่เสร็จ ต้องการออกหรือไม่? คะแนนจะไม่ถูกบันทึก'),
               actions: [
                 TextButton(
                   onPressed: () {
@@ -228,16 +203,17 @@ class _QuizTopicScreenState extends State<QuizTopicScreen> {
           title: Text('Topic: ${_formatTopicName(widget.topic)}'),
           actions: useTimer
               ? [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: Center(
-                child: Text(
-                  _formatTime(_timeLeft),
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-              ),
-            ),
-          ]
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    child: Center(
+                      child: Text(
+                        _formatTime(_timeLeft),
+                        style: const TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                ]
               : null,
         ),
         body: Padding(
@@ -276,7 +252,8 @@ class _QuizTopicScreenState extends State<QuizTopicScreen> {
                   const SizedBox(height: 16),
                   Expanded(
                     child: SingleChildScrollView(
-                      child: _buildQuestionWidget(question, _currentQuestionIndex),
+                      child:
+                          _buildQuestionWidget(question, _currentQuestionIndex),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -328,45 +305,16 @@ class _QuizTopicScreenState extends State<QuizTopicScreen> {
   }
 
   Widget _buildQuestionWidget(QuizQuestionModel question, int index) {
-    switch (question.type) {
-      case QuestionType.multipleChoice:
-        return MultipleChoiceWidget(
-          question: question,
-          selectedOption: _selectedAnswers[index],
-          onOptionSelected: (option) {
-            setState(() {
-              _selectedAnswers[index] = option;
-            });
-          },
-          isAnswerChecked: _isAnswerChecked,
-          isCorrect: _isAnswerCorrect,
-        );
-      case QuestionType.dragAndDrop:
-        return DragAndDropWidget(
-          question: question,
-          userMatches: _selectedAnswers[index] ?? {},
-          onUpdateMatches: (matches) {
-            setState(() {
-              _selectedAnswers[index] = matches;
-            });
-          },
-          isAnswerChecked: _isAnswerChecked,
-          isCorrect: _isAnswerCorrect,
-        );
-      case QuestionType.matching:
-        return MatchingQuizWidget(
-          question: question,
-          userMatches: _selectedAnswers[index] ?? {},
-          onUpdateMatches: (matches) {
-            setState(() {
-              _selectedAnswers[index] = matches;
-            });
-          },
-          isAnswerChecked: _isAnswerChecked,
-          isCorrect: _isAnswerCorrect,
-        );
-      default:
-        return const Center(child: Text('Unknown question type'));
-    }
+    return MultipleChoiceWidget(
+      question: question,
+      selectedOption: _selectedAnswers[index],
+      onOptionSelected: (option) {
+        setState(() {
+          _selectedAnswers[index] = option;
+        });
+      },
+      isAnswerChecked: _isAnswerChecked,
+      isCorrect: _isAnswerCorrect,
+    );
   }
 }

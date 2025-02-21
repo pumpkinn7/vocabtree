@@ -1,4 +1,8 @@
+import 'dart:math';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
+
 import '../model/quiz_question_model.dart';
 
 class FirebaseService {
@@ -46,7 +50,8 @@ class FirebaseService {
 
   // ฟังก์ชันโหลดข้อมูลหัวข้อใน Firestore
   static Future<void> preloadTopicLevels() async {
-    final topicsCollection = FirebaseFirestore.instance.collection('quiz_topic_mapping');
+    final topicsCollection =
+        FirebaseFirestore.instance.collection('quiz_topic_mapping');
 
     for (var level in cefrTopics.entries) {
       for (var topic in level.value) {
@@ -66,13 +71,17 @@ class FirebaseService {
 
   // ฟังก์ชันจัดการความคืบหน้า (สร้างและอัปเดตข้อมูล)
   static Future<void> manageProgress(
-      String userId,
-      String cefrLevel,
-      String? completedTopic,
-      double percentage, // เพิ่มพารามิเตอร์นี้
-      ) async {
+    String userId,
+    String cefrLevel,
+    String? completedTopic,
+    double percentage, // เพิ่มพารามิเตอร์นี้
+  ) async {
     final db = FirebaseFirestore.instance;
-    final progressDoc = db.collection('users').doc(userId).collection('progress').doc('unlockedTopics');
+    final progressDoc = db
+        .collection('users')
+        .doc(userId)
+        .collection('progress')
+        .doc('unlockedTopics');
 
     // ดึงข้อมูลความคืบหน้าจาก Firestore
     final snapshot = await progressDoc.get();
@@ -106,7 +115,8 @@ class FirebaseService {
       if (allCompleted) {
         final nextLevel = _getNextCEFRLevel(cefrLevel);
         if (nextLevel != null) {
-          final nextTopics = progressData[nextLevel] as Map<String, dynamic>? ?? {};
+          final nextTopics =
+              progressData[nextLevel] as Map<String, dynamic>? ?? {};
           final firstTopic = cefrTopics[nextLevel]?.first;
           if (firstTopic != null) {
             nextTopics[firstTopic] = true;
@@ -121,7 +131,6 @@ class FirebaseService {
     }
   }
 
-
   // ฟังก์ชันช่วยดึงระดับ CEFR ถัดไป
   static String? _getNextCEFRLevel(String currentLevel) {
     const levels = ['B1', 'B2', 'C1', 'C2'];
@@ -133,65 +142,127 @@ class FirebaseService {
   }
 
   // ฟังก์ชันดึงคำถามสำหรับ topic ตาม CEFR Level
-  static Future<List<QuizQuestionModel>> getQuestionsForTopic(String cefrLevel, String topic) async {
+  static Future<List<QuizQuestionModel>> getQuestionsForTopic(
+      String cefrLevel, String category) async {
     List<QuizQuestionModel> questions = [];
-    final questionTypes = ['multiple_choice', 'drag_and_drop', 'matching'];
 
-    for (var qType in questionTypes) {
-      final colRef = FirebaseFirestore.instance
-          .collection('quiz_cefr_levels')
-          .doc(cefrLevel)
-          .collection('topics')
-          .doc(topic)
-          .collection(qType);
+    try {
+      // 1. ดึงข้อมูลหมวดหมู่ปัจจุบัน
+      final categoryDoc = await FirebaseFirestore.instance
+          .collection('word_categories')
+          .doc(category)
+          .get();
 
-      final snapshot = await colRef.get();
-      for (var doc in snapshot.docs) {
-        final data = doc.data();
-        final questionModel = _mapToQuizQuestionModel(qType, data);
-        if (questionModel != null) {
-          questions.add(questionModel);
-        }
+      if (!categoryDoc.exists) return [];
+
+      final categoryWords =
+          List<String>.from(categoryDoc.data()?['words'] ?? []);
+      if (categoryWords.isEmpty) return [];
+
+      // 2. ดึงรายการหมวดหมู่อื่นๆ ทั้งหมด
+      final otherCategoriesSnap = await FirebaseFirestore.instance
+          .collection('word_categories')
+          .where(FieldPath.documentId, isNotEqualTo: category)
+          .get();
+
+      Map<String, List<String>> otherCategoriesWords = {};
+      for (var doc in otherCategoriesSnap.docs) {
+        otherCategoriesWords[doc.id] =
+            List<String>.from(doc.data()['words'] ?? []);
       }
+
+      // 3. สุ่มเลือกคำศัพท์จากหมวดปัจจุบันมา 30 คำ
+      final random = Random();
+      final selectedWords = (categoryWords..shuffle(random)).take(30).toList();
+
+      // ถ้ามีคำศัพท์ไม่พอ 30 คำ ให้ใช้คำที่มีทั้งหมด
+      if (selectedWords.length < 30) {
+        debugPrint(
+            'Warning: Only ${selectedWords.length} words available in category $category');
+      }
+
+      // 4. สร้างคำถามและตัวเลือก
+      for (String wordId in selectedWords) {
+        final wordDoc = await FirebaseFirestore.instance
+            .collection('words')
+            .doc(wordId)
+            .get();
+
+        if (!wordDoc.exists) continue;
+
+        final data = wordDoc.data()!;
+        final senses = List<Map<String, dynamic>>.from(data['senses'] ?? []);
+        if (senses.isEmpty) continue;
+
+        // 5. สร้างตัวเลือก
+        List<String> options = [];
+
+        // เพิ่มคำตอบที่ถูก
+        options.add(data['mainWord']);
+
+        // เพิ่มคำจากหมวดเดียวกัน 1 คำ
+        final sameCategWords = categoryWords.where((w) => w != wordId).toList();
+        if (sameCategWords.isNotEmpty) {
+          sameCategWords.shuffle(random);
+          final word = await _getWordMainWord(sameCategWords.first);
+          if (word != null) options.add(word);
+        }
+
+        // เพิ่มคำจากหมวดอื่น 2 คำ
+        List<String> otherWords = [];
+        // แก้ไขการใช้ forEach เป็น for loop
+        for (var words in otherCategoriesWords.values) {
+          otherWords.addAll(words);
+        }
+        otherWords.shuffle(random);
+
+        for (int i = 0; i < 2 && i < otherWords.length; i++) {
+          final word = await _getWordMainWord(otherWords[i]);
+          if (word != null) options.add(word);
+        }
+
+        // เติมตัวเลือกให้ครบ 4 ตัวถ้าจำเป็น
+        while (options.length < 4 && sameCategWords.isNotEmpty) {
+          final word = await _getWordMainWord(sameCategWords.removeLast());
+          if (word != null && !options.contains(word)) options.add(word);
+        }
+
+        // สลับตำแหน่งตัวเลือก
+        options.shuffle(random);
+
+        // Add null check for required fields
+        final mainWord = data['mainWord'] as String?;
+        final mainPos = data['mainPos'] as String?;
+
+        if (mainWord == null || mainPos == null) continue;
+
+        questions.add(QuizQuestionModel(
+          mainWord: mainWord,
+          mainPos: mainPos,
+          senses: senses,
+          cefrLevel: cefrLevel,
+          options: options,
+          definition: senses[0]['definition'] ?? '',
+        ));
+      }
+
+      return questions;
+    } catch (e) {
+      debugPrint('Error getting questions: $e');
+      return [];
     }
-    return questions;
   }
 
-  // ฟังก์ชันแมปข้อมูลจาก Firestore เป็น QuizQuestionModel
-  static QuizQuestionModel? _mapToQuizQuestionModel(String qType, Map<String, dynamic> data) {
-    switch (qType) {
-      case 'multiple_choice':
-        return QuizQuestionModel(
-          type: QuestionType.multipleChoice,
-          question: data['question'] as String? ?? '',
-          options: (data['options'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
-          correctAnswer: data['correctAnswer'] as String? ?? '',
-          partOfSpeech: data['partOfSpeech'] as String? ?? '',
-          exampleSentence: data['exampleSentence'] as String? ?? '',
-          translatedSentence: data['translatedSentence'] as String? ?? '',
-        );
-      case 'drag_and_drop':
-        return QuizQuestionModel(
-          type: QuestionType.dragAndDrop,
-          question: data['question'] as String? ?? '',
-          draggableItems: (data['draggableItems'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
-          targets: (data['targets'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
-          correctMatches: (data['correctMatches'] as Map<String, dynamic>?)
-              ?.map((k, v) => MapEntry(k, v.toString())) ??
-              {},
-        );
-      case 'matching':
-        return QuizQuestionModel(
-          type: QuestionType.matching,
-          question: data['question'] as String? ?? '',
-          leftItems: (data['leftItems'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
-          rightItems: (data['rightItems'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
-          correctMatches: (data['correctMatches'] as Map<String, dynamic>?)
-              ?.map((k, v) => MapEntry(k, v.toString())) ??
-              {},
-        );
-      default:
-        return null;
+  // Helper function to get mainWord from word document
+  static Future<String?> _getWordMainWord(String wordId) async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('words')
+          .doc(wordId)
+          .get();
+      return doc.data()?['mainWord'] as String?;
+    } catch (e) {
+      return null;
     }
   }
 }

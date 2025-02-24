@@ -11,10 +11,33 @@ class TopWrongWords extends StatelessWidget {
     required this.onViewAllPressed,
   });
 
+  String _formatTopicName(String topic) {
+    return topic
+        .split('_')
+        .map((w) => w[0].toUpperCase() + w.substring(1))
+        .join(' ');
+  }
+
   @override
   Widget build(BuildContext context) {
     if (wrongWords.isEmpty) {
-      return const SizedBox.shrink();
+      return Card(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Center(
+            child: Column(
+              children: [
+                Icon(Icons.check_circle, color: Colors.green[300], size: 48),
+                const SizedBox(height: 8),
+                const Text(
+                  'ยังไม่มีคำศัพท์ที่ตอบผิด',
+                  style: TextStyle(fontSize: 16),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
     }
 
     return Column(
@@ -45,6 +68,7 @@ class TopWrongWords extends StatelessWidget {
                 title: Text(word['word']),
                 subtitle: Text(
                   'ตอบผิด ${word['wrongCount']} ครั้ง\n'
+                  'หมวด: ${_formatTopicName(word['topic'])}\n'
                   'ล่าสุด: ${DateFormat('dd/MM/yyyy').format(word['lastWrongAt'])}',
                 ),
                 trailing: CircleAvatar(

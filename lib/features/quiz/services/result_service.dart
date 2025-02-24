@@ -1,32 +1,33 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:logging/logging.dart'; // Add this import
 import 'package:vocabtree/features/quiz/models/quiz_result.dart';
 
 class ResultService {
-  static final _logger = Logger('ResultService');
-
   static Future<void> saveQuizResult(QuizResult result) async {
-    final db = FirebaseFirestore.instance;
+    try {
+      final db = FirebaseFirestore.instance;
 
-    // บันทึกลง quiz history
-    final docRef = await db
-        .collection('users')
-        .doc(result.userId)
-        .collection('quizHistory')
-        .add(result.toJson());
-
-    // บันทึกสถิติการตอบผิด
-    for (var word in result.wrongAnswers) {
-      await db
+      final docRef = await db
           .collection('users')
           .doc(result.userId)
-          .collection('wordStats')
-          .doc(word)
-          .set({
-        'wrongCount': FieldValue.increment(1),
-        'lastWrongAt': FieldValue.serverTimestamp(),
-        'quizHistory': FieldValue.arrayUnion([docRef.id]),
-      }, SetOptions(merge: true));
+          .collection('quizHistory')
+          .add(result.toJson());
+
+      for (var word in result.wrongAnswers) {
+        await db
+            .collection('users')
+            .doc(result.userId)
+            .collection('wordStats')
+            .doc(word)
+            .set({
+          'word': word,
+          'wrongCount': FieldValue.increment(1),
+          'lastWrongAt': FieldValue.serverTimestamp(),
+          'quizHistory': FieldValue.arrayUnion([docRef.id]),
+          'topic': result.topic,
+        }, SetOptions(merge: true));
+      }
+    } catch (e) {
+      rethrow;
     }
   }
 
@@ -49,26 +50,39 @@ class ResultService {
   static Future<List<Map<String, dynamic>>> getTopWrongWords(
     String userId, {
     int limit = 5,
+    String? topic,
   }) async {
     try {
       final snapshot = await FirebaseFirestore.instance
           .collection('users')
           .doc(userId)
           .collection('wordStats')
-          .orderBy('wrongCount', descending: true)
-          .limit(limit)
           .get();
 
-      return snapshot.docs
-          .map((doc) => {
-                'word': doc.id,
-                'wrongCount': doc.data()['wrongCount'] as int,
-                'lastWrongAt':
-                    (doc.data()['lastWrongAt'] as Timestamp).toDate(),
-              })
-          .toList();
-    } catch (e) {
-      _logger.warning('Error getting top wrong words', e);
+      var docs = snapshot.docs;
+
+      if (topic != null) {
+        docs = docs.where((doc) => doc.data()['topic'] == topic).toList();
+      }
+
+      docs.sort((a, b) => ((b.data()['wrongCount'] as int?) ?? 0)
+          .compareTo((a.data()['wrongCount'] as int?) ?? 0));
+
+      if (docs.length > limit) {
+        docs = docs.sublist(0, limit);
+      }
+
+      return docs.map((doc) {
+        final data = doc.data();
+        return {
+          'word': doc.id,
+          'wrongCount': data['wrongCount'] as int? ?? 0,
+          'lastWrongAt':
+              (data['lastWrongAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+          'topic': data['topic'] as String? ?? 'unknown',
+        };
+      }).toList();
+    } catch (_) {
       return [];
     }
   }

@@ -49,17 +49,21 @@ class _SlideUpPanelState extends State<SlideUpPanel>
   }
 
   Future<void> _translateWord() async {
+    if (!mounted) return; // เช็ค mounted ก่อน
+
     try {
       final translation = await translator.translate(
         widget.correctAnswer,
         from: 'en',
         to: 'th',
       );
+      if (!mounted) return; // เช็คอีกครั้งก่อน setState
       setState(() {
         translatedWord = translation.text;
         isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         translatedWord = 'ไม่สามารถแปลได้';
         isLoading = false;

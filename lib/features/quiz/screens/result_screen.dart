@@ -49,25 +49,28 @@ class _ResultScreenState extends State<ResultScreen> {
   Future<void> _initialize() async {
     if (user == null) return;
 
-    // บันทึกผลลัพธ์
-    await ResultService.saveQuizResult(
-      QuizResult(
+    try {
+      final result = QuizResult(
         userId: user!.uid,
         topic: widget.topic,
         score: widget.score,
         totalQuestions: widget.totalQuestions,
         percentage: widget.percentage,
         wrongAnswers: widget.wrongAnswers.map((q) => q.mainWord).toList(),
-      ),
-    );
+      );
 
-    // ดึงข้อมูลคำที่ตอบผิดบ่อย
-    final wrongWords = await ResultService.getTopWrongWords(user!.uid);
+      await ResultService.saveQuizResult(result);
 
-    if (mounted) {
-      setState(() {
-        topWrongWords = wrongWords;
-      });
+      final wrongWords = await ResultService.getTopWrongWords(
+        user!.uid,
+        topic: widget.topic,
+      );
+
+      if (mounted) {
+        setState(() => topWrongWords = wrongWords);
+      }
+    } catch (_) {
+      // Handle error silently
     }
   }
 
@@ -87,6 +90,7 @@ class _ResultScreenState extends State<ResultScreen> {
             future: ResultService.getTopWrongWords(
               user?.uid ?? '',
               limit: 100, // หรือจำนวนที่ต้องการ
+              topic: widget.topic, // เพิ่ม topic
             ),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
@@ -137,14 +141,16 @@ class _ResultScreenState extends State<ResultScreen> {
             CefrChart(cefrDistribution: widget.cefrDistribution),
             const SizedBox(height: 24),
 
-            // 2. คำศัพท์ที่ตอบผิดบ่อย
-            if (topWrongWords.isNotEmpty) ...[
+            // แก้ไขการแสดง TopWrongWords
+            if (topWrongWords.isNotEmpty)
               TopWrongWords(
                 wrongWords: topWrongWords,
                 onViewAllPressed: _showAllWrongWords,
+              )
+            else
+              const Center(
+                child: Text('ไม่มีคำศัพท์ที่ตอบผิด'),
               ),
-              const SizedBox(height: 24),
-            ],
 
             // 3. Progress Bar สัดส่วนตอบถูก/ผิด
             ScoreProgress(percentage: widget.percentage),

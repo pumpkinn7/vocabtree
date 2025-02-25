@@ -1,9 +1,11 @@
 import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
 import '../models/quiz_question_model.dart';
+import '../services/result_service.dart';
 
 class FirebaseService {
   // เก็บลำดับหัวข้อของแต่ละระดับ CEFR
@@ -144,10 +146,21 @@ class FirebaseService {
   // ฟังก์ชันดึงคำถามสำหรับ topic ตาม CEFR Level
   static Future<List<QuizQuestionModel>> getQuestionsForTopic(
       String cefrLevel, String category) async {
-    List<QuizQuestionModel> questions = [];
-
     try {
-      // 1. ดึงข้อมูลหมวดหมู่ปัจจุบัน
+      // 1. ดึงข้อมูลคำที่ตอบผิดบ่อยของผู้ใช้เฉพาะ topic นี้
+      final user = FirebaseAuth.instance.currentUser;
+      List<String> frequentlyWrongWords = [];
+      if (user != null) {
+        final wrongWords = await ResultService.getTopWrongWords(
+          user.uid,
+          limit: 5, // ลดจำนวนลงเหลือ 5 คำที่ตอบผิดบ่อยที่สุด
+          topic: category,
+        );
+        frequentlyWrongWords =
+            wrongWords.map((w) => w['word'] as String).toList();
+      }
+
+      // 2. ดึงข้อมูลหมวดหมู่ปัจจุบันและหมวดหมู่อื่นๆ
       final categoryDoc = await FirebaseFirestore.instance
           .collection('word_categories')
           .doc(category)
@@ -157,9 +170,8 @@ class FirebaseService {
 
       final categoryWords =
           List<String>.from(categoryDoc.data()?['words'] ?? []);
-      if (categoryWords.isEmpty) return [];
 
-      // 2. ดึงรายการหมวดหมู่อื่นๆ ทั้งหมด
+      // ดึงรายการหมวดหมู่อื่นๆ ทั้งหมด
       final otherCategoriesSnap = await FirebaseFirestore.instance
           .collection('word_categories')
           .where(FieldPath.documentId, isNotEqualTo: category)
@@ -171,17 +183,30 @@ class FirebaseService {
             List<String>.from(doc.data()['words'] ?? []);
       }
 
-      // 3. สุ่มเลือกคำศัพท์จากหมวดปัจจุบันมา 30 คำ
+      // 3. ตรวจสอบว่าคำที่ตอบผิดบ่อยอยู่ใน topic นี้จริงๆ
+      frequentlyWrongWords = frequentlyWrongWords
+          .where((word) => categoryWords.contains(word))
+          .toList();
+
+      // 4. สุ่มเลือกคำศัพท์
       final random = Random();
-      final selectedWords = (categoryWords..shuffle(random)).take(30).toList();
+      final selectedWords = [];
 
-      // ถ้ามีคำศัพท์ไม่พอ 30 คำ ให้ใช้คำที่มีทั้งหมด
-      if (selectedWords.length < 30) {
-        debugPrint(
-            'Warning: Only ${selectedWords.length} words available in category $category');
-      }
+      // เพิ่มคำที่ตอบผิดบ่อยก่อน (สูงสุด 5 คำ)
+      final wrongWordsToAdd = frequentlyWrongWords.take(5).toList();
+      selectedWords.addAll(wrongWordsToAdd);
 
-      // 4. สร้างคำถามและตัวเลือก
+      // เติมคำที่เหลือจากหมวดหมู่ปัจจุบัน
+      final remainingCount = 30 - selectedWords.length;
+      final remainingWords = categoryWords
+          .where((w) => !selectedWords.contains(w))
+          .toList()
+        ..shuffle(random);
+      selectedWords.addAll(remainingWords.take(remainingCount));
+
+      // ...ส่วนที่เหลือของโค้ดเดิม (การสร้าง options และ QuizQuestionModel)...
+      List<QuizQuestionModel> questions = [];
+
       for (String wordId in selectedWords) {
         final wordDoc = await FirebaseFirestore.instance
             .collection('words')
@@ -210,7 +235,6 @@ class FirebaseService {
 
         // เพิ่มคำจากหมวดอื่น 2 คำ
         List<String> otherWords = [];
-        // แก้ไขการใช้ forEach เป็น for loop
         for (var words in otherCategoriesWords.values) {
           otherWords.addAll(words);
         }
@@ -243,9 +267,12 @@ class FirebaseService {
           cefrLevel: cefrLevel,
           options: options,
           definition: senses[0]['definition'] ?? '',
+          thaiWord: '',
         ));
       }
 
+      // สุดท้ายสลับตำแหน่งคำถามทั้งหมด
+      questions.shuffle(random);
       return questions;
     } catch (e) {
       debugPrint('Error getting questions: $e');

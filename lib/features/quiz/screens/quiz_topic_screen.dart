@@ -8,6 +8,7 @@ import 'package:vocabtree/features/quiz/widgets/slide_up_panel.dart';
 import '../models/quiz_question_model.dart';
 import '../services/firebase_service.dart';
 import '../services/quiz_logic.dart';
+import '../services/result_service.dart';
 import '../widgets/multiple_choice_widget.dart';
 import '../widgets/progress_bar.dart';
 import 'result_screen.dart';
@@ -38,11 +39,13 @@ class _QuizTopicScreenState extends State<QuizTopicScreen> {
   final List<QuizQuestionModel> wrongAnswers = [];
 
   final Map<int, dynamic> _selectedAnswers = {};
+  Set<String> _frequentlyWrongWords = {};
+  Map<String, Map<String, dynamic>> _wrongWordsStats = {};
 
   @override
   void initState() {
     super.initState();
-    _questionsFuture = _loadQuestions();
+    _questionsFuture = _loadQuestionsAndStats();
   }
 
   Future<List<QuizQuestionModel>> _loadQuestions() async {
@@ -54,6 +57,27 @@ class _QuizTopicScreenState extends State<QuizTopicScreen> {
     final allQuestions = await FirebaseService.getQuestionsForTopic(
         widget.cefrLevel, widget.topic);
     return QuizLogic.arrangeAndShuffleQuestions(allQuestions);
+  }
+
+  Future<List<QuizQuestionModel>> _loadQuestionsAndStats() async {
+    final questions = await _loadQuestions();
+
+    if (user != null) {
+      final wrongWords = await ResultService.getTopWrongWords(
+        user!.uid,
+        limit: 100,
+        topic: widget.topic,
+      );
+
+      _wrongWordsStats = {
+        for (var word in wrongWords) word['word'] as String: word,
+      };
+
+      _frequentlyWrongWords =
+          wrongWords.map((w) => w['word'] as String).toSet();
+    }
+
+    return questions;
   }
 
   void _checkAnswer() {
@@ -280,6 +304,11 @@ class _QuizTopicScreenState extends State<QuizTopicScreen> {
   }
 
   Widget _buildQuestionWidget(QuizQuestionModel question, int index) {
+    final isFrequentlyWrong = _frequentlyWrongWords.contains(question.mainWord);
+    // ค้นหาจำนวนครั้งที่ตอบผิดจาก wrongWords
+    final wrongCount =
+        _wrongWordsStats[question.mainWord]?['wrongCount'] as int? ?? 0;
+
     return MultipleChoiceWidget(
       question: question,
       selectedOption: _selectedAnswers[index],
@@ -290,6 +319,8 @@ class _QuizTopicScreenState extends State<QuizTopicScreen> {
       },
       isAnswerChecked: _isAnswerChecked,
       isCorrect: _isAnswerCorrect,
+      isFrequentlyWrong: isFrequentlyWrong,
+      wrongCount: wrongCount, // เพิ่ม parameter นี้
     );
   }
 }

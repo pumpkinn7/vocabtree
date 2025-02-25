@@ -65,9 +65,21 @@ class ResultService {
         docs = docs.where((doc) => doc.data()['topic'] == topic).toList();
       }
 
-      docs.sort((a, b) => ((b.data()['wrongCount'] as int?) ?? 0)
-          .compareTo((a.data()['wrongCount'] as int?) ?? 0));
+      // เรียงตามจำนวนครั้งที่ตอบผิด (มากไปน้อย) และ lastWrongAt (ล่าสุดก่อน)
+      docs.sort((a, b) {
+        final aCount = a.data()['wrongCount'] as int? ?? 0;
+        final bCount = b.data()['wrongCount'] as int? ?? 0;
+        if (aCount != bCount) {
+          return bCount.compareTo(aCount);
+        }
+        final aTime =
+            (a.data()['lastWrongAt'] as Timestamp?)?.toDate() ?? DateTime(1900);
+        final bTime =
+            (b.data()['lastWrongAt'] as Timestamp?)?.toDate() ?? DateTime(1900);
+        return bTime.compareTo(aTime);
+      });
 
+      // ตัดเอาเฉพาะจำนวนที่ต้องการ
       if (docs.length > limit) {
         docs = docs.sublist(0, limit);
       }

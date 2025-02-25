@@ -1,5 +1,6 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+
+import '../services/flashcard_service.dart';
 
 class FlashcardSummaryScreen extends StatefulWidget {
   final String userId;
@@ -26,6 +27,7 @@ class FlashcardSummaryScreen extends StatefulWidget {
 }
 
 class _FlashcardSummaryScreenState extends State<FlashcardSummaryScreen> {
+  final FlashcardService _service = FlashcardService();
   bool _isResetting = false;
   List<Map<String, dynamic>> _unknownWords = [];
   final Set<String> _selectedWords = {};
@@ -39,25 +41,13 @@ class _FlashcardSummaryScreenState extends State<FlashcardSummaryScreen> {
 
   Future<void> _fetchUnknownWords() async {
     try {
-      final querySnapshot = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(widget.userId)
-          .collection(widget.level)
-          .doc(widget.topic)
-          .collection('vocabularies')
-          .where('is_known', isEqualTo: false)
-          .where('for_review', isEqualTo: false)
-          .get();
-
-      final tempList = querySnapshot.docs.map((doc) {
-        return {
-          'word': doc.id,
-          ...doc.data(),
-        };
-      }).toList();
+      final unknownWords = await _service.getUnknownWords(
+        widget.userId,
+        widget.topic,
+      );
 
       setState(() {
-        _unknownWords = tempList;
+        _unknownWords = unknownWords;
       });
     } catch (e) {
       debugPrint('Error fetching unknown words: $e');
@@ -72,21 +62,17 @@ class _FlashcardSummaryScreenState extends State<FlashcardSummaryScreen> {
     });
 
     try {
-      final vocabRef = FirebaseFirestore.instance
-          .collection('users')
-          .doc(widget.userId)
-          .collection(widget.level)
-          .doc(widget.topic)
-          .collection('vocabularies');
+      await _service.addWordsToReview(
+        widget.userId,
+        widget.topic,
+        _selectedWords.toList(),
+      );
 
-      for (String word in _selectedWords) {
-        await vocabRef.doc(word).update({
-          'for_review': true,
-        });
-      }
-
-      _unknownWords.removeWhere((vocab) => _selectedWords.contains(vocab['word']));
-      _selectedWords.clear();
+      setState(() {
+        _unknownWords
+            .removeWhere((vocab) => _selectedWords.contains(vocab['word']));
+        _selectedWords.clear();
+      });
     } catch (e) {
       debugPrint('Error adding words to bank: $e');
     } finally {
@@ -106,7 +92,7 @@ class _FlashcardSummaryScreenState extends State<FlashcardSummaryScreen> {
           title: const Text('ยืนยันการรีเซ็ต'),
           content: const Text(
             'คุณแน่ใจหรือไม่ว่าต้องการรีเซ็ตคำศัพท์ทั้งหมด?\n'
-                'สถานะของคำศัพท์ทั้งหมดจะถูกล้างและเริ่มต้นใหม่อีกครั้ง.',
+            'สถานะของคำศัพท์ทั้งหมดจะถูกล้างและเริ่มต้นใหม่อีกครั้ง.',
           ),
           actions: [
             TextButton(
@@ -133,20 +119,10 @@ class _FlashcardSummaryScreenState extends State<FlashcardSummaryScreen> {
     });
 
     try {
-      final query = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(widget.userId)
-          .collection(widget.level)
-          .doc(widget.topic)
-          .collection('vocabularies')
-          .get();
-
-      for (var doc in query.docs) {
-        await doc.reference.update({
-          'is_known': false,
-          'for_review': false,
-        });
-      }
+      await _service.resetFlashcardsForTopic(
+        widget.userId,
+        widget.topic,
+      );
 
       if (!mounted) return;
       Navigator.pop(context);
@@ -172,91 +148,92 @@ class _FlashcardSummaryScreenState extends State<FlashcardSummaryScreen> {
       body: _isResetting
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          children: [
-            Text("จำนวนคำศัพท์ทั้งหมด: ${widget.totalCount}"),
-            const SizedBox(height: 8),
-            Text("คำศัพท์ที่รู้ (Known): ${widget.knownCount}"),
-            const SizedBox(height: 8),
-            Text("คำศัพท์ที่ไม่รู้ (Unknown): ${widget.unknownCount}"),
-            const SizedBox(height: 8),
-            Text("คำศัพท์ที่ต้องทบทวน (Review): ${widget.reviewCount}"),
-            const SizedBox(height: 24),
-            const Divider(),
-            const Text(
-              "รายการคำศัพท์ที่ยังไม่รู้",
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            if (_unknownWords.isEmpty)
-              const Text("ไม่มีคำศัพท์ที่ไม่รู้แล้ว!")
-            else
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: _unknownWords.map((vocab) {
-                  final word = vocab['word'] ?? '';
-                  final bool isSelected = _selectedWords.contains(word);
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                children: [
+                  Text("จำนวนคำศัพท์ทั้งหมด: ${widget.totalCount}"),
+                  const SizedBox(height: 8),
+                  Text("คำศัพท์ที่รู้ (Known): ${widget.knownCount}"),
+                  const SizedBox(height: 8),
+                  Text("คำศัพท์ที่ไม่รู้ (Unknown): ${widget.unknownCount}"),
+                  const SizedBox(height: 8),
+                  Text("คำศัพท์ที่ต้องทบทวน (Review): ${widget.reviewCount}"),
+                  const SizedBox(height: 24),
+                  const Divider(),
+                  const Text(
+                    "รายการคำศัพท์ที่ยังไม่รู้",
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  if (_unknownWords.isEmpty)
+                    const Text("ไม่มีคำศัพท์ที่ไม่รู้แล้ว!")
+                  else
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: _unknownWords.map((vocab) {
+                        final word = vocab['word'] ?? '';
+                        final bool isSelected = _selectedWords.contains(word);
 
-                  return OutlinedButton(
-                    onPressed: () {
-                      setState(() {
-                        if (isSelected) {
-                          _selectedWords.remove(word);
-                        } else {
-                          _selectedWords.add(word);
-                        }
-                      });
-                    },
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor:
-                      isSelected ? Colors.white : Colors.blue,
-                      backgroundColor:
-                      isSelected ? Colors.blueAccent : Colors.white,
-                      side: BorderSide(
-                          color: isSelected ? Colors.blue : Colors.grey),
+                        return OutlinedButton(
+                          onPressed: () {
+                            setState(() {
+                              if (isSelected) {
+                                _selectedWords.remove(word);
+                              } else {
+                                _selectedWords.add(word);
+                              }
+                            });
+                          },
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor:
+                                isSelected ? Colors.white : Colors.blue,
+                            backgroundColor:
+                                isSelected ? Colors.blueAccent : Colors.white,
+                            side: BorderSide(
+                                color: isSelected ? Colors.blue : Colors.grey),
+                          ),
+                          child: Text(word),
+                        );
+                      }).toList(),
                     ),
-                    child: Text(word),
-                  );
-                }).toList(),
+                  const SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      ElevatedButton(
+                        onPressed:
+                            canAddToBank ? _addSelectedWordsToBank : null,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.teal,
+                          disabledBackgroundColor: Colors.grey.shade300,
+                        ),
+                        child: _isAddingToBank
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Text("เพิ่มเข้าคลังคำศัพท์"),
+                      ),
+                      ElevatedButton(
+                        onPressed: _confirmReset,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red,
+                        ),
+                        child: const Text("Reset"),
+                      ),
+                    ],
+                  ),
+                ],
               ),
-            const SizedBox(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                ElevatedButton(
-                  onPressed: canAddToBank ? _addSelectedWordsToBank : null,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.teal,
-                    disabledBackgroundColor: Colors.grey.shade300,
-                  ),
-                  child: _isAddingToBank
-                      ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      color: Colors.white,
-                      strokeWidth: 2,
-                    ),
-                  )
-                      : const Text("เพิ่มเข้าคลังคำศัพท์"),
-                ),
-                ElevatedButton(
-                  onPressed: _confirmReset,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red,
-                  ),
-                  child: const Text("Reset"),
-                ),
-              ],
             ),
-          ],
-        ),
-      ),
     );
   }
 }

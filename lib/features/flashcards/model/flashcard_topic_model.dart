@@ -5,9 +5,8 @@ class Flashcard {
   final String partOfSpeech;
   final String definition;
   final String hint;
-  final String translation;
-  final String hintTranslation;
   final Map<String, String> exampleSentence;
+  final String cefrLevel;
 
   Flashcard({
     required this.id,
@@ -16,11 +15,39 @@ class Flashcard {
     required this.partOfSpeech,
     required this.definition,
     required this.hint,
-    required this.translation,
-    required this.hintTranslation,
     required this.exampleSentence,
+    required this.cefrLevel,
   });
 
+  factory Flashcard.fromWordDocument(String documentId,
+      Map<String, dynamic> data, String categoryId, String cefrLevel) {
+    // Get the first sense if available
+    final List<dynamic> senses = data['senses'] ?? [];
+    final Map<String, dynamic> firstSense =
+        senses.isNotEmpty ? Map<String, dynamic>.from(senses.first) : {};
+
+    // Get examples from the first sense
+    final List<dynamic> examples = firstSense['examples'] ?? [];
+    final String exampleSentence = examples.isNotEmpty ? examples.first : '';
+
+    // Get CEFR level from sense or use the provided one
+    String senseCefrLevel = firstSense['cefr'] ?? cefrLevel;
+
+    return Flashcard(
+      id: documentId,
+      category: categoryId,
+      word: data['mainWord'] ?? documentId,
+      partOfSpeech: firstSense['partOfSpeech'] ?? data['mainPos'] ?? '',
+      definition: firstSense['definition'] ?? '',
+      hint: firstSense['title'] ?? '',
+      exampleSentence: {
+        'sentence': exampleSentence,
+      },
+      cefrLevel: senseCefrLevel,
+    );
+  }
+
+  // สำหรับ backward compatibility
   factory Flashcard.fromMap(Map<String, dynamic> data) {
     return Flashcard(
       id: data['vocabulary_id'] ?? '',
@@ -29,12 +56,10 @@ class Flashcard {
       partOfSpeech: data['type'] ?? '',
       definition: data['meaning'] ?? '',
       hint: data['hint'] ?? '',
-      translation: data['translation'] ?? '',
-      hintTranslation: data['hint_translation'] ?? '',
       exampleSentence: {
         'sentence': data['example_sentence'] ?? '',
-        'translation': data['example_translation'] ?? '',
       },
+      cefrLevel: data['cefrLevel'] ?? '',
     );
   }
 }

@@ -3,6 +3,7 @@ import 'package:swipe_cards/swipe_cards.dart';
 
 import '../../../utils/app_logger.dart';
 import '../model/flashcard_topic_model.dart';
+import '../model/swipe_direction.dart';
 import '../services/flashcard_service.dart';
 
 /// คลาสควบคุมการทำงานของ flashcards
@@ -39,8 +40,10 @@ class FlashcardController {
       // ดึงคำศัพท์
       List<Flashcard> flashcards = await service.getFlashcardsForTopic(topic);
 
-      // ดึงคำที่รู้แล้ว
-      List<String> knownWords = await service.getUserKnownWords(userId, topic);
+      // ดึงสถานะคำศัพท์
+      Map<String, List<String>> statuses =
+          await service.getWordStatuses(userId, topic);
+      List<String> knownWords = statuses['known_words'] ?? [];
 
       // กรองและสุ่มคำศัพท์
       List<Flashcard> filteredFlashcards = flashcards
@@ -54,16 +57,13 @@ class FlashcardController {
         return SwipeItem(
           content: flashcard,
           likeAction: () {
-            saveFlashcardStatus(flashcard, true, false);
-            resetShowMeaning();
+            handleSwipe(flashcard, SwipeDirection.right);
           },
           nopeAction: () {
-            saveFlashcardStatus(flashcard, false, false);
-            resetShowMeaning();
+            handleSwipe(flashcard, SwipeDirection.left);
           },
           superlikeAction: () {
-            saveFlashcardStatus(flashcard, true, true);
-            resetShowMeaning();
+            handleSwipe(flashcard, SwipeDirection.up);
           },
         );
       }).toList();
@@ -81,14 +81,19 @@ class FlashcardController {
     }
   }
 
-  /// บันทึกสถานะของ flashcard
-  Future<void> saveFlashcardStatus(
-      Flashcard flashcard, bool isKnown, bool forReview) async {
+  /// จัดการการปัดการ์ด
+  Future<void> handleSwipe(
+      Flashcard flashcard, SwipeDirection direction) async {
     try {
-      await service.saveUserFlashcardStatus(
-          userId, topic, flashcard, isKnown, forReview);
+      await service.saveWordStatus(
+        userId,
+        topic,
+        flashcard.word,
+        direction,
+      );
+      resetShowMeaning();
     } catch (e) {
-      AppLogger.e(_tag, 'เกิดข้อผิดพลาดในการบันทึกสถานะ flashcard', e);
+      AppLogger.e(_tag, 'เกิดข้อผิดพลาดในการบันทึกสถานะคำศัพท์', e);
     }
   }
 
@@ -114,16 +119,15 @@ class FlashcardController {
 
   /// เตรียมข้อมูลสำหรับหน้าสรุป
   Future<Map<String, int>> getSummaryData() async {
-    final knownCount = await service.countKnownWords(userId, topic);
-    final reviewCount = await service.countReviewWords(userId, topic);
-    final unknownCount = await service.countUnknownWords(userId, topic);
-    final totalCount = knownCount + reviewCount + unknownCount;
+    final statuses = await service.getWordStatuses(userId, topic);
 
     return {
-      'knownCount': knownCount,
-      'reviewCount': reviewCount,
-      'unknownCount': unknownCount,
-      'totalCount': totalCount,
+      'knownCount': statuses['known_words']?.length ?? 0,
+      'unknownCount': statuses['unknown_words']?.length ?? 0,
+      'reviewCount': statuses['review_words']?.length ?? 0,
+      'totalCount': (statuses['known_words']?.length ?? 0) +
+          (statuses['unknown_words']?.length ?? 0) +
+          (statuses['review_words']?.length ?? 0),
     };
   }
 

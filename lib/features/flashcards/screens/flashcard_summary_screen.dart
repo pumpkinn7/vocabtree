@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../model/swipe_direction.dart'; // Add SwipeDirection import
 import '../services/flashcard_service.dart';
 
 class FlashcardSummaryScreen extends StatefulWidget {
@@ -29,7 +30,7 @@ class FlashcardSummaryScreen extends StatefulWidget {
 class _FlashcardSummaryScreenState extends State<FlashcardSummaryScreen> {
   final FlashcardService _service = FlashcardService();
   bool _isResetting = false;
-  List<Map<String, dynamic>> _unknownWords = [];
+  List<String> _unknownWords = [];
   final Set<String> _selectedWords = {};
   bool _isAddingToBank = false;
 
@@ -41,13 +42,13 @@ class _FlashcardSummaryScreenState extends State<FlashcardSummaryScreen> {
 
   Future<void> _fetchUnknownWords() async {
     try {
-      final unknownWords = await _service.getUnknownWords(
+      final statuses = await _service.getWordStatuses(
         widget.userId,
         widget.topic,
       );
 
       setState(() {
-        _unknownWords = unknownWords;
+        _unknownWords = statuses['unknown_words'] ?? [];
       });
     } catch (e) {
       debugPrint('Error fetching unknown words: $e');
@@ -62,15 +63,13 @@ class _FlashcardSummaryScreenState extends State<FlashcardSummaryScreen> {
     });
 
     try {
-      await _service.addWordsToReview(
-        widget.userId,
-        widget.topic,
-        _selectedWords.toList(),
-      );
+      for (final word in _selectedWords) {
+        await _service.saveWordStatus(
+            widget.userId, widget.topic, word, SwipeDirection.up);
+      }
 
       setState(() {
-        _unknownWords
-            .removeWhere((vocab) => _selectedWords.contains(vocab['word']));
+        _unknownWords.removeWhere((word) => _selectedWords.contains(word));
         _selectedWords.clear();
       });
     } catch (e) {
@@ -119,10 +118,7 @@ class _FlashcardSummaryScreenState extends State<FlashcardSummaryScreen> {
     });
 
     try {
-      await _service.resetFlashcardsForTopic(
-        widget.userId,
-        widget.topic,
-      );
+      await _service.resetTopic(widget.userId, widget.topic);
 
       if (!mounted) return;
       Navigator.pop(context);
@@ -174,8 +170,7 @@ class _FlashcardSummaryScreenState extends State<FlashcardSummaryScreen> {
                     Wrap(
                       spacing: 8,
                       runSpacing: 8,
-                      children: _unknownWords.map((vocab) {
-                        final word = vocab['word'] ?? '';
+                      children: _unknownWords.map((word) {
                         final bool isSelected = _selectedWords.contains(word);
 
                         return OutlinedButton(

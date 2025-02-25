@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../../utils/app_logger.dart';
 import '../model/flashcard_topic_model.dart';
+import '../model/swipe_direction.dart';
 
 class WordService {
   static const String _tag = 'WordService';
@@ -138,5 +139,76 @@ class WordService {
       // Default level
       return 'B1';
     }
+  }
+
+  Future<void> saveWordStatus(
+    String userId,
+    String topicId,
+    String wordId,
+    SwipeDirection direction,
+  ) async {
+    final docRef = _firestore
+        .collection('users')
+        .doc(userId)
+        .collection('vocabulary_progress')
+        .doc(topicId);
+
+    String field = 'unknown_words'; // Default value
+    switch (direction) {
+      case SwipeDirection.right:
+        field = 'known_words';
+        break;
+      case SwipeDirection.left:
+        field = 'unknown_words';
+        break;
+      case SwipeDirection.up:
+        field = 'review_words';
+        break;
+    }
+
+    await docRef.set({
+      field: FieldValue.arrayUnion([wordId]),
+      // 'last_updated' field removed as requested
+    }, SetOptions(merge: true));
+  }
+
+  Future<Map<String, List<String>>> getWordStatuses(
+    String userId,
+    String topicId,
+  ) async {
+    final doc = await _firestore
+        .collection('users')
+        .doc(userId)
+        .collection('vocabulary_progress')
+        .doc(topicId)
+        .get();
+
+    if (!doc.exists) {
+      return {
+        'known_words': [],
+        'unknown_words': [],
+        'review_words': [],
+      };
+    }
+
+    return {
+      'known_words': List<String>.from(doc.data()?['known_words'] ?? []),
+      'unknown_words': List<String>.from(doc.data()?['unknown_words'] ?? []),
+      'review_words': List<String>.from(doc.data()?['review_words'] ?? []),
+    };
+  }
+
+  Future<void> resetTopic(String userId, String topicId) async {
+    await _firestore
+        .collection('users')
+        .doc(userId)
+        .collection('vocabulary_progress')
+        .doc(topicId)
+        .set({
+      'known_words': [],
+      'unknown_words': [],
+      'review_words': [],
+      // 'last_updated' field removed as requested
+    });
   }
 }

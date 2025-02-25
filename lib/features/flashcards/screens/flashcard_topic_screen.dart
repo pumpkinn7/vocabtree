@@ -3,6 +3,7 @@ import 'package:swipe_cards/swipe_cards.dart';
 
 import '../controllers/flashcard_controller.dart';
 import '../model/flashcard_topic_model.dart';
+import '../model/swipe_direction.dart';
 import '../widgets/flashcard_action_bar.dart';
 import '../widgets/flashcard_detail_dialog.dart';
 import '../widgets/flashcard_header.dart';
@@ -144,22 +145,39 @@ class FlashcardScreenState extends State<FlashcardScreen> {
           ),
         ),
         FlashcardActionBar(
-          onNopePressed: () => _matchEngine.currentItem?.nope(),
+          onNopePressed: () {
+            if (_matchEngine.currentItem != null) {
+              final flashcard = _matchEngine.currentItem!.content as Flashcard;
+              _controller.handleSwipe(flashcard, SwipeDirection.left);
+              _matchEngine.currentItem?.nope();
+            }
+          },
           onSpeakPressed: () {
             if (_matchEngine.currentItem != null) {
               final flashcard = _matchEngine.currentItem!.content as Flashcard;
               _controller.speakWord(flashcard.word);
             }
           },
-          onSuperlikePressed: () => _matchEngine.currentItem?.superLike(),
+          onSuperlikePressed: () {
+            if (_matchEngine.currentItem != null) {
+              final flashcard = _matchEngine.currentItem!.content as Flashcard;
+              _controller.handleSwipe(flashcard, SwipeDirection.up);
+              _matchEngine.currentItem?.superLike();
+            }
+          },
           onToggleMeaningPressed: _toggleShowMeaning,
-          onLikePressed: () => _matchEngine.currentItem?.like(),
+          onLikePressed: () {
+            if (_matchEngine.currentItem != null) {
+              final flashcard = _matchEngine.currentItem!.content as Flashcard;
+              _controller.handleSwipe(flashcard, SwipeDirection.right);
+              _matchEngine.currentItem?.like();
+            }
+          },
         ),
       ],
     );
   }
 
-  // Updated widget to display the counter right-aligned above the card
   Widget _buildCounter() {
     if (_swipeItems.isEmpty) return const SizedBox.shrink();
 
@@ -169,10 +187,8 @@ class FlashcardScreenState extends State<FlashcardScreen> {
       child: Align(
         alignment: Alignment.centerRight,
         child: Padding(
-          // This padding ensures the counter aligns with the right edge of the card
           padding: EdgeInsets.only(
-            right: MediaQuery.of(context).size.width *
-                0.075, // Matches the card's right margin
+            right: MediaQuery.of(context).size.width * 0.075,
           ),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),

@@ -8,6 +8,7 @@ class FlashcardItem extends StatelessWidget {
   final int currentIndex;
   final int totalItems;
   final bool showMeaning;
+  final VoidCallback onDetailPressed;
 
   const FlashcardItem({
     super.key,
@@ -15,6 +16,7 @@ class FlashcardItem extends StatelessWidget {
     required this.currentIndex,
     required this.totalItems,
     required this.showMeaning,
+    required this.onDetailPressed,
   });
 
   @override
@@ -53,50 +55,13 @@ class FlashcardItem extends StatelessWidget {
                           fontStyle: FontStyle.italic,
                         ),
                       ),
-                      const SizedBox(height: 25),
-
-                      // 3. คำนิยาม (definition) - แก้ไขให้แสดง definition แทนตัวอย่างประโยค
-                      const Text(
-                        'definition:',
-                        style: TextStyle(fontSize: 18),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        flashcard
-                            .definition, // แก้จาก flashcard.exampleSentence['sentence'] เป็น flashcard.definition
-                        style: const TextStyle(
-                          fontSize: 16,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 25),
-
-                      // 4. ระดับ CEFR
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: _getCefrLevelColor(flashcard.cefrLevel),
-                              borderRadius: BorderRadius.circular(15),
-                            ),
-                            child: Text(
-                              'CEFR: ${flashcard.cefrLevel}',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+                      // Definition และ CEFR level ถูกลบออกตามที่กำหนด
                     ],
                   ),
                 ),
               ),
-              _buildIndexIndicator(currentIndex, totalItems),
+              // Only keep the detail button
+              _buildDetailButton(),
             ],
           ),
         ),
@@ -104,44 +69,28 @@ class FlashcardItem extends StatelessWidget {
     );
   }
 
-  Widget _buildIndexIndicator(int currentIndex, int totalItems) {
+  Widget _buildDetailButton() {
     return Positioned(
       top: 16,
       right: 16,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: Colors.grey,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Text(
-          '$currentIndex of $totalItems',
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 14,
-            fontWeight: FontWeight.bold,
+      child: GestureDetector(
+        onTap: onDetailPressed,
+        child: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: const BoxDecoration(
+            color: Colors.blue,
+            shape: BoxShape.circle,
+          ),
+          child: const Text(
+            '?',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
       ),
     );
-  }
-
-  Color _getCefrLevelColor(String cefrLevel) {
-    switch (cefrLevel) {
-      case 'A1':
-        return Colors.green.shade300;
-      case 'A2':
-        return Colors.green;
-      case 'B1':
-        return Colors.blue.shade300;
-      case 'B2':
-        return Colors.blue;
-      case 'C1':
-        return Colors.purple.shade300;
-      case 'C2':
-        return Colors.purple;
-      default:
-        return Colors.grey;
-    }
   }
 }

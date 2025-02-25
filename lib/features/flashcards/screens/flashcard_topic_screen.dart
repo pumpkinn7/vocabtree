@@ -3,7 +3,10 @@ import 'package:swipe_cards/swipe_cards.dart';
 
 import '../controllers/flashcard_controller.dart';
 import '../model/flashcard_topic_model.dart';
-import '../widgets/widgets.dart';
+import '../widgets/flashcard_action_bar.dart';
+import '../widgets/flashcard_detail_dialog.dart';
+import '../widgets/flashcard_header.dart';
+import '../widgets/flashcard_item.dart';
 import 'flashcard_summary_screen.dart';
 
 class FlashcardScreen extends StatefulWidget {
@@ -54,6 +57,13 @@ class FlashcardScreenState extends State<FlashcardScreen> {
     setState(() {
       _isShowingMeaning = !_isShowingMeaning;
     });
+  }
+
+  void _showFlashcardDetail(Flashcard flashcard) {
+    showDialog(
+      context: context,
+      builder: (context) => FlashcardDetailDialog(flashcard: flashcard),
+    );
   }
 
   Future<void> _navigateToSummary() async {
@@ -111,6 +121,8 @@ class FlashcardScreenState extends State<FlashcardScreen> {
 
     return Column(
       children: [
+        // Counter is positioned here, above the card
+        _buildCounter(),
         Expanded(
           child: SwipeCards(
             matchEngine: _matchEngine,
@@ -123,6 +135,7 @@ class FlashcardScreenState extends State<FlashcardScreen> {
                 currentIndex: index + 1,
                 totalItems: _swipeItems.length,
                 showMeaning: _isShowingMeaning && !isNextCard,
+                onDetailPressed: () => _showFlashcardDetail(flashcard),
               );
             },
             onStackFinished: _navigateToSummary,
@@ -143,6 +156,41 @@ class FlashcardScreenState extends State<FlashcardScreen> {
           onLikePressed: () => _matchEngine.currentItem?.like(),
         ),
       ],
+    );
+  }
+
+  // Updated widget to display the counter right-aligned above the card
+  Widget _buildCounter() {
+    if (_swipeItems.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      width: MediaQuery.of(context).size.width,
+      padding: const EdgeInsets.only(top: 16, bottom: 8),
+      child: Align(
+        alignment: Alignment.centerRight,
+        child: Padding(
+          // This padding ensures the counter aligns with the right edge of the card
+          padding: EdgeInsets.only(
+            right: MediaQuery.of(context).size.width *
+                0.075, // Matches the card's right margin
+          ),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.grey.withOpacity(0.8),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              '${_currentIndex + 1} of ${_swipeItems.length}',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

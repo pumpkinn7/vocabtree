@@ -2,6 +2,11 @@ import 'package:flutter/material.dart';
 
 import '../model/flashcard_topic_model.dart';
 
+export 'flashcard_action_bar.dart';
+export 'flashcard_detail_dialog.dart';
+export 'flashcard_header.dart';
+export 'flashcard_item.dart';
+
 /// ส่วนหัวของหน้า Flashcard
 class FlashcardHeader extends StatelessWidget implements PreferredSizeWidget {
   final String topic;

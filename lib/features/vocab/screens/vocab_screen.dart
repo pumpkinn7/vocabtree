@@ -137,17 +137,22 @@ class VocabScreenState extends State<VocabScreen> {
     }
   }
 
+  // เพิ่ม debug print ใน _getVocabDocsFromReviewWords เพื่อตรวจสอบข้อมูล
   Future<List<DocumentSnapshot>> _getVocabDocsFromReviewWords(
       String level, String topic) async {
     if (userId == null) return [];
 
     final reviewWordsList = reviewWords[level]?[topic] ?? [];
+    debugPrint("Review words list for $level/$topic: $reviewWordsList");
+
     if (reviewWordsList.isEmpty) return [];
 
     final List<DocumentSnapshot> vocabDocs = [];
 
     for (var word in reviewWordsList) {
       try {
+        debugPrint("Fetching data for word: $word");
+
         final docSnap = await FirebaseFirestore.instance
             .collection('users')
             .doc(userId)
@@ -157,14 +162,29 @@ class VocabScreenState extends State<VocabScreen> {
             .doc(word)
             .get();
 
-        if (docSnap.exists) {
+        debugPrint("Doc exists for $word: ${docSnap.exists}");
+
+        // ถ้าไม่มีข้อมูลในคอลเลกชัน vocabularies ให้ลองหาจาก collection words
+        if (!docSnap.exists) {
+          debugPrint("Trying to fetch from words collection instead");
+          final wordDoc = await FirebaseFirestore.instance
+              .collection('words')
+              .doc(word)
+              .get();
+
+          if (wordDoc.exists) {
+            debugPrint("Found in words collection");
+            vocabDocs.add(wordDoc);
+          }
+        } else {
           vocabDocs.add(docSnap);
         }
-      } catch (_) {
-        // ข้ามคำที่มีปัญหา
+      } catch (e) {
+        debugPrint("Error fetching word $word: $e");
       }
     }
 
+    debugPrint("Total vocabDocs found: ${vocabDocs.length}");
     return vocabDocs;
   }
 

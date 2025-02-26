@@ -1,7 +1,8 @@
-import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter_tts/flutter_tts.dart';
+import 'package:flutter/material.dart';
+
+import '../widgets/vocab_detail_dialog.dart';
 import 'all_vocab_screen.dart';
 import 'flashcard_for_review_screen.dart';
 
@@ -54,36 +55,139 @@ class VocabScreenState extends State<VocabScreen> {
   };
 
   String? userId;
-  Map<String, Map<String, List<DocumentSnapshot>>> vocabData = {}; // level -> topic -> vocabDocs
+  Map<String, Map<String, List<String>>> reviewWords =
+      {}; // level -> topic -> wordsList
+  bool isLoading = true;
 
   @override
   void initState() {
     super.initState();
     userId = FirebaseAuth.instance.currentUser?.uid;
-    _fetchAllVocabularies();
+    _fetchAllReviewWords();
   }
 
-  Future<void> _fetchAllVocabularies() async {
-    for (var levelEntry in levelMapping.entries) {
-      final level = levelEntry.key;
-      final topics = levelEntry.value;
-      if (!vocabData.containsKey(level)) {
-        vocabData[level] = {};
+  Future<void> _fetchAllReviewWords() async {
+    setState(() => isLoading = true);
+
+    try {
+      if (userId == null) return;
+
+      // เริ่มต้นค่าว่างสำหรับทุกระดับ/หัวข้อ
+      for (var levelEntry in levelMapping.entries) {
+        final level = levelEntry.key;
+        final topics = levelEntry.value;
+        reviewWords[level] = {};
+        for (var topic in topics) {
+          reviewWords[level]![topic] = [];
+        }
       }
-      for (var topic in topics) {
-        final snapshot = await FirebaseFirestore.instance
+
+      // ดึงข้อมูลจาก vocabulary_progress collection
+      for (var levelEntry in levelMapping.entries) {
+        final level = levelEntry.key;
+        final topics = levelEntry.value;
+
+        for (var topic in topics) {
+          final progressDoc = await FirebaseFirestore.instance
+              .collection('users')
+              .doc(userId)
+              .collection('vocabulary_progress')
+              .doc(topic)
+              .get();
+
+          if (progressDoc.exists && progressDoc.data() != null) {
+            final reviewWordsArr = progressDoc.data()!['review_words'] ?? [];
+
+            if (reviewWordsArr.isNotEmpty) {
+              setState(() {
+                reviewWords[level]![topic] = List<String>.from(reviewWordsArr);
+              });
+            }
+          }
+        }
+      }
+    } catch (_) {
+      // ไม่ต้องทำอะไรเมื่อเกิดข้อผิดพลาดในการดึงข้อมูล
+    } finally {
+      setState(() => isLoading = false);
+    }
+  }
+
+  Future<Map<String, dynamic>?> _getVocabDataForWord(
+      String level, String topic, String word) async {
+    if (userId == null) return null;
+
+    try {
+      final docSnap = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection(level)
+          .doc(topic)
+          .collection('vocabularies')
+          .doc(word)
+          .get();
+
+      if (docSnap.exists) {
+        return docSnap.data();
+      } else {
+        return {'word': word, 'meaning': 'No definition available'};
+      }
+    } catch (_) {
+      return {'word': word, 'meaning': 'Error loading data'};
+    }
+  }
+
+  Future<List<DocumentSnapshot>> _getVocabDocsFromReviewWords(
+      String level, String topic) async {
+    if (userId == null) return [];
+
+    final reviewWordsList = reviewWords[level]?[topic] ?? [];
+    if (reviewWordsList.isEmpty) return [];
+
+    final List<DocumentSnapshot> vocabDocs = [];
+
+    for (var word in reviewWordsList) {
+      try {
+        final docSnap = await FirebaseFirestore.instance
             .collection('users')
             .doc(userId)
             .collection(level)
             .doc(topic)
             .collection('vocabularies')
-            .where('for_review', isEqualTo: true)
+            .doc(word)
             .get();
 
-        setState(() {
-          vocabData[level]![topic] = snapshot.docs;
-        });
+        if (docSnap.exists) {
+          vocabDocs.add(docSnap);
+        }
+      } catch (_) {
+        // ข้ามคำที่มีปัญหา
       }
+    }
+
+    return vocabDocs;
+  }
+
+  Future<void> _removeFromReviewWords(
+      String level, String topic, String word) async {
+    if (userId == null) return;
+
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('vocabulary_progress')
+          .doc(topic)
+          .update({
+        'review_words': FieldValue.arrayRemove([word])
+      });
+
+      // อัปเดต state
+      setState(() {
+        reviewWords[level]![topic]?.remove(word);
+      });
+    } catch (_) {
+      // ไม่ต้องทำอะไรเมื่อเกิดข้อผิดพลาด
     }
   }
 
@@ -91,203 +195,160 @@ class VocabScreenState extends State<VocabScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Vocab Screen')),
-      body: ListView(
-        children: levelMapping.entries.map((levelEntry) {
-          final level = levelEntry.key;
-          final topics = levelEntry.value;
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : RefreshIndicator(
+              onRefresh: _fetchAllReviewWords,
+              child: ListView(
+                children: levelMapping.entries.map((levelEntry) {
+                  final level = levelEntry.key;
+                  final topics = levelEntry.value;
 
-          return ExpansionTile(
-            title: Text('ระดับ: $level'),
-            children: [
-              ...topics.map((topic) {
-                final vocabDocs = vocabData[level]?[topic] ?? [];
-
-                if (vocabDocs.isEmpty) {
-                  return const SizedBox.shrink(); // ไม่มีคำศัพท์ไม่แสดงหัวข้อ
-                }
-
-                return Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.center,
+                  return ExpansionTile(
+                    title: Text('ระดับ: $level'),
                     children: [
-                      Text(
-                        'หัวข้อ: $topic',
-                        style: Theme.of(context).textTheme.titleMedium,
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 8.0),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          ElevatedButton(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => AllVocabScreen(level: level),
-                                ),
-                              );
-                            },
-                            child: const Text('ดูทั้งหมด'),
-                          ),
-                          const SizedBox(width: 10),
-                          ElevatedButton(
-                            onPressed: () async {
-                              await Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => FlashcardForReviewScreen(
-                                    level: level,
-                                    topic: topic,
-                                    userId: userId!,
-                                    vocabDocs: vocabDocs,
-                                  ),
-                                ),
-                              );
-                              // เมื่อปิด Flashcard กลับมา โหลดข้อมูลใหม่
-                              _fetchAllVocabularies();
-                            },
-                            child: const Text('Flashcard'),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8.0),
-                      Wrap(
-                        spacing: 12.0,
-                        runSpacing: 12.0,
-                        alignment: WrapAlignment.center,
-                        children: vocabDocs.map((doc) {
-                          final vocabData = doc.data() as Map<String, dynamic>;
-                          final word = vocabData['word'] ?? '';
-                          final FlutterTts flutterTts = FlutterTts();
+                      ...topics.map((topic) {
+                        final wordsList = reviewWords[level]?[topic] ?? [];
 
-                          return OutlinedButton(
-                            onPressed: () {
-                              _showVocabDialog(
-                                context,
-                                doc,
-                                level,
-                                topic,
-                                vocabData,
-                                flutterTts,
-                              );
-                            },
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12.0),
+                        if (wordsList.isEmpty) {
+                          return const SizedBox.shrink();
+                        }
+
+                        return Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Text(
+                                'หัวข้อ: ${_formatTopicName(topic)}',
+                                style: Theme.of(context).textTheme.titleMedium,
+                                textAlign: TextAlign.center,
                               ),
-                              side: BorderSide(color: Theme.of(context).primaryColor),
-                            ),
-                            child: Text(word, textAlign: TextAlign.center),
-                          );
-                        }).toList(),
-                      ),
+                              const SizedBox(height: 8.0),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  ElevatedButton(
+                                    onPressed: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) =>
+                                              AllVocabScreen(level: level),
+                                        ),
+                                      );
+                                    },
+                                    child: const Text('ดูทั้งหมด'),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  ElevatedButton(
+                                    onPressed: () async {
+                                      final vocabDocs =
+                                          await _getVocabDocsFromReviewWords(
+                                              level, topic);
+
+                                      if (!mounted) return;
+
+                                      if (vocabDocs.isEmpty) {
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(const SnackBar(
+                                                content: Text(
+                                                    'ไม่พบข้อมูลคำศัพท์')));
+                                        return;
+                                      }
+
+                                      await Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) =>
+                                              FlashcardForReviewScreen(
+                                            level: level,
+                                            topic: topic,
+                                            userId: userId!,
+                                            vocabDocs: vocabDocs,
+                                          ),
+                                        ),
+                                      );
+                                      // เมื่อปิด Flashcard กลับมา โหลดข้อมูลใหม่
+                                      _fetchAllReviewWords();
+                                    },
+                                    child: const Text('Flashcard'),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8.0),
+                              Wrap(
+                                spacing: 12.0,
+                                runSpacing: 12.0,
+                                alignment: WrapAlignment.center,
+                                children: wordsList.map((word) {
+                                  return OutlinedButton(
+                                    onPressed: () async {
+                                      // ดึงข้อมูลคำศัพท์เพื่อแสดง Dialog
+                                      final vocabData =
+                                          await _getVocabDataForWord(
+                                              level, topic, word);
+
+                                      if (!mounted) return;
+
+                                      if (vocabData == null) {
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          SnackBar(
+                                              content: Text(
+                                                  'ไม่พบข้อมูลสำหรับคำว่า "$word"')),
+                                        );
+                                        return;
+                                      }
+
+                                      // แสดง Dialog
+                                      showDialog(
+                                        context: context,
+                                        barrierDismissible: true,
+                                        builder: (context) => VocabDetailDialog(
+                                          wordId: word,
+                                          vocabData: vocabData,
+                                          level: level,
+                                          topic: topic,
+                                          userId: userId!,
+                                          onRemoveWord: (word) =>
+                                              _removeFromReviewWords(
+                                                  level, topic, word),
+                                        ),
+                                      );
+                                    },
+                                    style: OutlinedButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 16.0, vertical: 8.0),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius:
+                                            BorderRadius.circular(12.0),
+                                      ),
+                                      side: BorderSide(
+                                          color:
+                                              Theme.of(context).primaryColor),
+                                    ),
+                                    child:
+                                        Text(word, textAlign: TextAlign.center),
+                                  );
+                                }).toList(),
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
                     ],
-                  ),
-                );
-              }),
-            ],
-          );
-        }).toList(),
-      ),
+                  );
+                }).toList(),
+              ),
+            ),
     );
   }
 
-  void _showVocabDialog(
-      BuildContext context,
-      DocumentSnapshot doc,
-      String level,
-      String topic,
-      Map<String, dynamic> vocabData,
-      FlutterTts flutterTts,
-      ) {
-    final word = vocabData['word'] ?? '';
-    final type = vocabData['type'] ?? '';
-    final meaning = vocabData['meaning'] ?? '';
-    final exampleSentence = vocabData['example_sentence'] ?? '';
-    final exampleTranslation = vocabData['example_translation'] ?? '';
-    final hint = vocabData['hint'] ?? '';
-    final hintTranslation = vocabData['hint_translation'] ?? '';
-    bool isShowingTranslation = false;
-
-    showDialog(
-      context: context,
-      builder: (BuildContext dialogContext) {
-        return StatefulBuilder(
-          builder: (BuildContext context, StateSetter setStateDialog) {
-            return AlertDialog(
-              title: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text('$word - คำ$type', style: Theme.of(context).textTheme.titleLarge),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () {
-                      Navigator.of(dialogContext).pop();
-                    },
-                  ),
-                ],
-              ),
-              content: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.volume_up, color: Colors.blue),
-                      onPressed: () async {
-                        await flutterTts.speak(word);
-                      },
-                    ),
-                    const SizedBox(height: 10),
-                    Text('หมวดหมู่ : $topic', style: Theme.of(context).textTheme.bodyLarge),
-                    const SizedBox(height: 10),
-                    Text('ความหมาย : $meaning', style: Theme.of(context).textTheme.bodyLarge),
-                    const SizedBox(height: 10),
-                    Text(
-                      'ตัวอย่าง : ${isShowingTranslation ? exampleTranslation : exampleSentence}',
-                      style: Theme.of(context).textTheme.bodyLarge,
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      'คำใบ้ : ${isShowingTranslation ? hintTranslation : hint}',
-                      style: Theme.of(context).textTheme.bodyLarge,
-                    ),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  child: const Text('แปลภาษา'),
-                  onPressed: () {
-                    setStateDialog(() {
-                      isShowingTranslation = !isShowingTranslation;
-                    });
-                  },
-                ),
-                TextButton(
-                  child: const Text('ลบออกจากคลัง', style: TextStyle(color: Colors.orange)),
-                  onPressed: () async {
-                    await FirebaseFirestore.instance
-                        .collection('users')
-                        .doc(userId)
-                        .collection(level)
-                        .doc(topic)
-                        .collection('vocabularies')
-                        .doc(doc.id)
-                        .update({'for_review': false});
-
-                    Navigator.of(dialogContext).pop(); // ปิด AlertDialog ก่อน
-
-                    _fetchAllVocabularies(); // อัปเดตข้อมูลหน้าจอ
-                  },
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
+  String _formatTopicName(String topic) {
+    return topic
+        .split('_')
+        .map((w) => w.isNotEmpty ? w[0].toUpperCase() + w.substring(1) : '')
+        .join(' ');
   }
 }

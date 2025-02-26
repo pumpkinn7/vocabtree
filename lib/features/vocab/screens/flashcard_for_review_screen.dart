@@ -1,7 +1,7 @@
-import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:swipe_cards/swipe_cards.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
+import 'package:swipe_cards/swipe_cards.dart';
 
 class FlashcardForReviewScreen extends StatefulWidget {
   final String level;
@@ -18,7 +18,8 @@ class FlashcardForReviewScreen extends StatefulWidget {
   });
 
   @override
-  FlashcardForReviewScreenState createState() => FlashcardForReviewScreenState();
+  FlashcardForReviewScreenState createState() =>
+      FlashcardForReviewScreenState();
 }
 
 class FlashcardForReviewScreenState extends State<FlashcardForReviewScreen> {
@@ -59,17 +60,15 @@ class FlashcardForReviewScreenState extends State<FlashcardForReviewScreen> {
       _swipeItems = flashcards.map((f) {
         return SwipeItem(
           content: f,
-          // ปัดซ้าย => for_review = true (ยังคงอยู่ใน VocabScreen)
+          // ปัดซ้าย => ยังคงอยู่ใน review_words (ไม่ต้องทำอะไร)
           nopeAction: () {
-            _updateForReview(f['docId'], true);
             _resetFlashcardState();
           },
-          // ปัดขวา => for_review = false (ลบออกจาก VocabScreen)
+          // ปัดขวา => ลบออกจาก review_words
           likeAction: () {
-            _updateForReview(f['docId'], false);
+            _removeFromReview(f['word']);
             _resetFlashcardState();
           },
-          // ไม่ต้องมี superlikeAction เพราะเราจะลบปุ่ม superlike ออก
         );
       }).toList();
 
@@ -86,16 +85,16 @@ class FlashcardForReviewScreenState extends State<FlashcardForReviewScreen> {
     });
   }
 
-  /// อัปเดตค่า `for_review` ใน Firestore ตามผลการปัด
-  Future<void> _updateForReview(String docId, bool forReview) async {
+  /// ลบคำออกจาก review_words array
+  Future<void> _removeFromReview(String word) async {
     await FirebaseFirestore.instance
         .collection('users')
         .doc(widget.userId)
-        .collection(widget.level)
+        .collection('vocabulary_progress')
         .doc(widget.topic)
-        .collection('vocabularies')
-        .doc(docId)
-        .update({'for_review': forReview});
+        .update({
+      'review_words': FieldValue.arrayRemove([word])
+    });
   }
 
   /// สั่ง TTS อ่านคำศัพท์
@@ -128,80 +127,92 @@ class FlashcardForReviewScreenState extends State<FlashcardForReviewScreen> {
       body: _swipeItems.isEmpty
           ? const Center(child: Text('ไม่มีคำศัพท์ใน Topic นี้'))
           : Column(
-        children: [
-          // ส่วนแสดง Flashcard
-          Expanded(
-            child: SwipeCards(
-              matchEngine: _matchEngine,
-              itemBuilder: (BuildContext context, int index) {
-                final f = _swipeItems[index].content as Map<String, dynamic>;
-                return Center(
-                  child: SizedBox(
-                    width: MediaQuery.of(context).size.width * 0.85,
-                    height: MediaQuery.of(context).size.height * 0.65,
-                    child: FlashcardForReviewItem(
-                      data: f,
-                      currentIndex: index + 1,
-                      totalItems: _swipeItems.length,
-                      showMeaning: isShowingMeaning,
-                    ),
+              children: [
+                // ส่วนแสดง Flashcard
+                Expanded(
+                  child: SwipeCards(
+                    matchEngine: _matchEngine,
+                    itemBuilder: (BuildContext context, int index) {
+                      final f =
+                          _swipeItems[index].content as Map<String, dynamic>;
+                      return Center(
+                        child: SizedBox(
+                          width: MediaQuery.of(context).size.width * 0.85,
+                          height: MediaQuery.of(context).size.height * 0.65,
+                          child: FlashcardForReviewItem(
+                            data: f,
+                            currentIndex: index + 1,
+                            totalItems: _swipeItems.length,
+                            showMeaning: isShowingMeaning,
+                          ),
+                        ),
+                      );
+                    },
+                    onStackFinished: () {},
+                    itemChanged: (SwipeItem item, int index) {
+                      setState(() {
+                        isShowingMeaning = false;
+                      });
+                    },
+                    // ไม่อนุญาตให้ superlike
+                    upSwipeAllowed: false,
                   ),
-                );
-              },
-              onStackFinished: () {},
-              itemChanged: (SwipeItem item, int index) {
-                setState(() {
-                  isShowingMeaning = false;
-                });
-              },
-              // ไม่อนุญาตให้ superlike
-              upSwipeAllowed: false,
-            ),
-          ),
+                ),
 
-          // แถวของปุ่มควบคุมการปัด
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              // ปุ่มปัดซ้าย (Nope)
-              IconButton(
-                icon: const Icon(Icons.close, color: Colors.red),
-                onPressed: () {
-                  _matchEngine.currentItem?.nope();
-                },
-              ),
-              // ปุ่มอ่านออกเสียง
-              IconButton(
-                icon: const Icon(Icons.volume_up, color: Colors.blue),
-                onPressed: () {
-                  final currentItem = _matchEngine.currentItem;
-                  if (currentItem != null) {
-                    final flashcard = currentItem.content as Map<String, dynamic>;
-                    _speak(flashcard['word']);
-                  }
-                },
-              ),
-              // ปุ่ม toggle แปล / ไม่แปล
-              IconButton(
-                icon: const Icon(Icons.translate, color: Colors.teal),
-                onPressed: () {
-                  setState(() {
-                    isShowingMeaning = !isShowingMeaning;
-                  });
-                },
-              ),
-              // ปุ่มปัดขวา (Like)
-              IconButton(
-                icon: const Icon(Icons.check, color: Colors.green),
-                onPressed: () {
-                  _matchEngine.currentItem?.like();
-                },
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-        ],
-      ),
+                // แถวของปุ่มควบคุมการปัด
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    // ปุ่มปัดซ้าย (ยังต้องการทบทวน)
+                    IconButton(
+                      icon: const Icon(Icons.close, color: Colors.red),
+                      onPressed: () {
+                        _matchEngine.currentItem?.nope();
+                      },
+                    ),
+                    // ปุ่มอ่านออกเสียง
+                    IconButton(
+                      icon: const Icon(Icons.volume_up, color: Colors.blue),
+                      onPressed: () {
+                        final currentItem = _matchEngine.currentItem;
+                        if (currentItem != null) {
+                          final flashcard =
+                              currentItem.content as Map<String, dynamic>;
+                          _speak(flashcard['word']);
+                        }
+                      },
+                    ),
+                    // ปุ่ม toggle แปล / ไม่แปล
+                    IconButton(
+                      icon: const Icon(Icons.translate, color: Colors.teal),
+                      onPressed: () {
+                        setState(() {
+                          isShowingMeaning = !isShowingMeaning;
+                        });
+                      },
+                    ),
+                    // ปุ่มปัดขวา (รู้จักแล้ว - ไม่ต้องทบทวนอีก)
+                    IconButton(
+                      icon: const Icon(Icons.check, color: Colors.green),
+                      onPressed: () {
+                        _matchEngine.currentItem?.like();
+                      },
+                    ),
+                  ],
+                ),
+                // คำอธิบายความหมายของการปัด
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: const [
+                      Text('👈 ต้องทบทวนอีก', style: TextStyle(fontSize: 12)),
+                      Text('จำได้แล้ว 👉', style: TextStyle(fontSize: 12)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
     );
   }
 }
@@ -297,7 +308,8 @@ class FlashcardForReviewItem extends StatelessWidget {
                 top: 16,
                 right: 16,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
                     color: Colors.grey,
                     borderRadius: BorderRadius.circular(20),

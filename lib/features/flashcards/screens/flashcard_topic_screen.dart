@@ -46,7 +46,6 @@ class FlashcardScreenState extends State<FlashcardScreen> {
       onNavigateToSummary: _navigateToSummary,
       resetShowMeaning: () => setState(() {
         _isShowingMeaning = false;
-        _currentIndex++;
       }),
     );
 
@@ -84,6 +83,13 @@ class FlashcardScreenState extends State<FlashcardScreen> {
       context: context,
       builder: (context) => FlashcardDetailDialog(flashcard: flashcard),
     );
+  }
+
+  void _incrementCurrentIndex() {
+    setState(() {
+      _currentIndex++;
+      _isShowingMeaning = false;
+    });
   }
 
   @override
@@ -137,7 +143,10 @@ class FlashcardScreenState extends State<FlashcardScreen> {
               );
             },
             onStackFinished: _navigateToSummary,
-            itemChanged: (_, __) => setState(() => _isShowingMeaning = false),
+            itemChanged: (_, int index) => setState(() {
+              _currentIndex = index;
+              _isShowingMeaning = false;
+            }),
             upSwipeAllowed: true,
           ),
         ),
@@ -147,13 +156,13 @@ class FlashcardScreenState extends State<FlashcardScreen> {
               final flashcard = _matchEngine.currentItem!.content as Flashcard;
               _controller.handleSwipe(flashcard, SwipeDirection.left);
               _matchEngine.currentItem?.nope();
+              _incrementCurrentIndex();
             }
           },
           onSpeakPressed: () {
             if (_matchEngine.currentItem != null) {
               final flashcard = _matchEngine.currentItem!.content as Flashcard;
-              _controller.speakWord(
-                  flashcard.mainWord); // Changed from word to mainWord
+              _controller.speakWord(flashcard.mainWord);
             }
           },
           onSuperlikePressed: () {
@@ -161,6 +170,7 @@ class FlashcardScreenState extends State<FlashcardScreen> {
               final flashcard = _matchEngine.currentItem!.content as Flashcard;
               _controller.handleSwipe(flashcard, SwipeDirection.up);
               _matchEngine.currentItem?.superLike();
+              _incrementCurrentIndex();
             }
           },
           onToggleMeaningPressed: _toggleShowMeaning,
@@ -169,6 +179,7 @@ class FlashcardScreenState extends State<FlashcardScreen> {
               final flashcard = _matchEngine.currentItem!.content as Flashcard;
               _controller.handleSwipe(flashcard, SwipeDirection.right);
               _matchEngine.currentItem?.like();
+              _incrementCurrentIndex();
             }
           },
         ),

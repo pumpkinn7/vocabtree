@@ -1,49 +1,16 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-import '../../../utils/app_logger.dart';
 import '../model/flashcard_topic_model.dart';
 import '../services/word_service.dart';
 
 /// Repository for handling flashcard data operations
 class FlashcardRepository {
-  static const String _tag = 'FlashcardRepository';
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final WordService _wordService = WordService();
 
   /// Fetch flashcards for a specific topic
   Future<List<Flashcard>> getFlashcardsForTopic(String topic) async {
-    try {
-      // Try to get flashcards from the new structure first
-      return await _wordService.getWordsForCategory(topic);
-    } catch (e) {
-      AppLogger.i(
-          _tag, 'Error fetching from word_categories, falling back: $e');
-      // Fallback to legacy structure
-      return await _getFlashcardsFromLegacyStructure(topic);
-    }
-  }
-
-  /// Get flashcards from the legacy data structure
-  Future<List<Flashcard>> _getFlashcardsFromLegacyStructure(
-      String topic) async {
-    String level = _wordService.getLevelFromCategory(topic);
-    DocumentSnapshot levelSnapshot =
-        await _firestore.collection('cefr_levels').doc(level).get();
-
-    if (!levelSnapshot.exists || levelSnapshot.data() == null) {
-      return [];
-    }
-
-    Map<String, dynamic> topics =
-        (levelSnapshot.data() as Map<String, dynamic>)['topics'];
-
-    if (!topics.containsKey(topic)) {
-      return [];
-    }
-
-    List<dynamic> vocabularies = topics[topic]['vocabularies'] as List<dynamic>;
-
-    return vocabularies.map((vocab) => Flashcard.fromMap(vocab)).toList();
+    return await _wordService.getWordsForCategory(topic);
   }
 
   /// Get user's known words for a specific topic
@@ -91,7 +58,6 @@ class FlashcardRepository {
       'definition': detail.definition,
       'type': detail.partOfSpeech,
       'example_sentence': detail.examples.isNotEmpty ? detail.examples[0] : '',
-      'hint': detail.hint,
     }, SetOptions(merge: true));
   }
 
@@ -147,43 +113,16 @@ class FlashcardRepository {
 
   /// Get all categories for a CEFR level
   Future<List<Map<String, dynamic>>> getCategoriesForLevel(String level) async {
-    try {
-      // First try the new structure
-      final snapshot = await _firestore
-          .collection('word_categories')
-          .where('cefrLevel', isEqualTo: level)
-          .get();
+    final snapshot = await _firestore
+        .collection('word_categories')
+        .where('cefrLevel', isEqualTo: level)
+        .get();
 
-      return snapshot.docs.map((doc) {
-        return {
-          'id': doc.id,
-          'name': doc.data()['name'] ?? doc.id.replaceAll('_', ' '),
-          'wordCount': (doc.data()['words'] as List?)?.length ?? 0,
-        };
-      }).toList();
-    } catch (e) {
-      AppLogger.e(_tag, 'Error fetching from word_categories', e);
-      // Fallback to old structure
-      return await _getLegacyCategoriesForLevel(level);
-    }
-  }
-
-  Future<List<Map<String, dynamic>>> _getLegacyCategoriesForLevel(
-      String level) async {
-    final levelDoc =
-        await _firestore.collection('cefr_levels').doc(level).get();
-
-    if (!levelDoc.exists || levelDoc.data() == null) {
-      return [];
-    }
-
-    final topics = levelDoc.data()!['topics'] as Map<String, dynamic>;
-
-    return topics.entries.map((entry) {
+    return snapshot.docs.map((doc) {
       return {
-        'id': entry.key,
-        'name': entry.key.replaceAll('_', ' '),
-        'wordCount': (entry.value['vocabularies'] as List?)?.length ?? 0,
+        'id': doc.id,
+        'name': doc.data()['name'] ?? doc.id.replaceAll('_', ' '),
+        'wordCount': (doc.data()['words'] as List?)?.length ?? 0,
       };
     }).toList();
   }

@@ -223,9 +223,12 @@ class WordService {
     try {
       final doc = await _firestore.collection('words').doc(wordId).get();
       if (!doc.exists) return null;
-
-      return WordDetail.fromDocument(
-          doc.id, doc.data()!, getLevelFromCategory(wordId));
+      
+      // แก้ไขจาก fromDocument เป็น fromMap
+      final data = doc.data()!;
+      data['id'] = doc.id;  // เพิ่ม id เข้าไปในข้อมูล
+      
+      return WordDetail.fromMap(data);
     } catch (e) {
       return null;
     }

@@ -61,44 +61,117 @@ class Flashcard {
   }
 }
 
-// เพิ่ม WordDetail model
+// เพิ่มคลาส WordDetail ถ้ายังไม่มี
 class WordDetail {
   final String id;
   final String mainWord;
   final String partOfSpeech;
   final String definition;
-  final String hint;
+  final String cefr;
   final List<String> examples;
-  final String cefrLevel;
+  final List<AdditionalMeaning> otherMeanings;
 
-  const WordDetail({
+  WordDetail({
     required this.id,
     required this.mainWord,
     required this.partOfSpeech,
     required this.definition,
-    required this.hint,
+    required this.cefr,
     required this.examples,
-    required this.cefrLevel,
+    required this.otherMeanings,
   });
 
+  factory WordDetail.fromMap(Map<String, dynamic> map) {
+    return WordDetail(
+      id: map['id'] ?? '',
+      mainWord: map['mainWord'] ?? '',
+      partOfSpeech: map['partOfSpeech'] ?? '',
+      definition: map['definition'] ?? '',
+      cefr: map['cefr'] ?? '',
+      examples: List<String>.from(map['examples'] ?? []),
+      otherMeanings: List<AdditionalMeaning>.from(
+        (map['otherMeanings'] ?? []).map(
+          (x) => AdditionalMeaning.fromMap(x),
+        ),
+      ),
+    );
+  }
+
+  // เพิ่มเมธอด fromDocument
   factory WordDetail.fromDocument(
-    String documentId,
-    Map<String, dynamic> data,
-    String defaultCefrLevel,
-  ) {
-    final senses = data['senses'] as List? ?? [];
-    final firstSense = senses.isNotEmpty
-        ? senses.first as Map<String, dynamic>
-        : <String, dynamic>{};
+      String docId, Map<String, dynamic> doc, String cefrLevel) {
+    List<AdditionalMeaning> otherMeanings = [];
+    List<String> examples = [];
+    String definition = '';
+    String partOfSpeech = doc['mainPos'] ?? '';
+
+    // ดึงข้อมูลจาก senses ถ้ามี
+    if (doc['senses'] != null &&
+        doc['senses'] is List &&
+        (doc['senses'] as List).isNotEmpty) {
+      final senses = doc['senses'] as List;
+
+      // ดึงข้อมูลจาก sense แรก
+      if (senses.isNotEmpty) {
+        final firstSense = senses.first as Map<String, dynamic>;
+        definition = firstSense['definition'] ?? '';
+        partOfSpeech = firstSense['partOfSpeech'] ?? partOfSpeech;
+
+        // ดึงตัวอย่างประโยค
+        if (firstSense['examples'] != null && firstSense['examples'] is List) {
+          examples = List<String>.from(firstSense['examples']);
+        }
+      }
+
+      // ดึง senses อื่นๆ เป็น otherMeanings
+      if (senses.length > 1) {
+        for (var i = 1; i < senses.length; i++) {
+          if (senses[i] is Map<String, dynamic>) {
+            final sense = senses[i] as Map<String, dynamic>;
+            List<String> senseExamples = [];
+
+            if (sense['examples'] != null && sense['examples'] is List) {
+              senseExamples = List<String>.from(sense['examples']);
+            }
+
+            otherMeanings.add(AdditionalMeaning(
+              partOfSpeech: sense['partOfSpeech'] ?? '',
+              definition: sense['definition'] ?? '',
+              examples: senseExamples,
+            ));
+          }
+        }
+      }
+    }
 
     return WordDetail(
-      id: documentId,
-      mainWord: data['mainWord'] ?? documentId,
-      partOfSpeech: firstSense['partOfSpeech'] ?? data['mainPos'] ?? '',
-      definition: firstSense['definition'] ?? '',
-      hint: firstSense['title'] ?? '',
-      examples: List<String>.from(firstSense['examples'] ?? []),
-      cefrLevel: firstSense['cefr'] ?? defaultCefrLevel,
+      id: docId,
+      mainWord: doc['mainWord'] ?? '',
+      partOfSpeech: partOfSpeech,
+      definition: definition,
+      cefr: cefrLevel,
+      examples: examples,
+      otherMeanings: otherMeanings,
+    );
+  }
+}
+
+class AdditionalMeaning {
+  final String partOfSpeech;
+  final String definition;
+  final List<String> examples;
+
+  AdditionalMeaning({
+    required this.partOfSpeech,
+    required this.definition,
+    required this.examples,
+  });
+
+  factory AdditionalMeaning.fromMap(Map<String, dynamic> map) {
+    return AdditionalMeaning(
+      partOfSpeech: map['partOfSpeech'] ?? '',
+      definition: map['definition'] ?? '',
+      examples: List<String>.from(map['examples'] ?? []),
     );
   }
 }

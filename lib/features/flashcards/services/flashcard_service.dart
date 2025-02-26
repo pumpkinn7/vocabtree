@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
 
 import '../../../utils/app_logger.dart';
 import '../model/flashcard_topic_model.dart';
@@ -379,11 +380,21 @@ class FlashcardService {
 
   Future<WordDetail?> getWordDetail(String wordId) async {
     try {
-      final doc = await _firestore.collection('words').doc(wordId).get();
-      if (!doc.exists) return null;
-      return WordDetail.fromDocument(
-          doc.id, doc.data()!, getLevelFromCategory(wordId));
+      final db = FirebaseFirestore.instance;
+      final docRef = db.collection('words').doc(wordId);
+      final doc = await docRef.get();
+
+      if (!doc.exists) {
+        return null;
+      }
+
+      // เพิ่มฟิลด์ id เข้าไปในข้อมูล
+      final data = doc.data()!;
+      data['id'] = doc.id;
+
+      return WordDetail.fromMap(data);
     } catch (e) {
+      debugPrint('Error getting word detail: $e');
       return null;
     }
   }

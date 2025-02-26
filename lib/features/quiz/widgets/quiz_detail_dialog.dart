@@ -225,9 +225,13 @@ class _QuizDetailDialogState extends State<QuizDetailDialog> {
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          children: widget.senses.asMap().entries.map((entry) {
-            return _buildSenseCard(entry.key, entry.value);
-          }).toList(),
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // แสดงความหมายทั้งหมด
+            ...widget.senses.asMap().entries.map((entry) {
+              return _buildSenseCard(entry.key, entry.value);
+            }),
+          ],
         ),
       ),
       actions: [

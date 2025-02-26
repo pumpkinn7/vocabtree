@@ -78,7 +78,7 @@ class FlashcardController {
       await service.saveWordStatus(
         userId,
         topic,
-        flashcard.id, // เปลี่ยนจาก flashcard.word เป็น flashcard.id
+        flashcard.id,
         direction,
       );
       resetShowMeaning();

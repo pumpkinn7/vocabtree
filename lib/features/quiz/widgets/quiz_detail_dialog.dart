@@ -79,22 +79,28 @@ class _QuizDetailDialogState extends State<QuizDetailDialog> {
     );
   }
 
-  // Helper Methods
-  String _formatText(String? text, {String defaultText = 'N/A'}) {
-    return (text?.isEmpty ?? true) ? defaultText : text!;
-  }
-
-  String _formatCEFR(String? cefr) {
-    return (cefr == null || cefr.contains('›')) ? 'N/A' : cefr;
-  }
-
   // UI Building Methods
   Widget _buildHeader(Map<String, dynamic> sense, int index) {
+    // เพิ่ม print เพื่อตรวจสอบค่า
+    debugPrint(
+        'QuizDetailDialog - Sense: title=${sense['title']}, usage=${sense['usage']}');
+
+    // แก้ไขเพื่อใช้ค่า default อย่างชัดเจน
+    final String title =
+        (sense['title'] == null || sense['title'].toString().isEmpty)
+            ? 'General'
+            : sense['title'].toString();
+
+    final String usage =
+        (sense['usage'] == null || sense['usage'].toString().isEmpty)
+            ? 'N/A'
+            : sense['usage'].toString();
+
     return Row(
       children: [
         Expanded(
           child: Text(
-            _formatText(sense['title'], defaultText: 'General'),
+            title, // ควรเป็น "General" ถ้าไม่มีข้อมูล
             style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -102,11 +108,11 @@ class _QuizDetailDialogState extends State<QuizDetailDialog> {
           ),
         ),
         Text(
-          _formatText(sense['usage']),
-          style: const TextStyle(
+          usage, // ควรเป็น "N/A" ถ้าไม่มีข้อมูล
+          style: TextStyle(
             fontSize: 14,
             fontStyle: FontStyle.italic,
-            color: Colors.grey,
+            color: usage == 'N/A' ? Colors.grey.withOpacity(0.6) : Colors.grey,
           ),
         ),
       ],
@@ -165,7 +171,7 @@ class _QuizDetailDialogState extends State<QuizDetailDialog> {
             ),
           ),
         Text(
-          'CEFR: ${_formatCEFR(sense['cefr'])}',
+          'CEFR: ${sense['cefr'] == null || sense['cefr'].toString().contains('›') ? 'N/A' : sense['cefr']}',
           style: const TextStyle(
             fontSize: 12,
             color: Colors.grey,
@@ -189,6 +195,12 @@ class _QuizDetailDialogState extends State<QuizDetailDialog> {
 
   Widget _buildExamples(Map<String, dynamic> sense, int index) {
     final examples = List<String>.from(sense['examples']);
+
+    // ถ้าไม่มีตัวอย่าง ไม่ต้องแสดงส่วนนี้
+    if (examples.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -225,13 +237,9 @@ class _QuizDetailDialogState extends State<QuizDetailDialog> {
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // แสดงความหมายทั้งหมด
-            ...widget.senses.asMap().entries.map((entry) {
-              return _buildSenseCard(entry.key, entry.value);
-            }),
-          ],
+          children: widget.senses.asMap().entries.map((entry) {
+            return _buildSenseCard(entry.key, entry.value);
+          }).toList(),
         ),
       ),
       actions: [

@@ -6,7 +6,6 @@ import '../services/flashcard_service.dart';
 class FlashcardSummaryScreen extends StatefulWidget {
   final String userId;
   final String topic;
-  final String level;
   final int knownCount;
   final int unknownCount;
   final int reviewCount;
@@ -16,7 +15,6 @@ class FlashcardSummaryScreen extends StatefulWidget {
     super.key,
     required this.userId,
     required this.topic,
-    required this.level,
     required this.knownCount,
     required this.unknownCount,
     required this.reviewCount,

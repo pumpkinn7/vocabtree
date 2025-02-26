@@ -37,34 +37,24 @@ class FlashcardController {
     updateLoadingState(true);
 
     try {
-      // ดึงคำศัพท์
       List<Flashcard> flashcards = await service.getFlashcardsForTopic(topic);
 
-      // ดึงสถานะคำศัพท์
       Map<String, List<String>> statuses =
           await service.getWordStatuses(userId, topic);
       List<String> knownWords = statuses['known_words'] ?? [];
 
-      // กรองและสุ่มคำศัพท์
       List<Flashcard> filteredFlashcards = flashcards
-          .where((flashcard) => !knownWords.contains(flashcard.word))
+          .where((flashcard) => !knownWords.contains(flashcard.id))
           .toList();
 
       filteredFlashcards.shuffle();
 
-      // สร้าง swipe items
       swipeItems = filteredFlashcards.map((flashcard) {
         return SwipeItem(
           content: flashcard,
-          likeAction: () {
-            handleSwipe(flashcard, SwipeDirection.right);
-          },
-          nopeAction: () {
-            handleSwipe(flashcard, SwipeDirection.left);
-          },
-          superlikeAction: () {
-            handleSwipe(flashcard, SwipeDirection.up);
-          },
+          likeAction: () => handleSwipe(flashcard, SwipeDirection.right),
+          nopeAction: () => handleSwipe(flashcard, SwipeDirection.left),
+          superlikeAction: () => handleSwipe(flashcard, SwipeDirection.up),
         );
       }).toList();
 
@@ -88,7 +78,7 @@ class FlashcardController {
       await service.saveWordStatus(
         userId,
         topic,
-        flashcard.word,
+        flashcard.id, // เปลี่ยนจาก flashcard.word เป็น flashcard.id
         direction,
       );
       resetShowMeaning();

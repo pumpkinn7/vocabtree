@@ -60,32 +60,29 @@ class FlashcardScreenState extends State<FlashcardScreen> {
     });
   }
 
-  void _showFlashcardDetail(Flashcard flashcard) {
-    showDialog(
-      context: context,
-      builder: (context) => FlashcardDetailDialog(flashcard: flashcard),
-    );
-  }
-
   Future<void> _navigateToSummary() async {
-    // ดึงข้อมูลสำหรับหน้าสรุป
     final summaryData = await _controller.getSummaryData();
     if (!mounted) return;
 
-    final level = _controller.service.getLevelFromCategory(widget.topic);
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
         builder: (_) => FlashcardSummaryScreen(
           userId: widget.userId,
           topic: widget.topic,
-          level: level,
           knownCount: summaryData['knownCount'] ?? 0,
           reviewCount: summaryData['reviewCount'] ?? 0,
           unknownCount: summaryData['unknownCount'] ?? 0,
           totalCount: summaryData['totalCount'] ?? 0,
         ),
       ),
+    );
+  }
+
+  void _showFlashcardDetail(Flashcard flashcard) {
+    showDialog(
+      context: context,
+      builder: (context) => FlashcardDetailDialog(flashcard: flashcard),
     );
   }
 
@@ -155,7 +152,8 @@ class FlashcardScreenState extends State<FlashcardScreen> {
           onSpeakPressed: () {
             if (_matchEngine.currentItem != null) {
               final flashcard = _matchEngine.currentItem!.content as Flashcard;
-              _controller.speakWord(flashcard.word);
+              _controller.speakWord(
+                  flashcard.mainWord); // Changed from word to mainWord
             }
           },
           onSuperlikePressed: () {

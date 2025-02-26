@@ -39,7 +39,10 @@ class FlashcardItem extends StatelessWidget {
                     children: [
                       // 1. คำศัพท์
                       Text(
-                        showMeaning ? flashcard.definition : flashcard.word,
+                        showMeaning
+                            ? flashcard.definition
+                            : flashcard
+                                .mainWord, // เปลี่ยนจาก word เป็น mainWord
                         style: const TextStyle(
                           fontSize: 35,
                           fontWeight: FontWeight.bold,

@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:vocabtree/features/quiz/screens/cefr_level_screen.dart';
 
@@ -40,7 +41,10 @@ class QuizScreen extends StatelessWidget {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => CefrLevelScreen(cefrLevel: 'B1'),
+                      builder: (context) => CefrLevelScreen(
+                        cefrLevel: 'B1',
+                        userId: FirebaseAuth.instance.currentUser?.uid ?? '',
+                      ),
                     ),
                   );
                 },
@@ -54,7 +58,10 @@ class QuizScreen extends StatelessWidget {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => CefrLevelScreen(cefrLevel: 'B2'),
+                      builder: (context) => CefrLevelScreen(
+                        cefrLevel: 'B2',
+                        userId: FirebaseAuth.instance.currentUser?.uid ?? '',
+                      ),
                     ),
                   );
                 },
@@ -68,7 +75,10 @@ class QuizScreen extends StatelessWidget {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => CefrLevelScreen(cefrLevel: 'C1'),
+                      builder: (context) => CefrLevelScreen(
+                        cefrLevel: 'C1',
+                        userId: FirebaseAuth.instance.currentUser?.uid ?? '',
+                      ),
                     ),
                   );
                 },
@@ -82,7 +92,10 @@ class QuizScreen extends StatelessWidget {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => CefrLevelScreen(cefrLevel: 'C2'),
+                      builder: (context) => CefrLevelScreen(
+                        cefrLevel: 'C2',
+                        userId: FirebaseAuth.instance.currentUser?.uid ?? '',
+                      ),
                     ),
                   );
                 },

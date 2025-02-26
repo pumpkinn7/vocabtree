@@ -93,17 +93,17 @@ class FlashcardService {
         .collection(level)
         .doc(topic)
         .collection('vocabularies')
-        .doc(flashcard.word)
+        .doc(flashcard.mainWord) // Changed from word to mainWord
         .set({
       'level': level,
       'topic': topic,
-      'word': flashcard.word,
+      'word': flashcard.mainWord, // Changed from word to mainWord
       'is_known': isKnown,
       'for_review': forReview,
       'definition':
           flashcard.definition, // เปลี่ยนจาก 'meaning' เป็น 'definition'
       'type': flashcard.partOfSpeech,
-      'example_sentence': flashcard.exampleSentence['sentence'] ?? '',
+      // Remove exampleSentence as it's no longer available
       'cefrLevel': flashcard.cefrLevel,
     }, SetOptions(merge: true));
   }
@@ -375,5 +375,16 @@ class FlashcardService {
       'review_words': [],
       // 'last_updated' field removed as requested
     });
+  }
+
+  Future<WordDetail?> getWordDetail(String wordId) async {
+    try {
+      final doc = await _firestore.collection('words').doc(wordId).get();
+      if (!doc.exists) return null;
+      return WordDetail.fromDocument(
+          doc.id, doc.data()!, getLevelFromCategory(wordId));
+    } catch (e) {
+      return null;
+    }
   }
 }

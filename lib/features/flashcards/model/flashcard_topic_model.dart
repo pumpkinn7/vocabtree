@@ -1,65 +1,104 @@
 class Flashcard {
   final String id;
-  final String category;
-  final String word;
+  final String mainWord; // เปลี่ยนจาก word เป็น mainWord
   final String partOfSpeech;
   final String definition;
   final String hint;
-  final Map<String, String> exampleSentence;
   final String cefrLevel;
 
-  Flashcard({
+  const Flashcard({
     required this.id,
-    required this.category,
-    required this.word,
+    required this.mainWord,
     required this.partOfSpeech,
     required this.definition,
     required this.hint,
-    required this.exampleSentence,
     required this.cefrLevel,
   });
 
-  factory Flashcard.fromWordDocument(String documentId,
-      Map<String, dynamic> data, String categoryId, String cefrLevel) {
-    // Get the first sense if available
-    final List<dynamic> senses = data['senses'] ?? [];
-    final Map<String, dynamic> firstSense =
-        senses.isNotEmpty ? Map<String, dynamic>.from(senses.first) : {};
+  factory Flashcard.fromWordDocument(
+    String id,
+    Map<String, dynamic> data,
+    String categoryId,
+    String cefrLevel,
+  ) {
+    final senses = data['senses'] as List? ?? [];
+    final word = data['mainWord'] as String? ?? '';
 
-    // Get examples from the first sense
-    final List<dynamic> examples = firstSense['examples'] ?? [];
-    final String exampleSentence = examples.isNotEmpty ? examples.first : '';
+    if (senses.isEmpty) {
+      return Flashcard(
+        id: id,
+        mainWord: word,
+        partOfSpeech: data['mainPos'] as String? ?? '',
+        definition: '',
+        hint: '',
+        cefrLevel: cefrLevel,
+      );
+    }
 
-    // Get CEFR level from sense or use the provided one
-    String senseCefrLevel = firstSense['cefr'] ?? cefrLevel;
+    final firstSense = senses.first as Map<String, dynamic>;
 
     return Flashcard(
-      id: documentId,
-      category: categoryId,
-      word: data['mainWord'] ?? documentId,
-      partOfSpeech: firstSense['partOfSpeech'] ?? data['mainPos'] ?? '',
-      definition: firstSense['definition'] ?? '',
-      hint: firstSense['title'] ?? '',
-      exampleSentence: {
-        'sentence': exampleSentence,
-      },
-      cefrLevel: senseCefrLevel,
+      id: id,
+      mainWord: word,
+      partOfSpeech: firstSense['partOfSpeech'] as String? ??
+          data['mainPos'] as String? ??
+          '',
+      definition: firstSense['definition'] as String? ?? '',
+      hint: firstSense['title'] as String? ?? '',
+      cefrLevel: cefrLevel,
     );
   }
 
-  // สำหรับ backward compatibility
   factory Flashcard.fromMap(Map<String, dynamic> data) {
     return Flashcard(
       id: data['vocabulary_id'] ?? '',
-      category: data['category'] ?? '',
-      word: data['word'] ?? '',
+      mainWord: data['word'] ?? '',
       partOfSpeech: data['type'] ?? '',
       definition: data['meaning'] ?? '',
       hint: data['hint'] ?? '',
-      exampleSentence: {
-        'sentence': data['example_sentence'] ?? '',
-      },
-      cefrLevel: data['cefrLevel'] ?? '',
+      cefrLevel: data['cefrLevel'] ?? 'B1',
+    );
+  }
+}
+
+// เพิ่ม WordDetail model
+class WordDetail {
+  final String id;
+  final String mainWord;
+  final String partOfSpeech;
+  final String definition;
+  final String hint;
+  final List<String> examples;
+  final String cefrLevel;
+
+  const WordDetail({
+    required this.id,
+    required this.mainWord,
+    required this.partOfSpeech,
+    required this.definition,
+    required this.hint,
+    required this.examples,
+    required this.cefrLevel,
+  });
+
+  factory WordDetail.fromDocument(
+    String documentId,
+    Map<String, dynamic> data,
+    String defaultCefrLevel,
+  ) {
+    final senses = data['senses'] as List? ?? [];
+    final firstSense = senses.isNotEmpty
+        ? senses.first as Map<String, dynamic>
+        : <String, dynamic>{};
+
+    return WordDetail(
+      id: documentId,
+      mainWord: data['mainWord'] ?? documentId,
+      partOfSpeech: firstSense['partOfSpeech'] ?? data['mainPos'] ?? '',
+      definition: firstSense['definition'] ?? '',
+      hint: firstSense['title'] ?? '',
+      examples: List<String>.from(firstSense['examples'] ?? []),
+      cefrLevel: firstSense['cefr'] ?? defaultCefrLevel,
     );
   }
 }

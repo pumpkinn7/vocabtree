@@ -2,15 +2,20 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:timelines/timelines.dart';
+import 'package:vocabtree/features/flashcards/screens/flashcard_topic_screen.dart';
 
-import '../../flashcards/screens/flashcard_topic_screen.dart';
 import '../../quiz/screens/quiz_topic_screen.dart';
 import '../services/firebase_service.dart';
 
 class CefrLevelScreen extends StatefulWidget {
   final String cefrLevel;
+  final String userId; // Add userId property
 
-  const CefrLevelScreen({super.key, required this.cefrLevel});
+  const CefrLevelScreen({
+    super.key,
+    required this.cefrLevel,
+    required this.userId, // Add to constructor
+  });
 
   @override
   State<CefrLevelScreen> createState() => _CefrLevelScreenState();
@@ -36,7 +41,7 @@ class _CefrLevelScreenState extends State<CefrLevelScreen> {
 
     // ดึงชื่อรูปภาพ (รางวัล) ของแต่ละ topic (ถ้ามี)
     final rewardsSnap =
-    await FirebaseFirestore.instance.collection('topic_rewards').get();
+        await FirebaseFirestore.instance.collection('topic_rewards').get();
     Map<String, String> topicImages = {};
     for (var doc in rewardsSnap.docs) {
       final t = doc.id;
@@ -58,13 +63,27 @@ class _CefrLevelScreenState extends State<CefrLevelScreen> {
     required String cefrLevel,
     required Map<String, dynamic> unlockedTopics,
   }) {
-    final levelTopics = unlockedTopics[cefrLevel] as Map<String, dynamic>? ?? {};
+    final levelTopics =
+        unlockedTopics[cefrLevel] as Map<String, dynamic>? ?? {};
     return levelTopics[topic] == true;
   }
 
   String _formatTopicName(String key, int index) {
     return '${index + 1}. '
         '${key.split('_').map((w) => w[0].toUpperCase() + w.substring(1)).join(' ')}';
+  }
+
+  void _navigateToFlashcards(String categoryId) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => FlashcardScreen(
+          // เปลี่ยนจาก FlashcardTopicScreen เป็น FlashcardScreen
+          topic: categoryId,
+          userId: widget.userId,
+        ),
+      ),
+    );
   }
 
   @override
@@ -84,7 +103,8 @@ class _CefrLevelScreenState extends State<CefrLevelScreen> {
           }
 
           final data = snapshot.data ?? {};
-          final unlockedTopics = data['unlockedTopics'] as Map<String, dynamic>? ?? {};
+          final unlockedTopics =
+              data['unlockedTopics'] as Map<String, dynamic>? ?? {};
           final topicImages = data['topicImages'] as Map<String, String>? ?? {};
           final topics = FirebaseService.cefrTopics[widget.cefrLevel] ?? [];
 
@@ -143,7 +163,8 @@ class _CefrLevelScreenState extends State<CefrLevelScreen> {
                                 // ด้านซ้ายเป็นชื่อหัวข้อ + ปุ่ม flashcard/quiz
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         _formatTopicName(topicKey, index),
@@ -158,20 +179,9 @@ class _CefrLevelScreenState extends State<CefrLevelScreen> {
                                           TextButton(
                                             onPressed: unlocked
                                                 ? () {
-                                              Navigator.push(
-                                                context,
-                                                MaterialPageRoute(
-                                                  builder: (context) =>
-                                                      FlashcardScreen(
-                                                        topic: topicKey,
-                                                        userId: user?.uid ?? '',
-                                                      ),
-                                                ),
-                                              ).then((_) {
-                                                // กลับมาแล้วรีเฟรช
-                                                setState(() {});
-                                              });
-                                            }
+                                                    _navigateToFlashcards(
+                                                        topicKey);
+                                                  }
                                                 : null,
                                             child: const Text('Flashcard'),
                                           ),
@@ -179,19 +189,21 @@ class _CefrLevelScreenState extends State<CefrLevelScreen> {
                                           TextButton(
                                             onPressed: unlocked
                                                 ? () {
-                                              Navigator.push(
-                                                context,
-                                                MaterialPageRoute(
-                                                  builder: (context) => QuizTopicScreen(
-                                                    topic: topicKey,
-                                                    cefrLevel: widget.cefrLevel,
-                                                  ),
-                                                ),
-                                              ).then((_) {
-                                                // กลับมาแล้วรีเฟรช
-                                                setState(() {});
-                                              });
-                                            }
+                                                    Navigator.push(
+                                                      context,
+                                                      MaterialPageRoute(
+                                                        builder: (context) =>
+                                                            QuizTopicScreen(
+                                                          topic: topicKey,
+                                                          cefrLevel:
+                                                              widget.cefrLevel,
+                                                        ),
+                                                      ),
+                                                    ).then((_) {
+                                                      // กลับมาแล้วรีเฟรช
+                                                      setState(() {});
+                                                    });
+                                                  }
                                                 : null,
                                             child: const Text('Quiz'),
                                           ),
@@ -205,7 +217,8 @@ class _CefrLevelScreenState extends State<CefrLevelScreen> {
                                   Column(
                                     children: [
                                       ClipRRect(
-                                        borderRadius: BorderRadius.circular(8.0),
+                                        borderRadius:
+                                            BorderRadius.circular(8.0),
                                         child: Image.asset(
                                           imagePath,
                                           width: 60,

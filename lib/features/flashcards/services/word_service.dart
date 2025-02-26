@@ -58,8 +58,12 @@ class WordService {
           final data = doc.data();
 
           // Convert each word document to a Flashcard object - add cefrLevel parameter
-          flashcards.add(
-              Flashcard.fromWordDocument(doc.id, data, categoryId, cefrLevel));
+          flashcards.add(Flashcard.fromWordDocument(
+            doc.id,
+            data,
+            categoryId,
+            cefrLevel,
+          ));
         }
       }
 
@@ -72,29 +76,32 @@ class WordService {
 
   // Save user's progress with a flashcard
   Future<void> saveUserFlashcardStatus(
-      String userId,
-      String level,
-      String categoryId,
-      Flashcard flashcard,
-      bool isKnown,
-      bool forReview) async {
+    String userId,
+    String level,
+    String categoryId,
+    Flashcard flashcard,
+    bool isKnown,
+    bool forReview,
+  ) async {
+    final detail = await getWordDetail(flashcard.id);
+    if (detail == null) return;
+
     await _firestore
         .collection('users')
         .doc(userId)
         .collection(level)
         .doc(categoryId)
         .collection('vocabularies')
-        .doc(flashcard.word)
+        .doc(flashcard.mainWord)
         .set({
       'level': level,
       'topic': categoryId,
-      'word': flashcard.word,
+      'word': flashcard.mainWord,
       'is_known': isKnown,
       'for_review': forReview,
-      'definition':
-          flashcard.definition, // เปลี่ยนจาก 'meaning' เป็น 'definition'
-      'type': flashcard.partOfSpeech,
-      'example_sentence': flashcard.exampleSentence['sentence'] ?? '',
+      'definition': detail.definition,
+      'type': detail.partOfSpeech,
+      'example_sentence': detail.examples.isNotEmpty ? detail.examples[0] : '',
       'cefrLevel': flashcard.cefrLevel,
     }, SetOptions(merge: true));
   }
@@ -210,5 +217,17 @@ class WordService {
       'review_words': [],
       // 'last_updated' field removed as requested
     });
+  }
+
+  Future<WordDetail?> getWordDetail(String wordId) async {
+    try {
+      final doc = await _firestore.collection('words').doc(wordId).get();
+      if (!doc.exists) return null;
+
+      return WordDetail.fromDocument(
+          doc.id, doc.data()!, getLevelFromCategory(wordId));
+    } catch (e) {
+      return null;
+    }
   }
 }

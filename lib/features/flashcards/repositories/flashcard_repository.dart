@@ -71,6 +71,9 @@ class FlashcardRepository {
     bool forReview,
   ) async {
     String level = _wordService.getLevelFromCategory(topic);
+    final detail = await _wordService.getWordDetail(flashcard.id);
+
+    if (detail == null) return;
 
     await _firestore
         .collection('users')
@@ -78,18 +81,17 @@ class FlashcardRepository {
         .collection(level)
         .doc(topic)
         .collection('vocabularies')
-        .doc(flashcard.word)
+        .doc(flashcard.mainWord)
         .set({
       'level': level,
       'topic': topic,
-      'word': flashcard.word,
+      'word': flashcard.mainWord,
       'is_known': isKnown,
       'for_review': forReview,
-      'definition':
-          flashcard.definition, // เปลี่ยนจาก 'meaning' เป็น 'definition'
-      'type': flashcard.partOfSpeech,
-      'example_sentence': flashcard.exampleSentence['sentence'] ?? '',
-      'hint': flashcard.hint,
+      'definition': detail.definition,
+      'type': detail.partOfSpeech,
+      'example_sentence': detail.examples.isNotEmpty ? detail.examples[0] : '',
+      'hint': detail.hint,
     }, SetOptions(merge: true));
   }
 

@@ -15,7 +15,7 @@ class _QuizDetailDialogState extends State<QuizDetailDialog> {
   bool isTranslated = false;
   Map<String, String> translations = {};
 
-  // Translation Methods
+  // แปลภาษาแบบกระชับ
   Future<void> _toggleTranslation() async {
     if (isTranslated) {
       setState(() => isTranslated = false);
@@ -23,223 +23,72 @@ class _QuizDetailDialogState extends State<QuizDetailDialog> {
     }
 
     try {
-      await _translateAllContent();
+      for (int i = 0; i < widget.senses.length; i++) {
+        final sense = widget.senses[i];
+
+        // แปลคำจำกัดความ
+        if (sense['definition']?.toString().isNotEmpty == true) {
+          final defTranslation = await translator.translate(
+            sense['definition'],
+            from: 'en',
+            to: 'th',
+          );
+          translations['def_$i'] = defTranslation.text;
+        }
+
+        // แปลตัวอย่างประโยค
+        if (sense['examples'] is List) {
+          final examples = List<String>.from(sense['examples']);
+          for (int j = 0; j < examples.length; j++) {
+            if (examples[j].isNotEmpty) {
+              final exTranslation = await translator.translate(
+                examples[j],
+                from: 'en',
+                to: 'th',
+              );
+              translations['example_${i}_$j'] = exTranslation.text;
+            }
+          }
+        }
+      }
+
       if (mounted) setState(() => isTranslated = true);
     } catch (e) {
-      if (mounted) _showTranslationError(e.toString());
-    }
-  }
-
-  Future<void> _translateAllContent() async {
-    await Future.wait(
-      widget.senses.asMap().entries.map((entry) async {
-        final index = entry.key;
-        final sense = entry.value;
-
-        await Future.wait([
-          _translateDefinition(sense, index),
-          _translateExamples(sense, index),
-        ]);
-      }),
-    );
-  }
-
-  Future<void> _translateDefinition(
-      Map<String, dynamic> sense, int index) async {
-    if (sense['definition'] != null) {
-      final translation = await translator.translate(
-        sense['definition'],
-        from: 'en',
-        to: 'th',
-      );
-      translations['def_$index'] = translation.text;
-    }
-  }
-
-  Future<void> _translateExamples(Map<String, dynamic> sense, int index) async {
-    if (sense['examples'] != null) {
-      final examples = List<String>.from(sense['examples']);
-      for (int i = 0; i < examples.length; i++) {
-        final translation = await translator.translate(
-          examples[i],
-          from: 'en',
-          to: 'th',
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('ไม่สามารถแปลภาษาได้: $e'),
+            duration: const Duration(seconds: 3),
+          ),
         );
-        translations['example_${index}_$i'] = translation.text;
       }
     }
-  }
-
-  void _showTranslationError(String error) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('ไม่สามารถแปลภาษาได้: $error'),
-        duration: const Duration(seconds: 3),
-      ),
-    );
-  }
-
-  // UI Building Methods
-  Widget _buildHeader(Map<String, dynamic> sense, int index) {
-    // เพิ่ม print เพื่อตรวจสอบค่า
-    debugPrint(
-        'QuizDetailDialog - Sense: title=${sense['title']}, usage=${sense['usage']}');
-
-    // แก้ไขเพื่อใช้ค่า default อย่างชัดเจน
-    final String title =
-        (sense['title'] == null || sense['title'].toString().isEmpty)
-            ? 'General'
-            : sense['title'].toString();
-
-    final String usage =
-        (sense['usage'] == null || sense['usage'].toString().isEmpty)
-            ? 'N/A'
-            : sense['usage'].toString();
-
-    return Row(
-      children: [
-        Expanded(
-          child: Text(
-            title, // ควรเป็น "General" ถ้าไม่มีข้อมูล
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-        Text(
-          usage, // ควรเป็น "N/A" ถ้าไม่มีข้อมูล
-          style: TextStyle(
-            fontSize: 14,
-            fontStyle: FontStyle.italic,
-            color: usage == 'N/A' ? Colors.grey.withOpacity(0.6) : Colors.grey,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDialogTitle() {
-    return Row(
-      children: [
-        const Expanded(child: Text("All Meanings")),
-        IconButton(
-          icon: Icon(
-            isTranslated ? Icons.g_translate_outlined : Icons.translate,
-            color: Colors.blue,
-          ),
-          onPressed: _toggleTranslation,
-          tooltip: isTranslated ? 'แสดงภาษาอังกฤษ' : 'แปลเป็นภาษาไทย',
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSenseCard(int index, Map<String, dynamic> sense) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildHeader(sense, index),
-            const SizedBox(height: 8),
-            _buildSenseInfo(sense),
-            if (sense['definition'] != null) ...[
-              _buildDefinition(sense, index),
-              const SizedBox(height: 8),
-            ],
-            if (sense['examples'] != null) _buildExamples(sense, index),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSenseInfo(Map<String, dynamic> sense) {
-    return Row(
-      children: [
-        if (sense['partOfSpeech'] != null)
-          Expanded(
-            child: Text(
-              sense['partOfSpeech'],
-              style: const TextStyle(
-                fontWeight: FontWeight.w500,
-                color: Colors.blue,
-              ),
-            ),
-          ),
-        Text(
-          'CEFR: ${sense['cefr'] == null || sense['cefr'].toString().contains('›') ? 'N/A' : sense['cefr']}',
-          style: const TextStyle(
-            fontSize: 12,
-            color: Colors.grey,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDefinition(Map<String, dynamic> sense, int index) {
-    return Text(
-      isTranslated
-          ? translations['def_$index'] ?? sense['definition']
-          : sense['definition'],
-      style: TextStyle(
-        fontSize: 16,
-        fontStyle: isTranslated ? FontStyle.italic : FontStyle.normal,
-      ),
-    );
-  }
-
-  Widget _buildExamples(Map<String, dynamic> sense, int index) {
-    final examples = List<String>.from(sense['examples']);
-
-    // ถ้าไม่มีตัวอย่าง ไม่ต้องแสดงส่วนนี้
-    if (examples.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Examples:',
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-            color: Colors.grey,
-          ),
-        ),
-        const SizedBox(height: 4),
-        ...examples.asMap().entries.map(
-              (e) => Padding(
-                padding: const EdgeInsets.only(left: 8, bottom: 4),
-                child: Text(
-                  '• ${isTranslated ? translations['example_${index}_${e.key}'] ?? e.value : e.value}',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontStyle: FontStyle.italic,
-                    color: Colors.black87,
-                  ),
-                ),
-              ),
-            ),
-      ],
-    );
   }
 
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: _buildDialogTitle(),
+      title: Row(
+        children: [
+          const Expanded(child: Text("All Meanings")),
+          IconButton(
+            icon: Icon(
+              isTranslated ? Icons.g_translate_outlined : Icons.translate,
+              color: Colors.blue,
+            ),
+            onPressed: _toggleTranslation,
+            tooltip: isTranslated ? 'แสดงภาษาอังกฤษ' : 'แปลเป็นภาษาไทย',
+          ),
+        ],
+      ),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          children: widget.senses.asMap().entries.map((entry) {
-            return _buildSenseCard(entry.key, entry.value);
-          }).toList(),
+          children: widget.senses
+              .asMap()
+              .entries
+              .map((entry) => _buildSenseCard(entry.key, entry.value))
+              .toList(),
         ),
       ),
       actions: [
@@ -248,6 +97,126 @@ class _QuizDetailDialogState extends State<QuizDetailDialog> {
           child: const Text('ปิด'),
         ),
       ],
+    );
+  }
+
+  // สร้างการ์ดแสดงความหมายแบบกระชับ
+  Widget _buildSenseCard(int index, Map<String, dynamic> sense) {
+    // กำหนดค่าที่ใช้แสดงผล
+    final String title = sense['title']?.toString().isNotEmpty == true
+        ? sense['title'].toString()
+        : 'General';
+    final String usage = sense['usage']?.toString().isNotEmpty == true
+        ? sense['usage'].toString()
+        : 'N/A';
+    final String partOfSpeech = sense['partOfSpeech'] ?? '';
+    final String cefr = sense['cefr']?.toString().contains('›') == true
+        ? 'N/A'
+        : (sense['cefr']?.toString() ?? 'N/A');
+    final String definition = sense['definition'] ?? '';
+    final List<String> examples =
+        sense['examples'] is List ? List<String>.from(sense['examples']) : [];
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // หัวข้อและการใช้
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                Text(
+                  usage,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontStyle: FontStyle.italic,
+                    color: usage == 'N/A'
+                        ? Colors.grey.withOpacity(0.6)
+                        : Colors.grey,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+
+            // ชนิดคำและระดับ CEFR
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    partOfSpeech,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w500,
+                      color: Colors.blue,
+                    ),
+                  ),
+                ),
+                Text(
+                  'CEFR: $cefr',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey,
+                  ),
+                ),
+              ],
+            ),
+
+            // คำจำกัดความ
+            if (definition.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(
+                isTranslated
+                    ? (translations['def_$index'] ?? definition)
+                    : definition,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontStyle: isTranslated ? FontStyle.italic : FontStyle.normal,
+                ),
+              ),
+            ],
+
+            // ตัวอย่างประโยค (แสดงเฉพาะเมื่อมีข้อมูล)
+            if (examples.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              const Text(
+                'Examples:',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.grey,
+                ),
+              ),
+              const SizedBox(height: 4),
+              ...examples.asMap().entries.map((e) {
+                final translatedExample =
+                    translations['example_${index}_${e.key}'] ?? e.value;
+                return Padding(
+                  padding: const EdgeInsets.only(left: 8, bottom: 4),
+                  child: Text(
+                    '• ${isTranslated ? translatedExample : e.value}',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontStyle: FontStyle.italic,
+                      color: Colors.black87,
+                    ),
+                  ),
+                );
+              }),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }

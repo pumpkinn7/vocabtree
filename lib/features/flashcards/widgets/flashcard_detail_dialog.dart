@@ -4,10 +4,8 @@ import 'package:translator/translator.dart';
 
 import '../model/flashcard_topic_model.dart';
 
-/// แสดงรายละเอียดของ Flashcard
 class FlashcardDetailDialog extends StatefulWidget {
   final Flashcard flashcard;
-
   const FlashcardDetailDialog({super.key, required this.flashcard});
 
   @override
@@ -27,9 +25,7 @@ class _FlashcardDetailDialogState extends State<FlashcardDetailDialog> {
     _loadData();
   }
 
-  // ลบเมธอด _formatText และ _formatCEFR ที่ไม่ได้ใช้งาน
-
-  // โหลดข้อมูล
+  // โหลดข้อมูลและจัดการกรณีต่างๆ แบบกระชับ
   Future<void> _loadData() async {
     try {
       final doc = await FirebaseFirestore.instance
@@ -37,46 +33,22 @@ class _FlashcardDetailDialogState extends State<FlashcardDetailDialog> {
           .doc(widget.flashcard.id)
           .get();
 
-      if (!mounted) return;
-
-      // ถ้าไม่พบข้อมูลในฐานข้อมูล
-      if (!doc.exists || doc.data() == null) {
-        setState(() {
-          // แน่ใจว่าใส่ค่า default ที่นี่
-          senses = [
-            {
-              'title': 'General', // default title
-              'usage': 'N/A', // default usage
-              'partOfSpeech': widget.flashcard.partOfSpeech,
-              'cefr': widget.flashcard.cefrLevel,
-              'definition': widget.flashcard.definition.isNotEmpty
-                  ? widget.flashcard.definition
-                  : 'No definition available',
-              'examples': [],
-            }
-          ];
-          isLoading = false;
-        });
-        return;
-      }
-
-      final data = doc.data()!;
       final List<Map<String, dynamic>> loadedSenses = [];
 
-      // ดึงข้อมูลจาก senses
-      if (data['senses'] is List && (data['senses'] as List).isNotEmpty) {
-        for (var sense in data['senses']) {
+      // กรณีมีข้อมูล senses
+      if (doc.exists && doc.data() != null && doc.data()!['senses'] is List) {
+        final sensesData = doc.data()!['senses'] as List;
+        final data = doc.data()!;
+
+        for (var sense in sensesData) {
           if (sense is Map<String, dynamic>) {
-            // กำหนดค่า default ที่นี่
             loadedSenses.add({
-              'title':
-                  sense['title'] == null || sense['title'].toString().isEmpty
-                      ? 'General'
-                      : sense['title'],
-              'usage':
-                  sense['usage'] == null || sense['usage'].toString().isEmpty
-                      ? 'N/A'
-                      : sense['usage'],
+              'title': sense['title']?.toString().isNotEmpty == true
+                  ? sense['title']
+                  : 'General',
+              'usage': sense['usage']?.toString().isNotEmpty == true
+                  ? sense['usage']
+                  : 'N/A',
               'partOfSpeech': sense['partOfSpeech'] ?? data['mainPos'] ?? '',
               'cefr': sense['cefr'] ?? widget.flashcard.cefrLevel,
               'definition': sense['definition'] ?? '',
@@ -86,11 +58,11 @@ class _FlashcardDetailDialogState extends State<FlashcardDetailDialog> {
         }
       }
 
-      // ถ้าไม่มี senses ใช้ข้อมูลจาก flashcard
+      // ถ้าไม่มีข้อมูลหรือ senses ว่าง ให้ใช้ข้อมูลจาก flashcard
       if (loadedSenses.isEmpty) {
         loadedSenses.add({
-          'title': 'General', // กำหนดค่า default แบบชัดเจน
-          'usage': 'N/A', // กำหนดค่า default แบบชัดเจน
+          'title': 'General',
+          'usage': 'N/A',
           'partOfSpeech': widget.flashcard.partOfSpeech,
           'cefr': widget.flashcard.cefrLevel,
           'definition': widget.flashcard.definition,
@@ -98,18 +70,19 @@ class _FlashcardDetailDialogState extends State<FlashcardDetailDialog> {
         });
       }
 
-      setState(() {
-        senses = loadedSenses;
-        isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          senses = loadedSenses;
+          isLoading = false;
+        });
+      }
     } catch (e) {
       if (mounted) {
         setState(() {
-          // แน่ใจว่าใส่ค่า default ที่นี่ด้วย
           senses = [
             {
-              'title': 'General', // ใส่ string ตรงๆ
-              'usage': 'N/A', // ใส่ string ตรงๆ
+              'title': 'General',
+              'usage': 'N/A',
               'partOfSpeech': widget.flashcard.partOfSpeech,
               'cefr': widget.flashcard.cefrLevel,
               'definition': widget.flashcard.definition,
@@ -122,7 +95,7 @@ class _FlashcardDetailDialogState extends State<FlashcardDetailDialog> {
     }
   }
 
-  // แปลภาษา
+  // แปลภาษาแบบกระชับ
   Future<void> _toggleTranslation() async {
     if (isTranslated) {
       setState(() => isTranslated = false);
@@ -130,32 +103,30 @@ class _FlashcardDetailDialogState extends State<FlashcardDetailDialog> {
     }
 
     try {
-      // แปลคำจำกัดความและตัวอย่างประโยค
       for (int i = 0; i < senses.length; i++) {
         final sense = senses[i];
 
         // แปลคำจำกัดความ
-        if (sense['definition'] != null &&
-            sense['definition'].toString().isNotEmpty) {
-          final translation = await translator.translate(
+        if (sense['definition']?.toString().isNotEmpty == true) {
+          final defTranslation = await translator.translate(
             sense['definition'],
             from: 'en',
             to: 'th',
           );
-          translations['def_$i'] = translation.text;
+          translations['def_$i'] = defTranslation.text;
         }
 
         // แปลตัวอย่างประโยค
-        if (sense['examples'] != null) {
+        if (sense['examples'] is List) {
           final examples = List<String>.from(sense['examples']);
           for (int j = 0; j < examples.length; j++) {
             if (examples[j].isNotEmpty) {
-              final translation = await translator.translate(
+              final exTranslation = await translator.translate(
                 examples[j],
                 from: 'en',
                 to: 'th',
               );
-              translations['example_${i}_$j'] = translation.text;
+              translations['example_${i}_$j'] = exTranslation.text;
             }
           }
         }
@@ -173,6 +144,7 @@ class _FlashcardDetailDialogState extends State<FlashcardDetailDialog> {
 
   @override
   Widget build(BuildContext context) {
+    // แสดง loading
     if (isLoading) {
       return const AlertDialog(
         content: SizedBox(
@@ -182,6 +154,7 @@ class _FlashcardDetailDialogState extends State<FlashcardDetailDialog> {
       );
     }
 
+    // แสดงข้อความว่างถ้าไม่มีข้อมูล
     if (senses.isEmpty) {
       return AlertDialog(
         title: const Text('ข้อผิดพลาด'),
@@ -213,13 +186,11 @@ class _FlashcardDetailDialogState extends State<FlashcardDetailDialog> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ...senses.asMap().entries.map((entry) {
-              final index = entry.key;
-              final sense = entry.value;
-              return _buildSenseCard(index, sense);
-            }),
-          ],
+          children: senses
+              .asMap()
+              .entries
+              .map((entry) => _buildSenseCard(entry.key, entry.value))
+              .toList(),
         ),
       ),
       actions: [
@@ -231,28 +202,15 @@ class _FlashcardDetailDialogState extends State<FlashcardDetailDialog> {
     );
   }
 
-  // สร้างการ์ดแสดงความหมาย
+  // สร้างการ์ดแสดงความหมายแบบกระชับ
   Widget _buildSenseCard(int index, Map<String, dynamic> sense) {
-    // เพิ่ม print เพื่อตรวจสอบค่าที่ได้รับ
-    debugPrint('Sense data: title=${sense['title']}, usage=${sense['usage']}');
-
-    // กำหนดค่า default ใหม่ และตรวจสอบว่า sense['title'] และ sense['usage'] มีค่าเป็น null หรือ empty string
-    final String title =
-        (sense['title'] == null || sense['title'].toString().isEmpty)
-            ? 'General'
-            : sense['title'].toString();
-
-    final String usage =
-        (sense['usage'] == null || sense['usage'].toString().isEmpty)
-            ? 'N/A'
-            : sense['usage'].toString();
-
-    // อื่นๆ คงเดิม
+    // กำหนดค่าที่ใช้แสดงผล
+    final String title = sense['title'] ?? 'General';
+    final String usage = sense['usage'] ?? 'N/A';
     final String partOfSpeech = sense['partOfSpeech'] ?? '';
-    final String cefr =
-        sense['cefr'] == null || sense['cefr'].toString().contains('›')
-            ? 'N/A'
-            : sense['cefr'].toString();
+    final String cefr = sense['cefr']?.toString().contains('›') == true
+        ? 'N/A'
+        : (sense['cefr']?.toString() ?? 'N/A');
     final String definition = sense['definition'] ?? '';
     final List<String> examples =
         sense['examples'] is List ? List<String>.from(sense['examples']) : [];
@@ -267,19 +225,17 @@ class _FlashcardDetailDialogState extends State<FlashcardDetailDialog> {
             // หัวข้อและการใช้
             Row(
               children: [
-                // แก้ไขการแสดงผล title
                 Expanded(
                   child: Text(
-                    title, // ควรเป็น "General" ถ้าไม่มีข้อมูล
+                    title,
                     style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
-                // แก้ไขการแสดงผล usage
                 Text(
-                  usage, // ควรเป็น "N/A" ถ้าไม่มีข้อมูล
+                  usage,
                   style: TextStyle(
                     fontSize: 14,
                     fontStyle: FontStyle.italic,
@@ -292,7 +248,7 @@ class _FlashcardDetailDialogState extends State<FlashcardDetailDialog> {
             ),
             const SizedBox(height: 8),
 
-            // ชนิดคำและระดับ CEFR - แสดงเสมอ
+            // ชนิดคำและระดับ CEFR
             Row(
               children: [
                 Expanded(
@@ -306,12 +262,15 @@ class _FlashcardDetailDialogState extends State<FlashcardDetailDialog> {
                 ),
                 Text(
                   'CEFR: $cefr',
-                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey,
+                  ),
                 ),
               ],
             ),
 
-            // คำจำกัดความ - แสดงเสมอ
+            // คำจำกัดความ
             const SizedBox(height: 8),
             Text(
               isTranslated
@@ -323,7 +282,7 @@ class _FlashcardDetailDialogState extends State<FlashcardDetailDialog> {
               ),
             ),
 
-            // ตัวอย่างประโยค - แสดงเฉพาะเมื่อมีข้อมูล
+            // ตัวอย่างประโยค (แสดงเฉพาะเมื่อมีข้อมูล)
             if (examples.isNotEmpty) ...[
               const SizedBox(height: 8),
               const Text(
@@ -336,15 +295,12 @@ class _FlashcardDetailDialogState extends State<FlashcardDetailDialog> {
               ),
               const SizedBox(height: 4),
               ...examples.asMap().entries.map((e) {
-                final int exampleIndex = e.key;
-                final String example = e.value;
-                final String translatedExample =
-                    translations['example_${index}_$exampleIndex'] ?? example;
-
+                final translatedExample =
+                    translations['example_${index}_${e.key}'] ?? e.value;
                 return Padding(
                   padding: const EdgeInsets.only(left: 8, bottom: 4),
                   child: Text(
-                    '• ${isTranslated ? translatedExample : example}',
+                    '• ${isTranslated ? translatedExample : e.value}',
                     style: const TextStyle(
                       fontSize: 14,
                       fontStyle: FontStyle.italic,

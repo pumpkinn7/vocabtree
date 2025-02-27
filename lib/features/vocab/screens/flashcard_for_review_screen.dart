@@ -7,6 +7,7 @@ import 'package:translator/translator.dart';
 import '../../../features/flashcards/model/flashcard_topic_model.dart';
 import '../../../features/flashcards/widgets/flashcard_detail_dialog.dart';
 import '../../../features/flashcards/widgets/flashcard_header.dart';
+import '../../../features/flashcards/widgets/flashcard_action_bar.dart'; // เพิ่ม import
 
 class FlashcardForReviewScreen extends StatefulWidget {
   final String level;
@@ -37,7 +38,7 @@ class FlashcardForReviewScreenState extends State<FlashcardForReviewScreen> {
   bool _isTranslated = false;
   int _currentIndex = 0;
   List<Flashcard> _flashcards = [];
-  Map<String, String> _translations = {};
+  final Map<String, String> _translations = {};
 
   @override
   void initState() {
@@ -224,7 +225,16 @@ class FlashcardForReviewScreenState extends State<FlashcardForReviewScreen> {
 
   // ตรวจสอบให้แน่ใจว่าชื่อไฟล์ถูกต้อง (และไม่มี path issues)
   String _getBackgroundImageByLevel() {
-    return 'assets/images/flashcard_bg.png';
+    switch (widget.level) {
+      case 'B2':
+        return 'assets/images/summer.png';
+      case 'C1':
+        return 'assets/images/autumn.png';
+      case 'C2':
+        return 'assets/images/winter.png';
+      default:
+        return 'assets/images/spring.png';
+    }
   }
 
   @override
@@ -288,51 +298,23 @@ class FlashcardForReviewScreenState extends State<FlashcardForReviewScreen> {
                         ),
                       ),
 
-                      // แถวของปุ่มควบคุมการปัด
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          // ปุ่มปัดซ้าย (ยังต้องการทบทวน)
-                          IconButton(
-                            icon: Icon(Icons.close,
-                                color: Colors.red.withOpacity(0.8), size: 32),
-                            onPressed: () {
-                              _matchEngine.currentItem?.nope();
-                            },
-                          ),
-                          // ปุ่มอ่านออกเสียง
-                          IconButton(
-                            icon: Icon(Icons.volume_up,
-                                color: Colors.blue.withOpacity(0.8), size: 32),
-                            onPressed: () {
-                              final currentItem = _matchEngine.currentItem;
-                              if (currentItem != null) {
-                                final flashcard =
-                                    currentItem.content as Flashcard;
-                                _speak(flashcard.mainWord);
-                              }
-                            },
-                          ),
-                          // ปุ่ม toggle แปล / ไม่แปล
-                          IconButton(
-                            icon: Icon(
-                              _isTranslated
-                                  ? Icons.g_translate
-                                  : Icons.translate,
-                              color: Colors.teal.withOpacity(0.8),
-                              size: 32,
-                            ),
-                            onPressed: _translateText,
-                          ),
-                          // ปุ่มปัดขวา (รู้จักแล้ว - ไม่ต้องทบทวนอีก)
-                          IconButton(
-                            icon: Icon(Icons.check,
-                                color: Colors.green.withOpacity(0.8), size: 32),
-                            onPressed: () {
-                              _matchEngine.currentItem?.like();
-                            },
-                          ),
-                        ],
+                      // แทนที่ส่วน Row ด้านล่างด้วย FlashcardActionBar
+                      FlashcardActionBar(
+                        onNopePressed: () {
+                          _matchEngine.currentItem?.nope();
+                        },
+                        onSpeakPressed: () {
+                          final currentItem = _matchEngine.currentItem;
+                          if (currentItem != null) {
+                            final flashcard = currentItem.content as Flashcard;
+                            _speak(flashcard.mainWord);
+                          }
+                        },
+                        onSuperlikePressed: () {}, // ไม่ใช้ในหน้านี้
+                        onToggleMeaningPressed: _translateText,
+                        onLikePressed: () {
+                          _matchEngine.currentItem?.like();
+                        },
                       ),
 
                       // เพิ่มช่องว่างด้านล่าง

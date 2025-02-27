@@ -4,18 +4,12 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
+
         {
             "name": "Flutter (debug mode)",
             "type": "dart",
             "request": "launch",
             "program": "lib/main.dart"
-        },
-        {
-            "name": "vocabtree (debug mode with software rendering)",
-            "request": "launch",
-            "type": "dart",
-            "program": "lib/main.dart",
-            "args": ["--enable-software-rendering"]
         },
         {
             "name": "vocabtree (profile mode)",

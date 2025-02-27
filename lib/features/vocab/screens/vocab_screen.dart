@@ -72,7 +72,6 @@ class VocabScreenState extends State<VocabScreen> {
     try {
       if (userId == null) return;
 
-      // เริ่มต้นค่าว่างสำหรับทุกระดับ/หัวข้อ
       for (var levelEntry in levelMapping.entries) {
         final level = levelEntry.key;
         final topics = levelEntry.value;
@@ -82,7 +81,6 @@ class VocabScreenState extends State<VocabScreen> {
         }
       }
 
-      // ดึงข้อมูลจาก vocabulary_progress collection
       for (var levelEntry in levelMapping.entries) {
         final level = levelEntry.key;
         final topics = levelEntry.value;
@@ -106,9 +104,9 @@ class VocabScreenState extends State<VocabScreen> {
           }
         }
       }
-    } catch (_) {
-      // ไม่ต้องทำอะไรเมื่อเกิดข้อผิดพลาดในการดึงข้อมูล
-    } finally {
+
+      setState(() => isLoading = false);
+    } catch (e) {
       setState(() => isLoading = false);
     }
   }
@@ -137,22 +135,17 @@ class VocabScreenState extends State<VocabScreen> {
     }
   }
 
-  // เพิ่ม debug print ใน _getVocabDocsFromReviewWords เพื่อตรวจสอบข้อมูล
   Future<List<DocumentSnapshot>> _getVocabDocsFromReviewWords(
       String level, String topic) async {
     if (userId == null) return [];
 
     final reviewWordsList = reviewWords[level]?[topic] ?? [];
-    debugPrint("Review words list for $level/$topic: $reviewWordsList");
-
     if (reviewWordsList.isEmpty) return [];
 
     final List<DocumentSnapshot> vocabDocs = [];
 
     for (var word in reviewWordsList) {
       try {
-        debugPrint("Fetching data for word: $word");
-
         final docSnap = await FirebaseFirestore.instance
             .collection('users')
             .doc(userId)
@@ -162,29 +155,23 @@ class VocabScreenState extends State<VocabScreen> {
             .doc(word)
             .get();
 
-        debugPrint("Doc exists for $word: ${docSnap.exists}");
-
-        // ถ้าไม่มีข้อมูลในคอลเลกชัน vocabularies ให้ลองหาจาก collection words
         if (!docSnap.exists) {
-          debugPrint("Trying to fetch from words collection instead");
           final wordDoc = await FirebaseFirestore.instance
               .collection('words')
               .doc(word)
               .get();
 
           if (wordDoc.exists) {
-            debugPrint("Found in words collection");
             vocabDocs.add(wordDoc);
           }
         } else {
           vocabDocs.add(docSnap);
         }
       } catch (e) {
-        debugPrint("Error fetching word $word: $e");
+        // Silent error handling
       }
     }
 
-    debugPrint("Total vocabDocs found: ${vocabDocs.length}");
     return vocabDocs;
   }
 
@@ -202,7 +189,6 @@ class VocabScreenState extends State<VocabScreen> {
         'review_words': FieldValue.arrayRemove([word])
       });
 
-      // อัปเดต state
       setState(() {
         reviewWords[level]![topic]?.remove(word);
       });
@@ -289,7 +275,6 @@ class VocabScreenState extends State<VocabScreen> {
                                           ),
                                         ),
                                       );
-                                      // เมื่อปิด Flashcard กลับมา โหลดข้อมูลใหม่
                                       _fetchAllReviewWords();
                                     },
                                     child: const Text('Flashcard'),
@@ -304,7 +289,6 @@ class VocabScreenState extends State<VocabScreen> {
                                 children: wordsList.map((word) {
                                   return OutlinedButton(
                                     onPressed: () async {
-                                      // ดึงข้อมูลคำศัพท์เพื่อแสดง Dialog
                                       final vocabData =
                                           await _getVocabDataForWord(
                                               level, topic, word);
@@ -321,7 +305,6 @@ class VocabScreenState extends State<VocabScreen> {
                                         return;
                                       }
 
-                                      // แสดง Dialog
                                       showDialog(
                                         context: context,
                                         barrierDismissible: true,

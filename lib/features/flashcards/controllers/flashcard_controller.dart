@@ -14,7 +14,6 @@ class FlashcardController {
   final String userId;
   final FlashcardService service;
   final FlutterTts flutterTts;
-  final Function(bool) updateLoadingState;
   final Function(List<SwipeItem>, MatchEngine) updateSwipeItems;
   final Function() onNavigateToSummary;
   final Function() resetShowMeaning;
@@ -25,7 +24,6 @@ class FlashcardController {
   FlashcardController({
     required this.topic,
     required this.userId,
-    required this.updateLoadingState,
     required this.updateSwipeItems,
     required this.onNavigateToSummary,
     required this.resetShowMeaning,
@@ -34,8 +32,6 @@ class FlashcardController {
 
   /// ดึงข้อมูล flashcards
   Future<void> fetchFlashcards() async {
-    updateLoadingState(true);
-
     try {
       List<Flashcard> flashcards = await service.getFlashcardsForTopic(topic);
 
@@ -66,8 +62,6 @@ class FlashcardController {
       }
     } catch (e) {
       AppLogger.e(_tag, 'เกิดข้อผิดพลาดในการดึงข้อมูล flashcards', e);
-    } finally {
-      updateLoadingState(false);
     }
   }
 

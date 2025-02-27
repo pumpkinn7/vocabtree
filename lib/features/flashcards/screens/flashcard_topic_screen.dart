@@ -38,7 +38,6 @@ class FlashcardScreenState extends State<FlashcardScreen> {
     _controller = FlashcardController(
       topic: widget.topic,
       userId: widget.userId,
-      updateLoadingState: (isLoading) => setState(() => _isLoading = isLoading),
       updateSwipeItems: (items, engine) => setState(() {
         _swipeItems = items;
         _matchEngine = engine;
@@ -50,7 +49,13 @@ class FlashcardScreenState extends State<FlashcardScreen> {
     );
 
     // เริ่มดึงข้อมูล
-    _controller.fetchFlashcards();
+    _fetchData();
+  }
+
+  Future<void> _fetchData() async {
+    setState(() => _isLoading = true);
+    await _controller.fetchFlashcards();
+    setState(() => _isLoading = false);
   }
 
   void _toggleShowMeaning() {

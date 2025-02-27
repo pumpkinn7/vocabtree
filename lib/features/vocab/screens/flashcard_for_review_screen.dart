@@ -44,104 +44,100 @@ class FlashcardForReviewScreenState extends State<FlashcardForReviewScreen> {
 
   Future<void> _prepareFlashcards() async {
     setState(() => _isLoading = true);
+    _flashcards = [];
 
-    try {
-      _flashcards = [];
+    // แปลง DocumentSnapshot เป็น Flashcard
+    for (var doc in widget.vocabDocs) {
+      if (!doc.exists) continue;
 
-      // แปลง DocumentSnapshot เป็น Flashcard
-      for (var doc in widget.vocabDocs) {
-        if (!doc.exists) continue;
+      final data = doc.data() as Map<String, dynamic>?;
+      if (data == null) continue;
 
-        final data = doc.data() as Map<String, dynamic>?;
-        if (data == null) continue;
+      final partOfSpeech = data['type']?.toString() ??
+          data['partOfSpeech']?.toString() ??
+          data['mainPos']?.toString() ??
+          '';
 
-        // ใช้โครงสร้างตาม Flashcard model
-        _flashcards.add(Flashcard(
-          id: data['word'] ?? doc.id,
-          mainWord: data['word'] ?? doc.id,
-          partOfSpeech: data['type'] ?? data['partOfSpeech'] ?? '',
-          definition: data['definition'] ?? data['meaning'] ?? 'No definition',
-          hint: '',
-          cefrLevel: data['cefrLevel'] ?? widget.level,
-        ));
-      }
+      _flashcards.add(Flashcard(
+        id: data['word'] ?? doc.id,
+        mainWord: data['word'] ?? doc.id,
+        partOfSpeech: partOfSpeech,
+        definition: data['definition'] ?? data['meaning'] ?? 'No definition',
+        hint: '',
+        cefrLevel: data['cefrLevel'] ?? widget.level,
+      ));
+    }
 
-      // ถ้ายังไม่มี flashcards ลองดึงจาก words collection
-      if (_flashcards.isEmpty) {
-        await _fetchFlashcardsFromWordsCollection();
-      }
+    // ถ้ายังไม่มี flashcards ลองดึงจาก words collection
+    if (_flashcards.isEmpty) {
+      await _fetchFlashcardsFromWordsCollection();
+    }
 
-      // สร้าง SwipeItems
-      if (_flashcards.isNotEmpty) {
-        _swipeItems = _flashcards.map((flashcard) {
-          return SwipeItem(
-            content: flashcard,
-            nopeAction: () => setState(() {
-              _currentIndex++;
-              _isShowingMeaning = false;
-            }),
-            likeAction: () async {
-              await _removeFromReview(flashcard.mainWord);
-              setState(() {
-                _currentIndex++;
-                _isShowingMeaning = false;
-              });
-            },
-          );
-        }).toList();
+    // สร้าง SwipeItems
+    if (_flashcards.isNotEmpty) {
+      _swipeItems = _flashcards.map((flashcard) {
+        return SwipeItem(
+          content: flashcard,
+          nopeAction: () {
+            // ไม่ต้องเรียกเพิ่ม index ที่นี่
+            // _currentIndex จะถูกอัพเดทผ่าน itemChanged callback แล้ว
+          },
+          likeAction: () async {
+            await _removeFromReview(flashcard.mainWord);
+            // ไม่ต้องเรียกเพิ่ม index ที่นี่
+          },
+        );
+      }).toList();
 
-        _matchEngine = MatchEngine(swipeItems: _swipeItems);
-      }
-    } catch (_) {
-      // ไม่ต้องแสดง error
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      _matchEngine = MatchEngine(swipeItems: _swipeItems);
+    }
+
+    if (mounted) {
+      setState(() => _isLoading = false);
     }
   }
 
   Future<void> _fetchFlashcardsFromWordsCollection() async {
-    try {
-      // ดึงรายการคำศัพท์จาก vocabulary_progress
-      final progressDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(widget.userId)
-          .collection('vocabulary_progress')
-          .doc(widget.topic)
-          .get();
+    final progressDoc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(widget.userId)
+        .collection('vocabulary_progress')
+        .doc(widget.topic)
+        .get();
 
-      if (!progressDoc.exists || progressDoc.data() == null) return;
+    if (!progressDoc.exists) return;
 
-      final reviewWordsList =
-          List<String>.from(progressDoc.data()!['review_words'] ?? []);
-      if (reviewWordsList.isEmpty) return;
+    final reviewWordsList =
+        List<String>.from(progressDoc.data()?['review_words'] ?? []);
+    if (reviewWordsList.isEmpty) return;
 
-      // ดึงข้อมูลจาก words collection
-      for (var word in reviewWordsList) {
-        try {
-          final wordDoc = await FirebaseFirestore.instance
-              .collection('words')
-              .doc(word)
-              .get();
+    for (var word in reviewWordsList) {
+      final wordDoc =
+          await FirebaseFirestore.instance.collection('words').doc(word).get();
 
-          if (wordDoc.exists && wordDoc.data() != null) {
-            final data = wordDoc.data()!;
-            _flashcards.add(Flashcard(
-              id: word,
-              mainWord: data['mainWord'] ?? word,
-              partOfSpeech: data['mainPos'] ?? '',
-              definition: _extractDefinition(data),
-              hint: '',
-              cefrLevel: widget.level,
-            ));
-          }
-        } catch (_) {
-          // ไม่ต้องแสดง error
-        }
+      if (!wordDoc.exists) continue;
+
+      final data = wordDoc.data()!;
+      final String partOfSpeech;
+
+      if (data['mainPos']?.toString().isNotEmpty ?? false) {
+        partOfSpeech = data['mainPos'];
+      } else if (data['senses'] is List &&
+          (data['senses'] as List).isNotEmpty) {
+        final firstSense = (data['senses'] as List).first;
+        partOfSpeech = firstSense['partOfSpeech']?.toString() ?? '';
+      } else {
+        partOfSpeech = '';
       }
-    } catch (_) {
-      // ไม่ต้องแสดง error
+
+      _flashcards.add(Flashcard(
+        id: word,
+        mainWord: data['mainWord'] ?? word,
+        partOfSpeech: partOfSpeech,
+        definition: _extractDefinition(data),
+        hint: '',
+        cefrLevel: widget.level,
+      ));
     }
   }
 
@@ -196,12 +192,11 @@ class FlashcardForReviewScreenState extends State<FlashcardForReviewScreen> {
   }
 
   void _updateCurrentIndex(int index) {
-    if (mounted) {
-      setState(() {
-        _currentIndex = index;
-        _isShowingMeaning = false;
-      });
-    }
+    if (!mounted) return;
+    setState(() {
+      _currentIndex = index;
+      _isShowingMeaning = false;
+    });
   }
 
   @override
@@ -247,7 +242,6 @@ class FlashcardForReviewScreenState extends State<FlashcardForReviewScreen> {
                             );
                           },
                           onStackFinished: () {
-                            // แสดงข้อความเมื่อเล่นจบครบทุกการ์ด
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
                                 content:
@@ -256,9 +250,12 @@ class FlashcardForReviewScreenState extends State<FlashcardForReviewScreen> {
                             );
                           },
                           itemChanged: (SwipeItem item, int index) {
-                            _updateCurrentIndex(index);
+                            // แก้ไขตรงนี้ ใช้ตัวแปร index โดยตรงจาก callback
+                            setState(() {
+                              _currentIndex = index;
+                              _isShowingMeaning = false;
+                            });
                           },
-                          upSwipeAllowed: false,
                         ),
                       ),
 
@@ -272,6 +269,7 @@ class FlashcardForReviewScreenState extends State<FlashcardForReviewScreen> {
                                 color: Colors.red.withOpacity(0.8), size: 32),
                             onPressed: () {
                               _matchEngine.currentItem?.nope();
+                              // ไม่ต้องเรียก _updateCurrentIndex เพิ่มเติม
                             },
                           ),
                           // ปุ่มอ่านออกเสียง
@@ -304,6 +302,7 @@ class FlashcardForReviewScreenState extends State<FlashcardForReviewScreen> {
                                 color: Colors.green.withOpacity(0.8), size: 32),
                             onPressed: () {
                               _matchEngine.currentItem?.like();
+                              // ไม่ต้องเรียก _updateCurrentIndex เพิ่มเติม
                             },
                           ),
                         ],
@@ -320,13 +319,13 @@ class FlashcardForReviewScreenState extends State<FlashcardForReviewScreen> {
   Widget _buildCounter() {
     if (_flashcards.isEmpty) return const SizedBox.shrink();
 
-    // ป้องกันกรณี index เกินขอบเขต
-    int safeIndex = _currentIndex;
-    if (safeIndex < 0) safeIndex = 0;
-    if (safeIndex >= _flashcards.length) safeIndex = _flashcards.length - 1;
-
-    final currentCount = safeIndex + 1;
+    // ใช้ currentIndex โดยตรง ไม่ต้องป้องกันเกินขอบเขต
+    // เพราะ SwipeCards จะจัดการให้เราอยู่แล้ว
+    final currentCount = _currentIndex + 1;
     final totalCount = _flashcards.length;
+
+    // ถ้า currentCount เกิน totalCount ให้แสดงค่าสุดท้าย
+    final displayCount = currentCount > totalCount ? totalCount : currentCount;
 
     return Container(
       width: MediaQuery.of(context).size.width,
@@ -344,7 +343,7 @@ class FlashcardForReviewScreenState extends State<FlashcardForReviewScreen> {
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
-              '$currentCount of $totalCount',
+              '$displayCount of $totalCount',
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 16,
@@ -376,7 +375,7 @@ class FlashcardForReviewScreenState extends State<FlashcardForReviewScreen> {
           // ปุ่มดูรายละเอียดย้ายไปทางขวา
           Positioned(
             top: 8,
-            right: 8, // เปลี่ยนจาก left เป็น right
+            right: 8,
             child: IconButton(
               icon: const Icon(Icons.info_outline, color: Colors.blue),
               onPressed: () => _showWordDetail(flashcard),
@@ -395,21 +394,21 @@ class FlashcardForReviewScreenState extends State<FlashcardForReviewScreen> {
                         ? flashcard.definition
                         : flashcard.mainWord,
                     style: const TextStyle(
-                      fontSize: 38,
+                      fontSize: 35,
                       fontWeight: FontWeight.bold,
                     ),
                     textAlign: TextAlign.center,
                   ),
-                  // ประเภทคำศัพท์
-                  Text(
-                    flashcard.partOfSpeech,
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontStyle: FontStyle.italic,
-                      color: Colors.blue,
+                  const SizedBox(height: 8),
+                  // ประเภทคำศัพท์ (แสดงเฉพาะเมื่อไม่ได้แสดงความหมาย)
+                  if (!_isShowingMeaning && flashcard.partOfSpeech.isNotEmpty)
+                    Text(
+                      flashcard.partOfSpeech,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontStyle: FontStyle.italic,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 60),
                 ],
               ),
             ),

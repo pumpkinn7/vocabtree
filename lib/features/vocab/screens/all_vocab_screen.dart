@@ -1,8 +1,7 @@
-import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter_tts/flutter_tts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
+import '../widgets/vocab_detail_with_add_dialog.dart';
 
 class AllVocabScreen extends StatefulWidget {
   final String level;
@@ -10,324 +9,177 @@ class AllVocabScreen extends StatefulWidget {
   const AllVocabScreen({super.key, required this.level});
 
   @override
-  AllVocabScreenState createState() => AllVocabScreenState();
+  State<AllVocabScreen> createState() => _AllVocabScreenState();
 }
 
-class AllVocabScreenState extends State<AllVocabScreen> {
-  static const Map<String, List<String>> levelMapping = {
-    'B1': [
-      'daily_life',
-      'education',
-      'entertainment',
-      'environment_and_nature',
-      'health_and_fitness',
-      'travel_and_tourism',
-    ],
-    'B2': [
-      'home_renovation_and_decor',
-      'outdoor_activities_and_adventures',
-      'music_and_performing_arts',
-      'fitness_and_exercise',
-      'cooking_and_culinary_skills',
-      'pet_care_and_animal_welfare',
-      'gardening_and_landscaping',
-      'hobbies_and_crafts',
-    ],
-    'C1': [
-      'urban_living',
-      'digital_well_being',
-      'cultural_festivals',
-      'creative_writing',
-      'nutrition_and_wellness',
-      'interior_decorating',
-      'fashion_trends',
-      'event_planning',
-    ],
-    'C2': [
-      'immersive_technologies',
-      'cosmic_discoveries',
-      'digital_finance',
-      'adrenaline_activities',
-      'smart_automation',
-      'legends_and_lore',
-      'criminal_investigation',
-    ],
-  };
-
-  Map<String, List<Map<String, dynamic>>> topicVocabMap = {};
-  Map<String, List<Map<String, dynamic>>> filteredTopicVocabMap = {};
-  String? userId;
+class _AllVocabScreenState extends State<AllVocabScreen> {
+  final userId = FirebaseAuth.instance.currentUser?.uid;
+  bool isLoading = true;
+  Map<String, List<String>> topicWords = {};
+  Map<String, Map<String, dynamic>> wordDetails = {};
   final TextEditingController _searchController = TextEditingController();
-  String searchQuery = '';
+  String _searchQuery = '';
 
   @override
   void initState() {
     super.initState();
-    userId = FirebaseAuth.instance.currentUser?.uid;
-    _fetchAllVocabularies();
-    _searchController.addListener(_filterVocabularies);
+    _fetchAllWords();
   }
 
   @override
   void dispose() {
-    _searchController.removeListener(_filterVocabularies);
     _searchController.dispose();
     super.dispose();
   }
 
-  Future<void> _fetchAllVocabularies() async {
-    Map<String, List<Map<String, dynamic>>> vocabMap = {};
+  Future<void> _fetchAllWords() async {
+    setState(() => isLoading = true);
+
     try {
-      DocumentSnapshot levelSnapshot = await FirebaseFirestore.instance
-          .collection('cefr_levels')
-          .doc(widget.level)
+      // ดึงข้อมูลจาก word_categories collection
+      final categoriesQuery = await FirebaseFirestore.instance
+          .collection('word_categories')
+          .where('cefrLevel', isEqualTo: widget.level)
           .get();
 
-      if (levelSnapshot.exists) {
-        Map<String, dynamic> levelData =
-        levelSnapshot.data() as Map<String, dynamic>;
-        Map<String, dynamic> topics = levelData['topics'] ?? {};
-
-        for (var topic in levelMapping[widget.level] ?? []) {
-          if (topics.containsKey(topic)) {
-            Map<String, dynamic> topicData = topics[topic];
-            List<dynamic> vocabularies = topicData['vocabularies'] ?? [];
-
-            for (var vocabData in vocabularies) {
-              if (vocabData is Map<String, dynamic>) {
-                if (!vocabMap.containsKey(topic)) {
-                  vocabMap[topic] = [];
-                }
-                vocabMap[topic]?.add({
-                  'topic': topic,
-                  ...vocabData,
-                });
-              }
-            }
-          }
-        }
+      for (var doc in categoriesQuery.docs) {
+        final words = List<String>.from(doc.data()['words'] ?? []);
+        topicWords[doc.id] = words;
       }
+
+      setState(() => isLoading = false);
     } catch (e) {
-      if (kDebugMode) {
-        print('Error fetching vocabularies: $e');
-      }
+      setState(() => isLoading = false);
     }
-
-    setState(() {
-      topicVocabMap = vocabMap;
-      filteredTopicVocabMap = Map.from(vocabMap);
-    });
   }
 
-  void _filterVocabularies() {
-    String query = _searchController.text.toLowerCase();
-
-    if (query.isEmpty) {
-      setState(() {
-        filteredTopicVocabMap = Map.from(topicVocabMap);
-      });
-      return;
-    }
-
-    Map<String, List<Map<String, dynamic>>> filteredMap = {};
-
-    topicVocabMap.forEach((topic, vocabList) {
-      List<Map<String, dynamic>> filteredList = vocabList.where((vocab) {
-        String word = (vocab['word'] ?? '').toString().toLowerCase();
-        String meaning = (vocab['meaning'] ?? '').toString().toLowerCase();
-        return word.contains(query) || meaning.contains(query);
-      }).toList();
-
-      if (filteredList.isNotEmpty) {
-        filteredMap[topic] = filteredList;
+  Future<Map<String, dynamic>?> _fetchWordDetail(String wordId) async {
+    try {
+      if (wordDetails.containsKey(wordId)) {
+        return wordDetails[wordId];
       }
-    });
 
-    setState(() {
-      filteredTopicVocabMap = filteredMap;
-    });
+      final wordDoc = await FirebaseFirestore.instance
+          .collection('words')
+          .doc(wordId)
+          .get();
+
+      if (!wordDoc.exists) return null;
+
+      final data = wordDoc.data()!;
+      wordDetails[wordId] = data;
+      return data;
+    } catch (e) {
+      return null;
+    }
   }
 
-  void _showVocabDialog(Map<String, dynamic> vocabData) {
-    bool isShowingTranslation = false;
-    final FlutterTts flutterTts = FlutterTts();
-
-    showDialog(
-      context: context,
-      builder: (BuildContext dialogContext) {
-        return StatefulBuilder(
-          builder: (BuildContext context, StateSetter setStateDialog) {
-            return AlertDialog(
-              title: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text('${vocabData['word']} - คำ${vocabData['type']}'),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () {
-                      Navigator.of(dialogContext).pop();
-                    },
-                  ),
-                ],
-              ),
-              content: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.volume_up, color: Colors.blue),
-                      onPressed: () async {
-                        await flutterTts.speak(vocabData['word']);
-                      },
-                    ),
-                    const SizedBox(height: 10),
-                    Text('หัวข้อ: ${vocabData['topic']}'),
-                    const SizedBox(height: 10),
-                    Text('ความหมาย: ${vocabData['meaning']}'),
-                    const SizedBox(height: 10),
-                    Text(
-                      'ตัวอย่าง: ${isShowingTranslation ? vocabData['example_translation'] : vocabData['example_sentence']}',
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      'คำใบ้: ${isShowingTranslation ? vocabData['hint_translation'] : vocabData['hint']}',
-                    ),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  child: const Text('แปลภาษา'),
-                  onPressed: () {
-                    setStateDialog(() {
-                      isShowingTranslation = !isShowingTranslation;
-                    });
-                  },
-                ),
-                TextButton(
-                  child: const Text('เพิ่มเข้าคลังคำศัพท์'),
-                  onPressed: () async {
-                    await _addToVocabularyBank(vocabData);
-                    Navigator.of(dialogContext).pop();
-                  },
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
-  Future<void> _addToVocabularyBank(Map<String, dynamic> vocabData) async {
-    if (userId == null) {
-      if (kDebugMode) {
-        print('ยังไม่ login');
-      }
-      return;
-    }
-
-    String level = widget.level;
-    String topic = vocabData['topic'];
-
-    await FirebaseFirestore.instance
-        .collection('users')
-        .doc(userId)
-        .collection(level)
-        .doc(topic)
-        .collection('vocabularies')
-        .doc(vocabData['word'])
-        .set({
-      'userId': userId,
-      'level': level,
-      'topic': topic,
-      'word': vocabData['word'],
-      'meaning': vocabData['meaning'],
-      'type': vocabData['type'],
-      'example_sentence': vocabData['example_sentence'] ?? '',
-      'example_translation': vocabData['example_translation'] ?? '',
-      'hint': vocabData['hint'] ?? '',
-      'hint_translation': vocabData['hint_translation'] ?? '',
-      'for_review': true,
-      'is_known': false,
-      'timestamp': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
+  String _formatTopicName(String topic) {
+    return topic
+        .split('_')
+        .map((w) => w[0].toUpperCase() + w.substring(1))
+        .join(' ');
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('คำศัพท์ทั้งหมด ระดับ ${widget.level}'),
+        title: Text('คำศัพท์ระดับ ${widget.level}'),
       ),
       body: Column(
         children: [
-          // ช่องค้นหา
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: TextField(
               controller: _searchController,
-              decoration: const InputDecoration(
-                labelText: 'ค้นหาคำศัพท์หรือความหมาย',
-                prefixIcon: Icon(Icons.search),
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                hintText: 'ค้นหาคำศัพท์...',
+                prefixIcon: const Icon(Icons.search),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16),
               ),
+              onChanged: (value) {
+                setState(() {
+                  _searchQuery = value.toLowerCase();
+                });
+              },
             ),
           ),
-          // แสดงรายการคำศัพท์
           Expanded(
-            child: filteredTopicVocabMap.isEmpty
-                ? const Center(child: Text('ไม่พบคำศัพท์'))
-                : ListView(
-              children: filteredTopicVocabMap.entries.map((entry) {
-                String topic = entry.key;
-                List<Map<String, dynamic>> vocabList = entry.value;
+            child: isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : ListView.builder(
+                    itemCount: topicWords.length,
+                    itemBuilder: (context, index) {
+                      final topic = topicWords.keys.elementAt(index);
+                      final words = topicWords[topic] ?? [];
+                      
+                      // กรองคำศัพท์ตาม search query
+                      final filteredWords = words.where((word) => 
+                        word.toLowerCase().contains(_searchQuery)).toList();
 
-                return Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // แสดงชื่อหัวข้อ
-                      Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Text(
-                          topic.replaceAll('_', ' ').toUpperCase(),
-                          style: Theme.of(context).textTheme.titleLarge,
-                        ),
-                      ),
-                      const SizedBox(height: 8.0),
-                      // แสดงคำศัพท์เป็นปุ่ม
-                      Wrap(
-                        spacing: 12.0,
-                        runSpacing: 12.0,
-                        alignment: WrapAlignment.start,
-                        children: vocabList.map((vocabData) {
-                          final word = vocabData['word'] ?? '';
+                      if (filteredWords.isEmpty) {
+                        return const SizedBox.shrink();
+                      }
 
-                          return OutlinedButton(
-                            onPressed: () {
-                              _showVocabDialog(vocabData);
-                            },
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 16.0, vertical: 8.0),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12.0),
-                              ),
-                              side: BorderSide(
-                                  color: Theme.of(context).primaryColor),
-                            ),
-                            child:
-                            Text(word, textAlign: TextAlign.center),
-                          );
-                        }).toList(),
-                      ),
-                    ],
+                      return ExpansionTile(
+                        title: Text(_formatTopicName(topic)),
+                        children: [
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            alignment: WrapAlignment.center,
+                            children: filteredWords.map((word) {
+                              return Padding(
+                                padding: const EdgeInsets.all(4.0),
+                                child: OutlinedButton(
+                                  onPressed: () async {
+                                    final wordData = await _fetchWordDetail(word);
+                                    if (!mounted) return;
+
+                                    if (wordData == null) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(content: Text('ไม่พบข้อมูลสำหรับคำว่า "$word"')),
+                                      );
+                                      return;
+                                    }
+
+                                    showDialog(
+                                      context: context,
+                                      builder: (context) => VocabDetailWithAddDialog(
+                                        wordId: word,
+                                        vocabData: wordData,
+                                        level: widget.level,
+                                        topic: topic,
+                                        userId: userId!,
+                                      ),
+                                    );
+                                  },
+                                  style: OutlinedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16.0,
+                                      vertical: 8.0,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12.0),
+                                    ),
+                                    side: BorderSide(
+                                      color: Theme.of(context).primaryColor,
+                                    ),
+                                  ),
+                                  child: Text(word),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                          const SizedBox(height: 16),
+                        ],
+                      );
+                    },
                   ),
-                );
-              }).toList(),
-            ),
           ),
         ],
       ),

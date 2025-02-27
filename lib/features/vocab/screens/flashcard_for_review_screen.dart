@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:swipe_cards/swipe_cards.dart';
+import 'package:translator/translator.dart';
 
 import '../../../features/flashcards/model/flashcard_topic_model.dart';
 import '../../../features/flashcards/widgets/flashcard_detail_dialog.dart';
@@ -28,13 +29,15 @@ class FlashcardForReviewScreen extends StatefulWidget {
 
 class FlashcardForReviewScreenState extends State<FlashcardForReviewScreen> {
   final FlutterTts flutterTts = FlutterTts();
+  final translator = GoogleTranslator();
 
   late List<SwipeItem> _swipeItems = [];
   late MatchEngine _matchEngine;
   bool _isLoading = true;
-  bool _isShowingMeaning = false;
+  bool _isTranslated = false;
   int _currentIndex = 0;
   List<Flashcard> _flashcards = [];
+  Map<String, String> _translations = {};
 
   @override
   void initState() {
@@ -173,10 +176,43 @@ class FlashcardForReviewScreenState extends State<FlashcardForReviewScreen> {
     await flutterTts.speak(text);
   }
 
-  void _toggleShowMeaning() {
-    setState(() {
-      _isShowingMeaning = !_isShowingMeaning;
-    });
+  /// แปลภาษา
+  Future<void> _translateText() async {
+    if (_isTranslated) {
+      setState(() {
+        _isTranslated = false;
+      });
+      return;
+    }
+
+    try {
+      if (_flashcards.isEmpty || _currentIndex >= _flashcards.length) return;
+
+      final currentFlashcard = _flashcards[_currentIndex];
+      String textToTranslate = currentFlashcard.mainWord;
+
+      if (textToTranslate.isNotEmpty &&
+          !_translations.containsKey(textToTranslate)) {
+        final translation = await translator.translate(
+          textToTranslate,
+          from: 'en',
+          to: 'th',
+        );
+
+        setState(() {
+          _translations[textToTranslate] = translation.text;
+          _isTranslated = true;
+        });
+      } else {
+        setState(() {
+          _isTranslated = true;
+        });
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('ไม่สามารถแปลภาษาได้: $e')),
+      );
+    }
   }
 
   void _showWordDetail(Flashcard flashcard) {
@@ -189,14 +225,6 @@ class FlashcardForReviewScreenState extends State<FlashcardForReviewScreen> {
   // ตรวจสอบให้แน่ใจว่าชื่อไฟล์ถูกต้อง (และไม่มี path issues)
   String _getBackgroundImageByLevel() {
     return 'assets/images/flashcard_bg.png';
-  }
-
-  void _updateCurrentIndex(int index) {
-    if (!mounted) return;
-    setState(() {
-      _currentIndex = index;
-      _isShowingMeaning = false;
-    });
   }
 
   @override
@@ -253,7 +281,8 @@ class FlashcardForReviewScreenState extends State<FlashcardForReviewScreen> {
                             // แก้ไขตรงนี้ ใช้ตัวแปร index โดยตรงจาก callback
                             setState(() {
                               _currentIndex = index;
-                              _isShowingMeaning = false;
+                              _isTranslated =
+                                  false; // Reset translation state on card change
                             });
                           },
                         ),
@@ -269,7 +298,6 @@ class FlashcardForReviewScreenState extends State<FlashcardForReviewScreen> {
                                 color: Colors.red.withOpacity(0.8), size: 32),
                             onPressed: () {
                               _matchEngine.currentItem?.nope();
-                              // ไม่ต้องเรียก _updateCurrentIndex เพิ่มเติม
                             },
                           ),
                           // ปุ่มอ่านออกเสียง
@@ -288,13 +316,13 @@ class FlashcardForReviewScreenState extends State<FlashcardForReviewScreen> {
                           // ปุ่ม toggle แปล / ไม่แปล
                           IconButton(
                             icon: Icon(
-                              _isShowingMeaning
+                              _isTranslated
                                   ? Icons.g_translate
                                   : Icons.translate,
                               color: Colors.teal.withOpacity(0.8),
                               size: 32,
                             ),
-                            onPressed: _toggleShowMeaning,
+                            onPressed: _translateText,
                           ),
                           // ปุ่มปัดขวา (รู้จักแล้ว - ไม่ต้องทบทวนอีก)
                           IconButton(
@@ -302,7 +330,6 @@ class FlashcardForReviewScreenState extends State<FlashcardForReviewScreen> {
                                 color: Colors.green.withOpacity(0.8), size: 32),
                             onPressed: () {
                               _matchEngine.currentItem?.like();
-                              // ไม่ต้องเรียก _updateCurrentIndex เพิ่มเติม
                             },
                           ),
                         ],
@@ -357,6 +384,15 @@ class FlashcardForReviewScreenState extends State<FlashcardForReviewScreen> {
   }
 
   Widget _buildFlashcardItem(Flashcard flashcard) {
+    // คำที่จะแสดงหลักๆ (คำศัพท์)
+    final String textToShow = flashcard.mainWord;
+
+    // ตรวจสอบว่ามีคำแปลหรือไม่
+    final String displayText =
+        _isTranslated && _translations.containsKey(textToShow)
+            ? _translations[textToShow]!
+            : textToShow;
+
     return Container(
       padding: const EdgeInsets.all(16.0),
       decoration: BoxDecoration(
@@ -388,20 +424,21 @@ class FlashcardForReviewScreenState extends State<FlashcardForReviewScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // แสดงคำศัพท์ หรือความหมาย
+                  // แสดงคำศัพท์ หรือคำแปล
                   Text(
-                    _isShowingMeaning
-                        ? flashcard.definition
-                        : flashcard.mainWord,
-                    style: const TextStyle(
+                    displayText,
+                    style: TextStyle(
                       fontSize: 35,
                       fontWeight: FontWeight.bold,
+                      fontStyle:
+                          _isTranslated ? FontStyle.italic : FontStyle.normal,
                     ),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 8),
-                  // ประเภทคำศัพท์ (แสดงเฉพาะเมื่อไม่ได้แสดงความหมาย)
-                  if (!_isShowingMeaning && flashcard.partOfSpeech.isNotEmpty)
+
+                  // ประเภทคำศัพท์ (แสดงเสมอถ้ามีข้อมูล)
+                  if (flashcard.partOfSpeech.isNotEmpty)
                     Text(
                       flashcard.partOfSpeech,
                       style: const TextStyle(

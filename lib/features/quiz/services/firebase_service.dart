@@ -71,6 +71,37 @@ class FirebaseService {
     }
   }
 
+  /// ฟังก์ชันสำหรับสร้างข้อมูลเริ่มต้นสำหรับผู้ใช้ใหม่
+  static Future<void> initializeUserProgress(String userId) async {
+    final db = FirebaseFirestore.instance;
+    final progressDoc = db
+        .collection('users')
+        .doc(userId)
+        .collection('progress')
+        .doc('unlockedTopics');
+
+    // ตรวจสอบว่ามีข้อมูลอยู่แล้วหรือไม่
+    final snapshot = await progressDoc.get();
+    if (!snapshot.exists) {
+      Map<String, dynamic> progressData = {};
+
+      // สร้างข้อมูลเริ่มต้นสำหรับทุกระดับ CEFR
+      for (var level in cefrTopics.keys) {
+        Map<String, bool> topicStatus = {};
+        var topics = cefrTopics[level] ?? [];
+
+        for (var topic in topics) {
+          // ถ้าเป็น B1 และเป็นหัวข้อแรก ให้ปลดล็อคเป็น true
+          topicStatus[topic] = (level == 'B1' && topic == topics.first);
+        }
+        progressData[level] = topicStatus;
+      }
+
+      // บันทึกข้อมูลลง Firestore
+      await progressDoc.set(progressData);
+    }
+  }
+
   // ฟังก์ชันจัดการความคืบหน้า (สร้างและอัปเดตข้อมูล)
   static Future<void> manageProgress(
     String userId,
@@ -87,16 +118,35 @@ class FirebaseService {
 
     // ดึงข้อมูลความคืบหน้าจาก Firestore
     final snapshot = await progressDoc.get();
+
+    // ถ้าไม่มีข้อมูล ให้สร้างข้อมูลเริ่มต้นก่อน
+    if (!snapshot.exists) {
+      await initializeUserProgress(userId);
+      return;
+    }
+
     Map<String, dynamic> progressData = snapshot.data() ?? {};
 
     // สร้างโครงสร้างเริ่มต้นถ้าไม่มีข้อมูล
     if (progressData.isEmpty) {
-      progressData = cefrTopics.map((level, topics) {
-        final initialUnlock = level == 'B1' ? {'daily_life': true} : {};
-        return MapEntry(level, {
-          for (var topic in topics) topic: initialUnlock[topic] ?? false,
-        });
-      });
+      progressData = {};
+      for (var level in cefrTopics.keys) {
+        // สร้าง Map เพื่อเก็บสถานะการปลดล็อคของแต่ละหัวข้อ
+        Map<String, bool> topicStatus = {};
+        var topics = cefrTopics[level] ?? [];
+
+        for (var topic in topics) {
+          // ถ้าเป็น B1 และเป็นหัวข้อแรก ให้ปลดล็อคเป็น true
+          if (level == 'B1' && topic == topics.first) {
+            topicStatus[topic] = true;
+          } else {
+            topicStatus[topic] = false;
+          }
+        }
+        progressData[level] = topicStatus;
+      }
+
+      // บันทึกข้อมูลลง Firestore
       await progressDoc.set(progressData);
     }
 

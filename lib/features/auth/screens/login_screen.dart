@@ -5,12 +5,14 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:vocabtree/core/theme/text_styles.dart';
+import 'package:vocabtree/features/auth/widgets/login/login_form.dart';
+import 'package:vocabtree/core/utils/responsive_helper.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
   @override
-  _LoginScreenState createState() => _LoginScreenState();
+  State<LoginScreen> createState() => _LoginScreenState();
 }
 
 class _LoginScreenState extends State<LoginScreen> {
@@ -118,61 +120,40 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _buildLogo(),
-              const SizedBox(height: 40),
-              _buildUsernameEmailField(),
-              const SizedBox(height: 16),
-              _buildPasswordField(),
-              const SizedBox(height: 16),
-              _buildForgotPasswordLink(),
-              const SizedBox(height: 24),
-              _buildLoginButton(),
-              const SizedBox(height: 35),
-              _buildRegisterLink(),
-            ],
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: ResponsiveHelper.getScreenPadding(context),
+          child: Center(
+            child: FractionallySizedBox(
+              widthFactor: ResponsiveHelper.getContentWidth(context),
+              child: Column(
+                children: [
+                  SizedBox(
+                      height: ResponsiveHelper.getVerticalSpacing(context)),
+                  Image.asset(
+                    'assets/images/tree_6977580.png',
+                    height: ResponsiveHelper.getImageHeight(context),
+                  ),
+                  SizedBox(
+                      height: ResponsiveHelper.getVerticalSpacing(context)),
+                  LoginForm(
+                    usernameEmailController: _usernameEmailController,
+                    passwordController: _passwordController,
+                    obscureText: _obscureText,
+                    onTogglePassword: _toggleObscureText,
+                    onLogin: _login,
+                  ),
+                  const SizedBox(height: 16),
+                  _buildForgotPasswordLink(),
+                  const SizedBox(height: 30),
+                  _buildRegisterLink(),
+                  SizedBox(
+                      height: ResponsiveHelper.getVerticalSpacing(context)),
+                ],
+              ),
+            ),
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildLogo() {
-    return Image.asset('assets/images/tree_6977580.png', height: 150);
-  }
-
-  Widget _buildUsernameEmailField() {
-    return _buildTextField(
-        _usernameEmailController, 'ชื่อผู้ใช้งาน หรืออีเมล', false);
-  }
-
-  Widget _buildPasswordField() {
-    return _buildTextField(_passwordController, 'รหัสผ่าน', true);
-  }
-
-  Widget _buildTextField(
-      TextEditingController controller, String label, bool isPassword) {
-    return TextField(
-      controller: controller,
-      obscureText: isPassword ? _obscureText : false,
-      decoration: InputDecoration(
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-        labelText: label,
-        labelStyle: AppTextStyles.inputText,
-        suffixIcon: isPassword
-            ? IconButton(
-                icon: Icon(
-                  _obscureText ? Icons.visibility_off : Icons.visibility,
-                  color: Theme.of(context).iconTheme.color,
-                ),
-                onPressed: _toggleObscureText,
-              )
-            : null,
       ),
     );
   }
@@ -180,27 +161,12 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _buildForgotPasswordLink() {
     return Align(
       alignment: Alignment.centerRight,
-      child: Text.rich(
-        TextSpan(
-          text: 'ลืมรหัสผ่าน?',
+      child: TextButton(
+        onPressed: () => Navigator.pushNamed(context, '/reset-password'),
+        child: Text(
+          'ลืมรหัสผ่าน?',
           style: AppTextStyles.label.copyWith(color: Colors.grey),
-          recognizer: TapGestureRecognizer()
-            ..onTap = () => Navigator.pushNamed(context, '/reset-password'),
         ),
-      ),
-    );
-  }
-
-  Widget _buildLoginButton() {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton(
-        onPressed: _login,
-        style: ElevatedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        ),
-        child: Text('เข้าสู่ระบบ', style: AppTextStyles.label),
       ),
     );
   }

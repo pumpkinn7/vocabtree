@@ -200,7 +200,7 @@ class _LoginScreenState extends State<LoginScreen> {
           padding: const EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
-        child: const Text('เข้าสู่ระบบ', style: AppTextStyles.label),
+        child: Text('เข้าสู่ระบบ', style: AppTextStyles.label),
       ),
     );
   }

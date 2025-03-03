@@ -161,7 +161,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const SizedBox(height: 24),
-                const Text(
+                Text(
                   'สวัสดี!\nสมัครสมาชิกเพื่อเข้าใช้งาน',
                   style: AppTextStyles.headline,
                   textAlign: TextAlign.center,
@@ -326,7 +326,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ),
         child: _isLoading
             ? const CircularProgressIndicator(color: Colors.white)
-            : const Text(
+            : Text(
                 'สมัครสมาชิก',
                 style: AppTextStyles.label,
               ),

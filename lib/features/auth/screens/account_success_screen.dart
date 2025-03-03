@@ -20,7 +20,7 @@ class AccountSuccessScreen extends StatelessWidget {
                 height: 150,
               ),
               const SizedBox(height: 20),
-              const Text(
+              Text(
                 'สร้างบัญชีสำเร็จ',
                 style: AppTextStyles.headline,
               ),
@@ -43,7 +43,7 @@ class AccountSuccessScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
-                  child: const Text(
+                  child: Text(
                     'ดำเนินการเข้าสู่ระบบ',
                     style: AppTextStyles.label,
                   ),

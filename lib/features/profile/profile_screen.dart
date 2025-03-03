@@ -33,7 +33,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     String domain = parts[1];
     if (username.length > 4) {
       username =
-      '${username.substring(0, 2)}****${username.substring(username.length - 2)}';
+          '${username.substring(0, 2)}****${username.substring(username.length - 2)}';
     } else {
       username = username.replaceRange(1, null, '***');
     }
@@ -49,7 +49,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void _showReportProblemDialog() {
     String? selectedProblem;
     final TextEditingController customProblemController =
-    TextEditingController();
+        TextEditingController();
     final TextEditingController detailsController = TextEditingController();
     showDialog(
       context: context,
@@ -57,13 +57,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
         return StatefulBuilder(
           builder: (context, setState) {
             return AlertDialog(
-              title: const Text('รายงานปัญหา', style: AppTextStyles.headline),
+              title: Text('รายงานปัญหา', style: AppTextStyles.headline),
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('ปัญหาที่พบบ่อย:', style: AppTextStyles.label),
+                    Text('ปัญหาที่พบบ่อย:', style: AppTextStyles.label),
                     DropdownButton<String>(
                       isExpanded: true,
                       value: selectedProblem,
@@ -135,7 +135,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       context: context,
       builder: (BuildContext dialogContext) {
         return AlertDialog(
-          title: const Text('จัดการบัญชี', style: AppTextStyles.headline),
+          title: Text('จัดการบัญชี', style: AppTextStyles.headline),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -150,7 +150,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Navigator.of(dialogContext).pop();
                   _handleResetPasswordAndSignOut();
                 },
-                child: const Text('ฉันลืมรหัสผ่าน', style: AppTextStyles.label),
+                child: Text('ฉันลืมรหัสผ่าน', style: AppTextStyles.label),
               ),
               const SizedBox(height: 10),
               ElevatedButton(
@@ -158,14 +158,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.red,
                 ),
-                child:
-                const Text('ลบบัญชีผู้ใช้งาน', style: AppTextStyles.label),
+                child: Text('ลบบัญชีผู้ใช้งาน', style: AppTextStyles.label),
               ),
             ],
           ),
           actions: <Widget>[
             TextButton(
-              child: const Text('ปิด', style: AppTextStyles.label),
+              child: Text('ปิด', style: AppTextStyles.label),
               onPressed: () {
                 Navigator.of(dialogContext).pop();
               },
@@ -183,8 +182,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         await FirebaseAuth.instance.signOut();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text(
-                'คำขอรีเซ็ตรหัสผ่านถูกส่งแล้ว กรุณาตรวจสอบอีเมลของคุณ'),
+            content:
+                Text('คำขอรีเซ็ตรหัสผ่านถูกส่งแล้ว กรุณาตรวจสอบอีเมลของคุณ'),
           ),
         );
         Navigator.of(context).pushReplacementNamed('/login');
@@ -224,15 +223,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
       User? user = FirebaseAuth.instance.currentUser;
       if (user != null) {
         DocumentSnapshot<Map<String, dynamic>> userSnapshot =
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .get();
+            await FirebaseFirestore.instance
+                .collection('users')
+                .doc(user.uid)
+                .get();
         DocumentSnapshot<Map<String, dynamic>> profileSnapshot =
-        await FirebaseFirestore.instance
-            .collection('profiles')
-            .doc(user.uid)
-            .get();
+            await FirebaseFirestore.instance
+                .collection('profiles')
+                .doc(user.uid)
+                .get();
         setState(() {
           userData = userSnapshot.data();
           profileData = profileSnapshot.data();
@@ -263,7 +262,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
             content:
-            Text('เกิดข้อผิดพลาดในการออกจากระบบ กรุณาลองใหม่อีกครั้ง')),
+                Text('เกิดข้อผิดพลาดในการออกจากระบบ กรุณาลองใหม่อีกครั้ง')),
       );
     }
   }
@@ -290,7 +289,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-              content: Text('เกิดข้อผิดพลาดในการอัพโหลดรูปภาพ กรุณาลองใหม่อีกครั้ง')),
+              content: Text(
+                  'เกิดข้อผิดพลาดในการอัพโหลดรูปภาพ กรุณาลองใหม่อีกครั้ง')),
         );
       }
     }
@@ -311,8 +311,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-              content:
-              Text('เกิดข้อผิดพลาดในการบันทึกการตั้งค่า กรุณาลองใหม่อีกครั้ง')),
+              content: Text(
+                  'เกิดข้อผิดพลาดในการบันทึกการตั้งค่า กรุณาลองใหม่อีกครั้ง')),
         );
       }
     }
@@ -481,7 +481,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               backgroundColor: Colors.grey[700],
               radius: 20,
               child: IconButton(
-                icon: const Icon(Icons.camera_alt, size: 20, color: Colors.white),
+                icon:
+                    const Icon(Icons.camera_alt, size: 20, color: Colors.white),
                 onPressed: _uploadProfilePicture,
               ),
             ),
@@ -520,7 +521,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
-        const Text('การแสดงผลหน้าจอ', style: AppTextStyles.label),
+        Text('การแสดงผลหน้าจอ', style: AppTextStyles.label),
         const SizedBox(width: 5),
         SizedBox(
           width: 65,

@@ -78,7 +78,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                 ),
               ),
               const SizedBox(height: 20),
-              const Text(
+              Text(
                 'รีเซ็ตรหัสผ่าน',
                 style: AppTextStyles.headline,
               ),
@@ -111,7 +111,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
-                  child: const Text(
+                  child: Text(
                     'ส่งลิงก์รีเซ็ตรหัสผ่าน',
                     style: AppTextStyles.label,
                   ),

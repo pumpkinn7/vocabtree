@@ -1,55 +1,29 @@
 import 'package:flutter/material.dart';
-import 'package:vocabtree/core/theme/text_styles.dart';
+import 'package:vocabtree/core/utils/responsive_helper.dart';
+import 'package:vocabtree/features/auth/widgets/account_success/success_content.dart';
 
 class AccountSuccessScreen extends StatelessWidget {
   const AccountSuccessScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    // คำนวณขนาดอุปกรณ์สำหรับการปรับ padding
+    final double screenHeight = MediaQuery.of(context).size.height;
+    final double topPadding = screenHeight * 0.08; // 8% of screen height
+
     return Scaffold(
       extendBodyBehindAppBar: true,
-      body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              const SizedBox(height: 100),
-              Image.asset(
-                'assets/icons/Successmark.png',
-                height: 150,
-              ),
-              const SizedBox(height: 20),
-              Text(
-                'สร้างบัญชีสำเร็จ',
-                style: AppTextStyles.headline,
-              ),
-              const SizedBox(height: 10),
-              Text(
-                'สนุกกับการเรียนรู้คำศัพท์ใหม่\nและ แบบทดสอบหลากหลาย',
-                style: AppTextStyles.caption,
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 30),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pushNamed(context, '/login');
-                  },
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: Text(
-                    'ดำเนินการเข้าสู่ระบบ',
-                    style: AppTextStyles.label,
-                  ),
-                ),
-              ),
-            ],
+      body: SafeArea(
+        child: Padding(
+          padding: EdgeInsets.only(
+            top: topPadding, // ใช้ค่า padding ด้านบนตามที่คำนวณไว้
+            left: ResponsiveHelper.getScreenWidth(context) * 0.05,
+            right: ResponsiveHelper.getScreenWidth(context) * 0.05,
+          ),
+          child: SingleChildScrollView(
+            child: SuccessContent(
+              onLoginPressed: () => Navigator.pushNamed(context, '/login'),
+            ),
           ),
         ),
       ),

@@ -6,7 +6,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:vocabtree/core/theme/text_styles.dart';
 import 'package:vocabtree/features/auth/widgets/login/login_form.dart';
-import 'package:vocabtree/core/utils/responsive_helper.dart';
+import 'package:flutter_bootstrap/flutter_bootstrap.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -32,7 +32,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _login() async {
     if (_usernameEmailController.text.isEmpty ||
         _passwordController.text.isEmpty) {
-      _showErrorMessage('กรุณากรอกข้อมูลให้ครบก่อนสิ');
+      _showErrorMessage('กรุณากรอกข้อมูลให้ครบถ้วน');
       return;
     }
 
@@ -59,7 +59,7 @@ class _LoginScreenState extends State<LoginScreen> {
           .get();
 
       if (querySnapshot.docs.isEmpty) {
-        _showErrorMessage('ดูเหมือนจะยังไม่มีบัญชีนะ สมัครก่อนสิ');
+        _showErrorMessage('ไม่พบบัญชีผู้ใช้งานนี้');
         return '';
       }
 
@@ -87,7 +87,7 @@ class _LoginScreenState extends State<LoginScreen> {
     user = FirebaseAuth.instance.currentUser!;
 
     if (!user.emailVerified) {
-      _showErrorMessage('โปรดยืนยันอีเมลของคุณก่อนเข้าสู่ระบบ');
+      _showErrorMessage('กรุณายืนยันอีเมลก่อนเข้าสู่ระบบ');
       await FirebaseAuth.instance.signOut();
       return;
     }
@@ -97,14 +97,14 @@ class _LoginScreenState extends State<LoginScreen> {
 
   void _handleFirebaseAuthException(FirebaseAuthException e) {
     if (e.code == 'user-not-found') {
-      _showErrorMessage('ดูเหมือนจะยังไม่มีบัญชีนะ สมัครก่อนสิ');
+      _showErrorMessage('ไม่พบบัญชีผู้ใช้งานนี้');
     } else if (e.code == 'wrong-password' ||
         e.message?.contains('The supplied auth credential is incorrect') ==
             true ||
         e.message?.contains(
                 'The supplied auth credential is malformed or has expired') ==
             true) {
-      _showErrorMessage('ดูเหมือนว่ารหัสผ่านจะไม่ถูกต้องนะ');
+      _showErrorMessage('รหัสผ่านไม่ถูกต้อง');
     } else if (e.code == 'too-many-requests') {
       _showErrorMessage('พยายามเข้าสู่ระบบบ่อยเกินไป กรุณาลองใหม่ภายหลัง');
     } else {
@@ -122,36 +122,40 @@ class _LoginScreenState extends State<LoginScreen> {
     return Scaffold(
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: ResponsiveHelper.getScreenPadding(context),
-          child: Center(
-            child: FractionallySizedBox(
-              widthFactor: ResponsiveHelper.getContentWidth(context),
-              child: Column(
+          child: BootstrapContainer(
+            fluid: true,
+            children: [
+              BootstrapRow(
                 children: [
-                  SizedBox(
-                      height: ResponsiveHelper.getVerticalSpacing(context)),
-                  Image.asset(
-                    'assets/images/tree_6977580.png',
-                    height: ResponsiveHelper.getImageHeight(context),
+                  BootstrapCol(
+                    sizes: 'col-xs-12 col-sm-12 col-md-8 col-lg-4',
+                    offsets: 'offset-xs-0 offset-sm-0 offset-md-2 offset-lg-4',
+                    child: Column(
+                      children: [
+                        const SizedBox(height: 60),
+                        Image.asset(
+                          'assets/images/tree_6977580.png',
+                          height: 200,
+                        ),
+                        const SizedBox(height: 30),
+                        LoginForm(
+                          usernameEmailController: _usernameEmailController,
+                          passwordController: _passwordController,
+                          obscureText: _obscureText,
+                          onTogglePassword: _toggleObscureText,
+                          onLogin: _login,
+                        ),
+                        const SizedBox(height: 15),
+                        _buildForgotPasswordLink(),
+                        const SizedBox(height: 30),
+                        _buildRegisterLink(),
+                        const SizedBox(height: 30),
+                      ],
+                    ),
                   ),
-                  SizedBox(
-                      height: ResponsiveHelper.getVerticalSpacing(context)),
-                  LoginForm(
-                    usernameEmailController: _usernameEmailController,
-                    passwordController: _passwordController,
-                    obscureText: _obscureText,
-                    onTogglePassword: _toggleObscureText,
-                    onLogin: _login,
-                  ),
-                  const SizedBox(height: 16),
-                  _buildForgotPasswordLink(),
-                  const SizedBox(height: 30),
-                  _buildRegisterLink(),
-                  SizedBox(
-                      height: ResponsiveHelper.getVerticalSpacing(context)),
                 ],
               ),
-            ),
+            ],
           ),
         ),
       ),

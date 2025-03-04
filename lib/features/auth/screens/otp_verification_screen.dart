@@ -125,9 +125,9 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                     ),
                   ),
                   Align(
-                    alignment: Alignment.centerRight,
+                    alignment: Alignment.center,
                     child: Padding(
-                      padding: const EdgeInsets.only(top: 16),
+                      padding: const EdgeInsets.only(top: 20),
                       child: ResendLink(onResend: _handleResendVerification),
                     ),
                   ),

@@ -69,6 +69,14 @@ class _RegisterFormState extends State<RegisterForm> {
   }
 
   void _handleSubmit() {
+    // เพิ่มการตรวจสอบรหัสผ่านก่อนส่งฟอร์ม
+    if (_passwordController.text != _confirmPasswordController.text) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('รหัสผ่านและยืนยันรหัสผ่านไม่ตรงกัน')),
+      );
+      return;
+    }
+
     widget.onSubmit(
       username: _usernameController.text,
       email: _emailController.text,
@@ -107,7 +115,7 @@ class _RegisterFormState extends State<RegisterForm> {
             obscureText: _obscureConfirmPassword,
             toggleVisibility: _toggleConfirmPasswordVisibility,
             isConfirmField: true,
-            passwordToMatch: _passwordController.text,
+            otherPasswordController: _passwordController,
           ),
           SizedBox(height: verticalSpacing * 1.2),
           RegisterButton(

@@ -7,6 +7,8 @@ class PasswordField extends StatelessWidget {
   final VoidCallback toggleVisibility;
   final bool isConfirmField;
   final String? passwordToMatch;
+  // เพิ่ม controller ของอีกฟิลด์หนึ่งเพื่อเข้าถึงค่าปัจจุบัน
+  final TextEditingController? otherPasswordController;
 
   const PasswordField({
     super.key,
@@ -15,6 +17,7 @@ class PasswordField extends StatelessWidget {
     required this.toggleVisibility,
     this.isConfirmField = false,
     this.passwordToMatch,
+    this.otherPasswordController,
   });
 
   @override
@@ -40,7 +43,14 @@ class PasswordField extends StatelessWidget {
           return 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร';
         }
 
-        if (isConfirmField &&
+        // เช็คโดยใช้ค่าปัจจุบันจาก controller
+        if (isConfirmField && otherPasswordController != null) {
+          if (value != otherPasswordController!.text) {
+            return 'รหัสผ่านไม่ตรงกัน';
+          }
+        }
+        // คงไว้สำหรับความเข้ากันได้กับโค้ดเดิม
+        else if (isConfirmField &&
             passwordToMatch != null &&
             value != passwordToMatch) {
           return 'รหัสผ่านไม่ตรงกัน';

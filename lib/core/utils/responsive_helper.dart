@@ -1,36 +1,56 @@
 import 'package:flutter/material.dart';
 
 class ResponsiveHelper {
+  // Standard Material Design breakpoints
+  static const double kMobileBreakpoint = 600; // Mobile breakpoint is < 600dp
+  static const double kTabletBreakpoint = 1024; // Tablet is 600dp-1024dp
+  static const double kDesktopBreakpoint = 1440; // Desktop is >= 1024dp
+
   static double getScreenWidth(BuildContext context) =>
       MediaQuery.of(context).size.width;
   static double getScreenHeight(BuildContext context) =>
       MediaQuery.of(context).size.height;
 
-  // Responsive width factors
+  // Device type detection
+  static bool isMobile(BuildContext context) =>
+      getScreenWidth(context) < kMobileBreakpoint;
+  static bool isTablet(BuildContext context) =>
+      getScreenWidth(context) >= kMobileBreakpoint &&
+      getScreenWidth(context) < kTabletBreakpoint;
+  static bool isDesktop(BuildContext context) =>
+      getScreenWidth(context) >= kTabletBreakpoint;
+
+  // Responsive width factors according to Material Design
   static double getContentWidth(BuildContext context) {
-    double screenWidth = MediaQuery.of(context).size.width;
-    // ปรับขนาดความกว้างของเนื้อหาตามขนาดหน้าจอ
-    if (screenWidth > 1200) {
-      return 0.4; // 40% of screen width for large screens
-    } else if (screenWidth > 800) {
-      return 0.6; // 60% of screen width for medium screens
+    double screenWidth = getScreenWidth(context);
+
+    if (screenWidth >= kTabletBreakpoint) {
+      return 0.6; // 60% width for desktop (with max width constraint applied elsewhere)
+    } else if (screenWidth >= kMobileBreakpoint) {
+      return 0.75; // 75% width for tablets
     } else {
-      return 0.9; // 90% of screen width for small screens
+      return 0.92; // 92% width for mobile
     }
   }
 
-  // Dynamic padding
+  // Standard Material Design padding (using 8dp grid)
   static EdgeInsets getScreenPadding(BuildContext context) {
-    double screenWidth = MediaQuery.of(context).size.width;
-    double horizontalPadding = screenWidth * 0.05;
-    double verticalPadding =
-        getVerticalSpacing(context) * 0.5; // ลดระยะห่างด้านบนลงครึ่งหนึ่ง
+    double screenWidth = getScreenWidth(context);
+    double horizontalPadding;
+    double verticalPadding;
 
-    // ปรับ padding ตามขนาดหน้าจอ
-    if (screenWidth > 1200) {
-      horizontalPadding = screenWidth * 0.2; // 20% padding for large screens
-    } else if (screenWidth > 800) {
-      horizontalPadding = screenWidth * 0.1; // 10% padding for medium screens
+    if (screenWidth >= kTabletBreakpoint) {
+      // Desktop
+      horizontalPadding = 24.0;
+      verticalPadding = 24.0;
+    } else if (screenWidth >= kMobileBreakpoint) {
+      // Tablet
+      horizontalPadding = 24.0;
+      verticalPadding = 16.0;
+    } else {
+      // Mobile
+      horizontalPadding = 16.0;
+      verticalPadding = 16.0;
     }
 
     return EdgeInsets.symmetric(
@@ -39,19 +59,29 @@ class ResponsiveHelper {
     );
   }
 
-  // Responsive spacing
+  // Standard Material Design element spacing
   static double getVerticalSpacing(BuildContext context) {
-    double screenHeight = MediaQuery.of(context).size.height;
-    // ปรับลดค่าเปอร์เซ็นต์ลงตามขนาดหน้าจอ
-    if (screenHeight > 1200) {
-      return screenHeight * 0.03; // 3% for large screens
-    } else if (screenHeight > 800) {
-      return screenHeight * 0.04; // 4% for medium screens
+    double screenWidth = getScreenWidth(context);
+
+    if (screenWidth >= kTabletBreakpoint) {
+      return 24.0; // Standard spacing for desktop
+    } else if (screenWidth >= kMobileBreakpoint) {
+      return 16.0; // Standard spacing for tablet
     } else {
-      return screenHeight * 0.05; // 5% for small screens
+      return 16.0; // Standard spacing for mobile
     }
+  }
+
+  // Maximum content width following Material Design recommendations
+  static double getMaxContentWidth(BuildContext context) {
+    return 1200.0; // Standard maximum content width
   }
 
   static double getImageHeight(BuildContext context) =>
       getScreenHeight(context) * 0.2;
+
+  // Standard padding values per Material Design
+  static const EdgeInsets kDefaultPadding = EdgeInsets.all(16.0);
+  static const EdgeInsets kSmallPadding = EdgeInsets.all(8.0);
+  static const EdgeInsets kLargePadding = EdgeInsets.all(24.0);
 }

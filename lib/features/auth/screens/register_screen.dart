@@ -102,11 +102,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: EdgeInsets.symmetric(
-            horizontal: ResponsiveHelper.getScreenWidth(context) * 0.05,
-            vertical: ResponsiveHelper.getScreenWidth(context) *
-                0.02, // ลดระยะห่างด้านบน-ล่าง
-          ),
+          padding: ResponsiveHelper.getScreenPadding(context),
           child: Center(
             child: FractionallySizedBox(
               widthFactor: ResponsiveHelper.getContentWidth(context),
@@ -114,24 +110,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   SizedBox(
-                      height:
-                          ResponsiveHelper.getVerticalSpacing(context) * 0.2),
+                      height: ResponsiveHelper.getVerticalSpacing(context)),
                   Text(
                     'สวัสดี!\nสมัครสมาชิกเพื่อเข้าใช้งาน',
                     style: AppTextStyles.headline,
                     textAlign: TextAlign.center,
                   ),
                   SizedBox(
-                      height:
-                          ResponsiveHelper.getVerticalSpacing(context) * 0.5),
+                      height: ResponsiveHelper.getVerticalSpacing(context)),
                   Card(
-                    elevation: 4,
+                    elevation: 0,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(15),
+                      side: BorderSide(color: Colors.grey[300]!),
                     ),
                     child: Padding(
-                      padding: EdgeInsets.all(
-                          ResponsiveHelper.getScreenWidth(context) * 0.04),
+                      padding: const EdgeInsets.all(16.0),
                       child: RegisterForm(
                         formKey: _formKey,
                         isLoading: _isLoading,
@@ -142,8 +136,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   SizedBox(
                       height: ResponsiveHelper.getVerticalSpacing(context)),
                   _buildLoginLink(),
-                  SizedBox(
-                      height: ResponsiveHelper.getVerticalSpacing(context)),
                 ],
               ),
             ),

@@ -7,22 +7,24 @@ class AccountSuccessScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // คำนวณขนาดอุปกรณ์สำหรับการปรับ padding
-    final double screenHeight = MediaQuery.of(context).size.height;
-    final double topPadding = screenHeight * 0.08; // 8% of screen height
-
     return Scaffold(
       extendBodyBehindAppBar: true,
       body: SafeArea(
-        child: Padding(
-          padding: EdgeInsets.only(
-            top: topPadding, // ใช้ค่า padding ด้านบนตามที่คำนวณไว้
-            left: ResponsiveHelper.getScreenWidth(context) * 0.05,
-            right: ResponsiveHelper.getScreenWidth(context) * 0.05,
-          ),
-          child: SingleChildScrollView(
-            child: SuccessContent(
-              onLoginPressed: () => Navigator.pushNamed(context, '/login'),
+        child: SingleChildScrollView(
+          padding: ResponsiveHelper.getScreenPadding(context),
+          child: Center(
+            child: FractionallySizedBox(
+              widthFactor: ResponsiveHelper.getContentWidth(context),
+              child: Column(
+                children: [
+                  SizedBox(
+                      height: ResponsiveHelper.getVerticalSpacing(context)),
+                  SuccessContent(
+                    onLoginPressed: () =>
+                        Navigator.pushNamed(context, '/login'),
+                  ),
+                ],
+              ),
             ),
           ),
         ),

@@ -71,15 +71,6 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
 
   @override
   Widget build(BuildContext context) {
-    double screenWidth = MediaQuery.of(context).size.width;
-    double widthFactor = 0.95;
-
-    if (screenWidth > 1200) {
-      widthFactor = 0.4;
-    } else if (screenWidth > 600) {
-      widthFactor = 0.6;
-    }
-
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
@@ -93,57 +84,55 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: EdgeInsets.fromLTRB(
-            ResponsiveHelper.getScreenWidth(context) * 0.05,
-            ResponsiveHelper.getVerticalSpacing(context) * 0.02,
-            ResponsiveHelper.getScreenWidth(context) * 0.05,
-            0,
-          ),
-          child: FractionallySizedBox(
-            widthFactor: widthFactor,
-            child: Column(
-              children: [
-                OtpHeader(
-                  username: widget.username,
-                  profileImageFile: widget.profileImageFile,
-                ),
-                const SizedBox(height: 10), // ลดระยะห่าง
-                Card(
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(15),
-                    side: BorderSide(color: Colors.grey[300]!),
+          padding: ResponsiveHelper.getScreenPadding(context),
+          child: Center(
+            child: FractionallySizedBox(
+              widthFactor: ResponsiveHelper.getContentWidth(context),
+              child: Column(
+                children: [
+                  SizedBox(
+                      height: ResponsiveHelper.getVerticalSpacing(context)),
+                  OtpHeader(
+                    username: widget.username,
+                    profileImageFile: widget.profileImageFile,
                   ),
-                  child: Padding(
-                    padding: EdgeInsets.all(
-                      ResponsiveHelper.getScreenWidth(context) * 0.04,
+                  SizedBox(
+                      height: ResponsiveHelper.getVerticalSpacing(context)),
+                  Card(
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15),
+                      side: BorderSide(color: Colors.grey[300]!),
                     ),
-                    child: Column(
-                      children: [
-                        const OtpInstructions(),
-                        const SizedBox(height: 20), // ลดระยะห่าง
-                        _isLoading
-                            ? const CircularProgressIndicator(
-                                color: Colors.orange)
-                            : VerificationButton(
-                                onPressed: _handleVerifyEmail,
-                                buttonText: 'ยืนยัน',
-                              ),
-                      ],
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        children: [
+                          const OtpInstructions(),
+                          SizedBox(
+                              height:
+                                  ResponsiveHelper.getVerticalSpacing(context) *
+                                      0.5),
+                          _isLoading
+                              ? const CircularProgressIndicator(
+                                  color: Colors.orange)
+                              : VerificationButton(
+                                  onPressed: _handleVerifyEmail,
+                                  buttonText: 'ยืนยัน',
+                                ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-                Padding(
-                  padding: EdgeInsets.only(
-                    top: 16,
-                    right: ResponsiveHelper.getScreenWidth(context) * 0.04,
-                  ),
-                  child: Align(
+                  Align(
                     alignment: Alignment.centerRight,
-                    child: ResendLink(onResend: _handleResendVerification),
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 16),
+                      child: ResendLink(onResend: _handleResendVerification),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),

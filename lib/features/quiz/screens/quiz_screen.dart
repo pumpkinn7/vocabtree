@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:vocabtree/features/quiz/screens/cefr_level_screen.dart';
+import 'package:vocabtree/features/quiz/widgets/daily_vocabulary_card.dart';
 
 class QuizScreen extends StatelessWidget {
   const QuizScreen({super.key});
@@ -10,28 +11,15 @@ class QuizScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        title: const Text('เรียนรู้คำศัพท์'),
+        title: const Text('แบบทดสอบคำศัพท์ภาษาอังกฤษ'),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: SingleChildScrollView(
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                height: 150,
-                width: double.infinity,
-                color: Colors.grey,
-                child: const Center(
-                  child: Text(
-                    'CEFR เป็นเครื่องมือที่สำคัญที่ช่วยพัฒนาทักษะการสอนภาษาอังกฤษได้อย่างมีประสิทธิภาพ\nทำให้การเรียนภาษาเป็นไปตามมาตรฐานเดียวกัน และใช้ได้ทั่วโลก.',
-                    style: TextStyle(fontSize: 16),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              ),
+              const DailyVocabularyCard(),
               const SizedBox(height: 16),
-              const Divider(),
               VocabularyItem(
                 title: 'SPRING',
                 level: 'คำศัพท์ภาษาอังกฤษ B1',

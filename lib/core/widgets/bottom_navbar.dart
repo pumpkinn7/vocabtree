@@ -5,7 +5,7 @@ import 'package:google_nav_bar/google_nav_bar.dart';
 import 'package:provider/provider.dart';
 import 'package:vocabtree/core/theme/theme_provider.dart';
 import 'package:vocabtree/features/home/screens/home_screen.dart';
-import 'package:vocabtree/features/profile/profile_screen.dart';
+import 'package:vocabtree/features/profile/screens/profile_screen.dart';
 import 'package:vocabtree/features/quiz/screens/quiz_screen.dart';
 import 'package:vocabtree/features/vocab/screens/vocab_screen.dart';
 import 'package:flutter_bootstrap/flutter_bootstrap.dart';

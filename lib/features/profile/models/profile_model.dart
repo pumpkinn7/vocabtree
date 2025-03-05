@@ -47,6 +47,23 @@ class ProfileModel {
   String getFormattedDate() {
     if (createdAt == null) return 'ไม่ทราบ';
     DateTime date = createdAt!.toDate();
-    return '${date.day}/${date.month}/${date.year}';
+
+    // แปลงเดือนเป็นภาษาไทย
+    final List<String> thaiMonths = [
+      'มกราคม',
+      'กุมภาพันธ์',
+      'มีนาคม',
+      'เมษายน',
+      'พฤษภาคม',
+      'มิถุนายน',
+      'กรกฎาคม',
+      'สิงหาคม',
+      'กันยายน',
+      'ตุลาคม',
+      'พฤศจิกายน',
+      'ธันวาคม'
+    ];
+
+    return '${date.day} ${thaiMonths[date.month - 1]} ${date.year + 543}'; // +543 เพื่อแปลงเป็นปี พ.ศ.
   }
 }

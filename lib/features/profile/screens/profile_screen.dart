@@ -8,6 +8,7 @@ import 'package:vocabtree/features/profile/models/profile_model.dart';
 import 'package:vocabtree/features/profile/services/profile_service.dart';
 import 'package:vocabtree/features/profile/screens/edit_friend_screen.dart';
 import 'package:vocabtree/features/profile/widgets/dialogs/password_confirm_dialog.dart';
+import 'package:vocabtree/features/profile/widgets/dialogs/manage_account_dialog.dart';
 import 'package:vocabtree/features/profile/widgets/display_mode_switch.dart';
 import 'package:vocabtree/features/profile/widgets/profile_actions.dart';
 import 'package:vocabtree/features/profile/widgets/profile_header.dart';
@@ -206,43 +207,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void _showManageAccountDialog() {
     showDialog(
       context: context,
-      builder: (BuildContext dialogContext) => AlertDialog(
-        title: const Text('จัดการบัญชี'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Image.asset(
-              'assets/images/tree_6977598.png',
-              width: 35,
-              height: 35,
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.of(dialogContext).pop();
-                _handleResetPasswordAndSignOut();
-              },
-              child: const Text('ฉันลืมรหัสผ่าน'),
-            ),
-            const SizedBox(height: 10),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.of(dialogContext).pop();
-                _deleteAccount();
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-              ),
-              child: const Text('ลบบัญชีผู้ใช้งาน'),
-            ),
-          ],
-        ),
-        actions: <Widget>[
-          TextButton(
-            child: const Text('ปิด'),
-            onPressed: () => Navigator.of(dialogContext).pop(),
-          ),
-        ],
+      builder: (BuildContext dialogContext) => ManageAccountDialog(
+        onResetPasswordPressed: () {
+          Navigator.of(dialogContext).pop();
+          _handleResetPasswordAndSignOut();
+        },
+        onDeleteAccountPressed: () {
+          Navigator.of(dialogContext).pop();
+          _deleteAccount();
+        },
       ),
     );
   }
@@ -280,9 +253,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   BootstrapRow(
                     children: [
                       BootstrapCol(
-                        sizes: 'col-xs-12 col-sm-12 col-md-8 col-lg-6 col-xl-6',
+                        sizes: 'col-xs-12 col-sm-12 col-md-8 col-lg-4 col-xl-4',
                         offsets:
-                            'offset-xs-0 offset-sm-0 offset-md-2 offset-lg-3 offset-xl-3',
+                            'offset-xs-0 offset-sm-0 offset-md-2 offset-lg-4 offset-xl-4',
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [

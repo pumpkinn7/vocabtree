@@ -1,15 +1,17 @@
 import 'dart:io';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:day_night_switcher/day_night_switcher.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
+import 'package:flutter_bootstrap/flutter_bootstrap.dart';
 import 'package:provider/provider.dart';
-import 'package:vocabtree/core/theme/text_styles.dart';
 import 'package:vocabtree/core/theme/theme_provider.dart';
-import 'package:vocabtree/features/auth/services/auth_service.dart';
+import 'package:vocabtree/features/profile/models/profile_model.dart';
+import 'package:vocabtree/features/profile/services/profile_service.dart';
 import 'package:vocabtree/features/profile/screens/edit_friend_screen.dart';
+import 'package:vocabtree/features/profile/widgets/dialogs/password_confirm_dialog.dart';
+import 'package:vocabtree/features/profile/widgets/display_mode_switch.dart';
+import 'package:vocabtree/features/profile/widgets/profile_actions.dart';
+import 'package:vocabtree/features/profile/widgets/profile_header.dart';
+import 'package:vocabtree/features/profile/widgets/profile_info.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -19,274 +21,32 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  final AuthService _authService = AuthService();
-  Map<String, dynamic>? userData;
-  Map<String, dynamic>? profileData;
-  bool isLoading = true;
-  String? errorMessage;
-
-  String _maskEmail(String email) {
-    if (email.isEmpty) return '';
-    final parts = email.split('@');
-    if (parts.length != 2) return email;
-    String username = parts[0];
-    String domain = parts[1];
-    if (username.length > 4) {
-      username =
-          '${username.substring(0, 2)}****${username.substring(username.length - 2)}';
-    } else {
-      username = username.replaceRange(1, null, '***');
-    }
-    return '$username@$domain';
-  }
+  final ProfileService _profileService = ProfileService();
+  late Future<ProfileModel> _profileFuture;
+  bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    _loadUserData();
+    _profileFuture = _profileService.loadUserProfile();
   }
 
-  void _showReportProblemDialog() {
-    String? selectedProblem;
-    final TextEditingController customProblemController =
-        TextEditingController();
-    final TextEditingController detailsController = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              title: Text('รายงานปัญหา', style: AppTextStyles.headline),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('ปัญหาที่พบบ่อย:', style: AppTextStyles.label),
-                    DropdownButton<String>(
-                      isExpanded: true,
-                      value: selectedProblem,
-                      hint: const Text('เลือกปัญหาที่พบ'),
-                      items: [
-                        'ข้อผิดพลาดในการทำแบบฝึกหัด',
-                        'การซิงค์ข้อมูลระหว่างอุปกรณ์',
-                        'ปัญหาเกี่ยวกับการเชื่อมต่ออินเทอร์เน็ต',
-                        'การแจ้งเตือนที่ไม่สม่ำเสมอ',
-                        'การอัปเดต และการดาวน์โหลดข้อมูล',
-                      ].map((String value) {
-                        return DropdownMenuItem<String>(
-                          value: value,
-                          child: Text(value),
-                        );
-                      }).toList(),
-                      onChanged: (String? newValue) {
-                        setState(() {
-                          selectedProblem = newValue;
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 20),
-                    TextField(
-                      controller: customProblemController,
-                      decoration: const InputDecoration(
-                        labelText: 'ปัญหาที่ฉันพบ',
-                        hintText: 'กรอกปัญหาที่คุณพบ',
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    TextField(
-                      controller: detailsController,
-                      decoration: const InputDecoration(
-                        labelText: 'รายละเอียด',
-                        hintText: 'กรอกรายละเอียดเพิ่มเติม',
-                      ),
-                      maxLines: 3,
-                    ),
-                  ],
-                ),
-              ),
-              actions: <Widget>[
-                TextButton(
-                  child: const Text('ยกเลิก'),
-                  onPressed: () => Navigator.of(context).pop(),
-                ),
-                TextButton(
-                  child: const Text('ส่งรายงาน'),
-                  onPressed: () {
-                    _submitReport(
-                      selectedProblem,
-                      customProblemController.text,
-                      detailsController.text,
-                    );
-                    Navigator.of(context).pop();
-                  },
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
-  void _showManageAccountDialog() {
-    showDialog(
-      context: context,
-      builder: (BuildContext dialogContext) {
-        return AlertDialog(
-          title: Text('จัดการบัญชี', style: AppTextStyles.headline),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Image.asset(
-                'assets/images/tree_6977598.png',
-                width: 35,
-                height: 35,
-              ),
-              const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.of(dialogContext).pop();
-                  _handleResetPasswordAndSignOut();
-                },
-                child: Text('ฉันลืมรหัสผ่าน', style: AppTextStyles.label),
-              ),
-              const SizedBox(height: 10),
-              ElevatedButton(
-                onPressed: _deleteAccount,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
-                ),
-                child: Text('ลบบัญชีผู้ใช้งาน', style: AppTextStyles.label),
-              ),
-            ],
-          ),
-          actions: <Widget>[
-            TextButton(
-              child: Text('ปิด', style: AppTextStyles.label),
-              onPressed: () {
-                Navigator.of(dialogContext).pop();
-              },
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Future<void> _handleResetPasswordAndSignOut() async {
-    final result = await Navigator.pushNamed(context, '/reset-password');
-    if (result == true) {
-      try {
-        await FirebaseAuth.instance.signOut();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content:
-                Text('คำขอรีเซ็ตรหัสผ่านถูกส่งแล้ว กรุณาตรวจสอบอีเมลของคุณ'),
-          ),
-        );
-        Navigator.of(context).pushReplacementNamed('/login');
-      } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('เกิดข้อผิดพลาดในการออกจากระบบ กรุณาลองใหม่อีกครั้ง'),
-          ),
-        );
-      }
-    }
-  }
-
-  Future<void> _submitReport(
-      String? commonIssue, String customIssue, String details) async {
+  Future<void> _uploadProfileImage(File imageFile) async {
     try {
-      await FirebaseFirestore.instance.collection('reports').add({
-        'userId': FirebaseAuth.instance.currentUser?.uid,
-        'commonIssue': commonIssue,
-        'customIssue': customIssue,
-        'issueDetails': details,
-        'reportedAt': FieldValue.serverTimestamp(),
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('รายงานถูกส่งเรียบร้อยแล้ว')),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('เกิดข้อผิดพลาดในการส่งรายงาน กรุณาลองใหม่อีกครั้ง')),
-      );
-    }
-  }
-
-  Future<void> _loadUserData() async {
-    try {
-      User? user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        DocumentSnapshot<Map<String, dynamic>> userSnapshot =
-            await FirebaseFirestore.instance
-                .collection('users')
-                .doc(user.uid)
-                .get();
-        DocumentSnapshot<Map<String, dynamic>> profileSnapshot =
-            await FirebaseFirestore.instance
-                .collection('profiles')
-                .doc(user.uid)
-                .get();
-        setState(() {
-          userData = userSnapshot.data();
-          profileData = profileSnapshot.data();
-          isLoading = false;
-        });
-      } else {
-        setState(() {
-          isLoading = false;
-          errorMessage = 'ผู้ใช้งานยังไม่ได้เข้าสู่ระบบ.';
-        });
-      }
-    } catch (e) {
+      setState(() => _isLoading = true);
+      await _profileService.uploadProfileImage(imageFile);
       setState(() {
-        isLoading = false;
-        errorMessage = 'Failed to load user data. Please try again.';
+        _profileFuture = _profileService.loadUserProfile();
+        _isLoading = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(errorMessage!)),
-      );
-    }
-  }
-
-  Future<void> _signOut() async {
-    try {
-      await _authService.signOut();
-      Navigator.of(context).pushReplacementNamed('/login');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('อัปโหลดรูปภาพสำเร็จ')),
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content:
-                Text('เกิดข้อผิดพลาดในการออกจากระบบ กรุณาลองใหม่อีกครั้ง')),
-      );
-    }
-  }
-
-  Future<void> _uploadProfilePicture() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-    if (pickedFile != null && FirebaseAuth.instance.currentUser != null) {
-      final file = File(pickedFile.path);
-      final fileName = '${FirebaseAuth.instance.currentUser!.uid}.jpg';
-      try {
-        final uploadTask = FirebaseStorage.instance
-            .ref('profile_images/$fileName')
-            .putFile(file);
-        final snapshot = await uploadTask;
-        final downloadUrl = await snapshot.ref.getDownloadURL();
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(FirebaseAuth.instance.currentUser!.uid)
-            .update({'profileImageUrl': downloadUrl});
-        setState(() {
-          userData?['profileImageUrl'] = downloadUrl;
-        });
-      } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
               content: Text(
@@ -296,31 +56,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  Future<void> _toggleDisplayMode(bool isDarkModeEnabled) async {
-    try {
-      User? user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        await FirebaseFirestore.instance
-            .collection('profiles')
-            .doc(user.uid)
-            .update({
-          'settings.displayMode': isDarkModeEnabled ? 'dark' : 'light',
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text(
-                  'เกิดข้อผิดพลาดในการบันทึกการตั้งค่า กรุณาลองใหม่อีกครั้ง')),
-        );
+  Future<void> _handleResetPasswordAndSignOut() async {
+    final result = await Navigator.pushNamed(context, '/reset-password');
+    if (result == true) {
+      try {
+        await FirebaseAuth.instance.signOut();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content:
+                  Text('คำขอรีเซ็ตรหัสผ่านถูกส่งแล้ว กรุณาตรวจสอบอีเมลของคุณ'),
+            ),
+          );
+          Navigator.of(context).pushReplacementNamed('/login');
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content:
+                    Text('เกิดข้อผิดพลาดในการออกจากระบบ กรุณาลองใหม่อีกครั้ง')),
+          );
+        }
       }
     }
   }
 
   Future<void> _deleteAccount() async {
     try {
-      User? user = FirebaseAuth.instance.currentUser;
+      final User? user = FirebaseAuth.instance.currentUser;
       if (user == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('ไม่พบข้อมูลผู้ใช้')),
@@ -328,7 +92,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         return;
       }
 
-      // Show confirmation dialog
       bool? confirmDelete = await showDialog<bool>(
         context: context,
         builder: (BuildContext context) {
@@ -352,13 +115,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       );
 
       if (confirmDelete == true) {
-        // Re-authenticate user
-        bool isReauthenticated = await _reauthenticateUser();
+        bool isReauthenticated = await _promptForPassword();
         if (!isReauthenticated) return;
 
-        // Delete account
-        final authService = AuthService();
-        bool success = await authService.deleteUserAccount(user.uid);
+        bool success = await _profileService.deleteUserAccount(user.uid);
 
         if (success && mounted) {
           Navigator.of(context)
@@ -379,286 +139,183 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  Future<bool> _reauthenticateUser() async {
-    try {
-      final credential = EmailAuthProvider.credential(
-        email: FirebaseAuth.instance.currentUser!.email!,
-        password: await _promptForPassword(),
-      );
-
-      await FirebaseAuth.instance.currentUser!
-          .reauthenticateWithCredential(credential);
-      return true;
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('รหัสผ่านไม่ถูกต้อง')),
-        );
-      }
-      return false;
-    }
-  }
-
-  Future<String> _promptForPassword() async {
-    final passwordController = TextEditingController();
+  Future<bool> _promptForPassword() async {
     String? password;
-
     await showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: const Text('ยืนยันรหัสผ่าน'),
-        content: TextField(
-          controller: passwordController,
-          obscureText: true,
-          decoration: const InputDecoration(
-            hintText: 'กรุณากรอกรหัสผ่านของคุณ',
-          ),
+      builder: (context) => PasswordConfirmDialog(
+        onConfirm: (value) => password = value,
+      ),
+    );
+
+    if (password != null && password!.isNotEmpty) {
+      return await _profileService.reauthenticateUser(password!);
+    }
+    return false;
+  }
+
+  void _navigateToEditFriend() {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser != null) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) =>
+              EditFriendScreen(currentUserId: currentUser.uid),
         ),
-        actions: [
-          TextButton(
-            child: const Text('ยกเลิก'),
-            onPressed: () {
-              Navigator.of(context).pop();
-            },
+      );
+    }
+  }
+
+  Future<void> _signOut() async {
+    try {
+      await _profileService.signOut();
+      if (mounted) {
+        Navigator.of(context).pushReplacementNamed('/login');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('เกิดข้อผิดพลาดในการออกจากระบบ กรุณาลองใหม่อีกครั้ง'),
           ),
+        );
+      }
+    }
+  }
+
+  Future<void> _toggleDisplayMode(bool isDarkMode) async {
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+    themeProvider.toggleTheme(isDarkMode);
+
+    try {
+      await _profileService.toggleDisplayMode(isDarkMode);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+                'เกิดข้อผิดพลาดในการบันทึกการตั้งค่า กรุณาลองใหม่อีกครั้ง'),
+          ),
+        );
+      }
+    }
+  }
+
+  void _showManageAccountDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) => AlertDialog(
+        title: const Text('จัดการบัญชี'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Image.asset(
+              'assets/images/tree_6977598.png',
+              width: 35,
+              height: 35,
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+                _handleResetPasswordAndSignOut();
+              },
+              child: const Text('ฉันลืมรหัสผ่าน'),
+            ),
+            const SizedBox(height: 10),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+                _deleteAccount();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+              ),
+              child: const Text('ลบบัญชีผู้ใช้งาน'),
+            ),
+          ],
+        ),
+        actions: <Widget>[
           TextButton(
-            child: const Text('ยืนยัน'),
-            onPressed: () {
-              password = passwordController.text;
-              Navigator.of(context).pop();
-            },
+            child: const Text('ปิด'),
+            onPressed: () => Navigator.of(dialogContext).pop(),
           ),
         ],
       ),
     );
-
-    return password ?? '';
   }
 
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
-    if (isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
-    }
-    if (errorMessage != null) {
-      return Scaffold(
-        body: Center(child: Text(errorMessage!)),
-      );
-    }
+
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 30),
-              _buildTopRightButton('รายงานปัญหา', Colors.orange),
-              const SizedBox(height: 20),
-              _buildProfileSection(),
-              const SizedBox(height: 30),
-              _buildTextFieldContainer(
-                'ชื่อผู้ใช้งาน',
-                profileData?['username'] ?? 'เกิดข้อผิดพลาดในการดึงข้อมูล!',
-              ),
-              const SizedBox(height: 5),
-              _buildTextFieldContainer(
-                'อีเมลของฉัน',
-                _maskEmail(
-                  FirebaseAuth.instance.currentUser?.email ??
-                      'เกิดข้อผิดพลาดในการดึงข้อมูล!',
-                ),
-              ),
-              const SizedBox(height: 30),
-              _buildDisplayModeSwitch(themeProvider),
-              const SizedBox(height: 20),
-              _buildActionButtons(),
-              const SizedBox(height: 15),
-              _buildSignOutButton(),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+        child: FutureBuilder<ProfileModel>(
+          future: _profileFuture,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting ||
+                _isLoading) {
+              return const Center(child: CircularProgressIndicator());
+            }
 
-  Widget _buildTopRightButton(String label, Color color) {
-    return Align(
-      alignment: Alignment.topRight,
-      child: TextButton(
-        onPressed: _showReportProblemDialog,
-        child: Text(label, style: AppTextStyles.label.copyWith(color: color)),
-      ),
-    );
-  }
+            if (snapshot.hasError) {
+              return Center(child: Text('เกิดข้อผิดพลาด: ${snapshot.error}'));
+            }
 
-  Widget _buildProfileSection() {
-    return Center(
-      child: Column(
-        children: [
-          _buildProfilePicture(),
-          const SizedBox(height: 5),
-          Text(
-            profileData?['username'] ?? 'เกิดข้อผิดพลาดในการดึงข้อมูล!',
-            style: AppTextStyles.headline,
-          ),
-          Text(
-            'เข้าร่วมเมื่อ: ${_formatDate(profileData?['createdAt'])}',
-            style: AppTextStyles.caption,
-          ),
-        ],
-      ),
-    );
-  }
+            if (!snapshot.hasData) {
+              return const Center(child: Text('ไม่พบข้อมูลผู้ใช้'));
+            }
 
-  Widget _buildProfilePicture() {
-    return GestureDetector(
-      onTap: _uploadProfilePicture,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          CircleAvatar(
-            radius: 60,
-            backgroundColor: Colors.grey[300],
-            backgroundImage: userData?['profileImageUrl'] != null
-                ? NetworkImage(userData!['profileImageUrl'])
-                : null,
-          ),
-          if (userData?['profileImageUrl'] == null)
-            const CircleAvatar(
-              radius: 60,
-              backgroundColor: Colors.grey,
-              child: Icon(Icons.person, color: Colors.white, size: 40),
-            ),
-          Positioned(
-            bottom: 0,
-            right: 0,
-            child: CircleAvatar(
-              backgroundColor: Colors.grey[700],
-              radius: 20,
-              child: IconButton(
-                icon:
-                    const Icon(Icons.camera_alt, size: 20, color: Colors.white),
-                onPressed: _uploadProfilePicture,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+            final profile = snapshot.data!;
 
-  Widget _buildTextFieldContainer(String label, String text) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(left: 23, top: 5),
-          child: Text(label, style: AppTextStyles.label),
-        ),
-        Container(
-          width: double.infinity,
-          height: 50,
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: Text(text, style: AppTextStyles.inputText),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDisplayModeSwitch(ThemeProvider themeProvider) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.end,
-      children: [
-        Text('การแสดงผลหน้าจอ', style: AppTextStyles.label),
-        const SizedBox(width: 5),
-        SizedBox(
-          width: 65,
-          child: DayNightSwitcher(
-            isDarkModeEnabled: themeProvider.themeMode == ThemeMode.dark,
-            onStateChanged: (isDarkModeEnabled) async {
-              themeProvider.toggleTheme(isDarkModeEnabled);
-              await _toggleDisplayMode(isDarkModeEnabled);
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildActionButtons() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Expanded(
-          child: _buildButton(
-            'แก้ไขเพื่อน',
-            onPressed: () {
-              final currentUser = FirebaseAuth.instance.currentUser;
-              if (currentUser != null) {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) =>
-                        EditFriendScreen(currentUserId: currentUser.uid),
+            return SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: BootstrapContainer(
+                fluid: true,
+                children: [
+                  BootstrapRow(
+                    children: [
+                      BootstrapCol(
+                        sizes: 'col-xs-12 col-sm-12 col-md-8 col-lg-6 col-xl-6',
+                        offsets:
+                            'offset-xs-0 offset-sm-0 offset-md-2 offset-lg-3 offset-xl-3',
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(height: 50),
+                            ProfileHeader(
+                              profile: profile,
+                              onImageSelected: _uploadProfileImage,
+                            ),
+                            const SizedBox(height: 30),
+                            ProfileInfo(profile: profile),
+                            const SizedBox(height: 30),
+                            DisplayModeSwitch(
+                              isDarkMode:
+                                  themeProvider.themeMode == ThemeMode.dark,
+                              onToggle: _toggleDisplayMode,
+                            ),
+                            const SizedBox(height: 20),
+                            ProfileActions(
+                              onEditFriends: _navigateToEditFriend,
+                              onManageAccount: _showManageAccountDialog,
+                              onSignOut: _signOut,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-                );
-              }
-            },
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: _buildButton(
-            'จัดการบัญชี',
-            onPressed: _showManageAccountDialog,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildButton(String label, {required VoidCallback onPressed}) {
-    return ElevatedButton(
-      style: ElevatedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(vertical: 15),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-          side: const BorderSide(color: Colors.grey),
-        ),
-      ),
-      onPressed: onPressed,
-      child: Text(label, style: AppTextStyles.inputText),
-    );
-  }
-
-  Widget _buildSignOutButton() {
-    return Center(
-      child: TextButton(
-        onPressed: _signOut,
-        child: Text(
-          'ออกจากระบบ',
-          style: AppTextStyles.label.copyWith(color: Colors.red),
+                ],
+              ),
+            );
+          },
         ),
       ),
     );
-  }
-
-  String _formatDate(Timestamp? timestamp) {
-    if (timestamp == null) return 'ไม่ทราบ';
-    DateTime date = timestamp.toDate();
-    return '${date.day}/${date.month}/${date.year}';
   }
 }

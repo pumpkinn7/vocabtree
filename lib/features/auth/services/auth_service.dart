@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart'; // เพิ่ม import นี้
 import 'package:flutter/foundation.dart';
 import 'package:vocabtree/features/quiz/services/firebase_service.dart';
 
@@ -161,27 +162,33 @@ class AuthService {
 
   Future<bool> deleteUserAccount(String userId) async {
     try {
-      // 1. ลบข้อมูลความคืบหน้าทั้งหมด
+      // 1. Delete friend-related data
+      await _deleteFriendData(userId);
+
+      // 2. Delete user progress
       await _deleteUserProgress(userId);
-      
-      // 2. ลบประวัติการทำ Quiz
+
+      // 3. Delete quiz history
       await _deleteQuizHistory(userId);
-      
-      // 3. ลบข้อมูล Vocabulary Progress
+
+      // 4. Delete vocabulary progress
       await _deleteVocabularyProgress(userId);
-      
-      // 4. ลบข้อมูล Profile
+
+      // 5. Delete profile image from storage
+      await _deleteProfileImage(userId);
+
+      // 6. Delete profile document
       await _firestore.collection('profiles').doc(userId).delete();
-      
-      // 5. ลบข้อมูล User
+
+      // 7. Delete user document
       await _firestore.collection('users').doc(userId).delete();
-      
-      // 6. ลบบัญชี Firebase Auth
+
+      // 8. Delete Firebase Auth account
       await _auth.currentUser?.delete();
-      
-      // 7. ทำการ Sign Out หลังจากลบบัญชีสำเร็จ
+
+      // 9. Sign out
       await signOut();
-      
+
       return true;
     } catch (e) {
       if (kDebugMode) {
@@ -191,11 +198,68 @@ class AuthService {
     }
   }
 
+  Future<void> _deleteFriendData(String userId) async {
+    // Delete friend requests
+    final requestsQuery = await _firestore
+        .collection('friend_requests')
+        .where('sender_id', isEqualTo: userId)
+        .get();
+
+    final receiverRequestsQuery = await _firestore
+        .collection('friend_requests')
+        .where('receiver_id', isEqualTo: userId)
+        .get();
+
+    final batch = _firestore.batch();
+
+    // Delete sent requests
+    for (var doc in requestsQuery.docs) {
+      batch.delete(doc.reference);
+    }
+
+    // Delete received requests
+    for (var doc in receiverRequestsQuery.docs) {
+      batch.delete(doc.reference);
+    }
+
+    // Remove user from others' friends lists
+    final friendsDoc = await _firestore.collection('friends').doc(userId).get();
+    if (friendsDoc.exists) {
+      List<String> friendIds =
+          List<String>.from(friendsDoc.data()?['friends'] ?? []);
+      for (String friendId in friendIds) {
+        batch.update(_firestore.collection('friends').doc(friendId), {
+          'friends': FieldValue.arrayRemove([userId])
+        });
+      }
+      // Delete user's friends document
+      batch.delete(_firestore.collection('friends').doc(userId));
+    }
+
+    await batch.commit();
+  }
+
+  Future<void> _deleteProfileImage(String userId) async {
+    try {
+      final storageRef = FirebaseStorage.instance
+          .ref()
+          .child('profile_images')
+          .child('$userId.jpg');
+      await storageRef.delete();
+    } catch (e) {
+      // Ignore if file doesn't exist
+      if (e is FirebaseException && e.code != 'object-not-found') {
+        rethrow; // แก้ไขจาก throw e เป็น rethrow
+      }
+    }
+  }
+
   Future<void> _deleteUserProgress(String userId) async {
     // ลบข้อมูล progress ทั้งหมด
-    final progressRef = _firestore.collection('users').doc(userId).collection('progress');
+    final progressRef =
+        _firestore.collection('users').doc(userId).collection('progress');
     final progressDocs = await progressRef.get();
-    
+
     final batch = _firestore.batch();
     for (var doc in progressDocs.docs) {
       batch.delete(doc.reference);
@@ -205,9 +269,10 @@ class AuthService {
 
   Future<void> _deleteQuizHistory(String userId) async {
     // ลบประวัติการทำ Quiz
-    final quizRef = _firestore.collection('users').doc(userId).collection('quizHistory');
+    final quizRef =
+        _firestore.collection('users').doc(userId).collection('quizHistory');
     final quizDocs = await quizRef.get();
-    
+
     final batch = _firestore.batch();
     for (var doc in quizDocs.docs) {
       batch.delete(doc.reference);
@@ -215,9 +280,10 @@ class AuthService {
     await batch.commit();
 
     // ลบสถิติคำศัพท์
-    final wordStatsRef = _firestore.collection('users').doc(userId).collection('wordStats');
+    final wordStatsRef =
+        _firestore.collection('users').doc(userId).collection('wordStats');
     final wordStatsDocs = await wordStatsRef.get();
-    
+
     final statsBatch = _firestore.batch();
     for (var doc in wordStatsDocs.docs) {
       statsBatch.delete(doc.reference);
@@ -228,22 +294,23 @@ class AuthService {
   Future<void> _deleteVocabularyProgress(String userId) async {
     // ลบข้อมูล vocabulary progress
     final levels = ['B1', 'B2', 'C1', 'C2'];
-    
+
     for (var level in levels) {
-      final levelRef = _firestore.collection('users').doc(userId).collection(level);
+      final levelRef =
+          _firestore.collection('users').doc(userId).collection(level);
       final levelDocs = await levelRef.get();
-      
+
       for (var topicDoc in levelDocs.docs) {
         // ลบ subcollection vocabularies
         final vocabRef = topicDoc.reference.collection('vocabularies');
         final vocabDocs = await vocabRef.get();
-        
+
         final batch = _firestore.batch();
         for (var doc in vocabDocs.docs) {
           batch.delete(doc.reference);
         }
         await batch.commit();
-        
+
         // ลบ topic document
         await topicDoc.reference.delete();
       }
@@ -255,7 +322,7 @@ class AuthService {
         .doc(userId)
         .collection('vocabulary_progress');
     final vocabProgressDocs = await vocabProgressRef.get();
-    
+
     final batch = _firestore.batch();
     for (var doc in vocabProgressDocs.docs) {
       batch.delete(doc.reference);

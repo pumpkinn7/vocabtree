@@ -15,7 +15,9 @@ class ResendLink extends StatelessWidget {
     return RichText(
       text: TextSpan(
         text: 'ฉันยังไม่ได้รับรหัสยืนยัน? ',
-        style: AppTextStyles.label,
+        style: AppTextStyles.label.copyWith(
+          color: Theme.of(context).textTheme.bodyLarge?.color,
+        ),
         children: [
           TextSpan(
             text: 'ส่งอีกครั้ง',

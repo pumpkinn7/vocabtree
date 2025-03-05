@@ -319,60 +319,121 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _deleteAccount() async {
-    bool confirmDelete = await showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('ยืนยันการลบบัญชี'),
-          content: const Text(
-              'คุณแน่ใจหรือไม่ที่จะลบบัญชีผู้ใช้งาน? การกระทำนี้ไม่สามารถยกเลิกได้'),
-          actions: <Widget>[
-            TextButton(
-              child: const Text('ยกเลิก'),
-              onPressed: () => Navigator.of(context).pop(false),
-            ),
-            TextButton(
-              child: const Text('ยืนยัน'),
-              onPressed: () => Navigator.of(context).pop(true),
-            ),
-          ],
-        );
-      },
-    );
-    if (confirmDelete == true) {
-      try {
-        User? user = FirebaseAuth.instance.currentUser;
-        if (user != null) {
-          await FirebaseFirestore.instance
-              .collection('users')
-              .doc(user.uid)
-              .delete();
-          await FirebaseFirestore.instance
-              .collection('profiles')
-              .doc(user.uid)
-              .delete();
-          final storageRef = FirebaseStorage.instance
-              .ref()
-              .child('profile_images')
-              .child('${user.uid}.jpg');
-          try {
-            await storageRef.getDownloadURL();
-            await storageRef.delete();
-          } catch (e) {
-            if (e is FirebaseException && e.code == 'object-not-found') {}
-          }
-          await user.delete();
-          await FirebaseAuth.instance.signOut();
-          Navigator.of(context)
-              .pushNamedAndRemoveUntil('/', (Route<dynamic> route) => false);
-        }
-      } catch (e) {
+    try {
+      User? user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('เกิดข้อผิดพลาดในการลบบัญชี กรุณาลองใหม่อีกครั้ง')),
+          const SnackBar(content: Text('ไม่พบข้อมูลผู้ใช้')),
+        );
+        return;
+      }
+
+      // Show confirmation dialog
+      bool? confirmDelete = await showDialog<bool>(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: const Text('ยืนยันการลบบัญชี'),
+            content: const Text(
+                'คุณแน่ใจหรือไม่ที่จะลบบัญชีผู้ใช้งาน? การกระทำนี้ไม่สามารถยกเลิกได้'),
+            actions: <Widget>[
+              TextButton(
+                child: const Text('ยกเลิก'),
+                onPressed: () => Navigator.of(context).pop(false),
+              ),
+              TextButton(
+                child:
+                    const Text('ยืนยัน', style: TextStyle(color: Colors.red)),
+                onPressed: () => Navigator.of(context).pop(true),
+              ),
+            ],
+          );
+        },
+      );
+
+      if (confirmDelete == true) {
+        // Re-authenticate user
+        bool isReauthenticated = await _reauthenticateUser();
+        if (!isReauthenticated) return;
+
+        // Delete account
+        final authService = AuthService();
+        bool success = await authService.deleteUserAccount(user.uid);
+
+        if (success && mounted) {
+          Navigator.of(context)
+              .pushNamedAndRemoveUntil('/login', (route) => false);
+        } else if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content:
+                    Text('เกิดข้อผิดพลาดในการลบบัญชี กรุณาลองใหม่อีกครั้ง')),
+          );
+        }
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('เกิดข้อผิดพลาดในการลบบัญชี กรุณาลองใหม่อีกครั้ง')),
+      );
+    }
+  }
+
+  Future<bool> _reauthenticateUser() async {
+    try {
+      final credential = EmailAuthProvider.credential(
+        email: FirebaseAuth.instance.currentUser!.email!,
+        password: await _promptForPassword(),
+      );
+
+      await FirebaseAuth.instance.currentUser!
+          .reauthenticateWithCredential(credential);
+      return true;
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('รหัสผ่านไม่ถูกต้อง')),
         );
       }
+      return false;
     }
+  }
+
+  Future<String> _promptForPassword() async {
+    final passwordController = TextEditingController();
+    String? password;
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('ยืนยันรหัสผ่าน'),
+        content: TextField(
+          controller: passwordController,
+          obscureText: true,
+          decoration: const InputDecoration(
+            hintText: 'กรุณากรอกรหัสผ่านของคุณ',
+          ),
+        ),
+        actions: [
+          TextButton(
+            child: const Text('ยกเลิก'),
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+          ),
+          TextButton(
+            child: const Text('ยืนยัน'),
+            onPressed: () {
+              password = passwordController.text;
+              Navigator.of(context).pop();
+            },
+          ),
+        ],
+      ),
+    );
+
+    return password ?? '';
   }
 
   @override

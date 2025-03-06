@@ -20,44 +20,35 @@ class VocabularyItemWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return InkWell(
       onTap: onTap,
       child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 8.0),
         padding: const EdgeInsets.all(16.0),
         decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey),
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.grey.withOpacity(0.2),
-              spreadRadius: 1,
-              blurRadius: 4,
-              offset: const Offset(0, 2),
-            ),
-          ],
-          color: Colors.white,
+          border: Border.all(color: Colors.grey.withOpacity(0.3)),
+          borderRadius: BorderRadius.circular(8),
         ),
         child: BootstrapRow(
           children: [
+            // Image column
             BootstrapCol(
-              sizes: 'col-3 col-sm-2',
-              child: Container(
-                width: 60,
-                height: 60,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8),
-                  image: DecorationImage(
-                    image: AssetImage(imagePath),
+              sizes: 'col-xs-3 col-sm-3 col-md-2 col-lg-2',
+              child: AspectRatio(
+                aspectRatio: 1,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: Image.asset(
+                    imagePath,
                     fit: BoxFit.cover,
                   ),
                 ),
               ),
             ),
+            // Content column
             BootstrapCol(
-              sizes: 'col-9 col-sm-10',
+              sizes: 'col-xs-9 col-sm-9 col-md-10 col-lg-10',
               child: Padding(
-                padding: const EdgeInsets.only(left: 8.0),
+                padding: const EdgeInsets.only(left: 16.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -65,10 +56,16 @@ class VocabularyItemWidget extends StatelessWidget {
                       title,
                       style: AppTextStyles.title,
                     ),
+                    const SizedBox(height: 8),
+                    Text(
+                      level,
+                      style: AppTextStyles.label,
+                    ),
                     const SizedBox(height: 4),
-                    Text(level, style: AppTextStyles.label),
-                    const SizedBox(height: 4),
-                    Text(difficulty, style: AppTextStyles.body),
+                    Text(
+                      difficulty,
+                      style: AppTextStyles.body,
+                    ),
                   ],
                 ),
               ),

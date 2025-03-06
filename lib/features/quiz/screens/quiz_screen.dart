@@ -5,15 +5,23 @@ import 'package:vocabtree/core/theme/text_styles.dart';
 import 'package:vocabtree/features/quiz/screens/cefr_level_screen.dart';
 import 'package:vocabtree/features/quiz/services/vocabulary_service.dart';
 import 'package:vocabtree/features/quiz/widgets/daily_vocabulary_card.dart';
+import 'package:vocabtree/features/quiz/widgets/vocabulary_guide_dialog.dart';
 import 'package:vocabtree/features/quiz/widgets/vocabulary_item_widget.dart';
 
 class QuizScreen extends StatelessWidget {
   const QuizScreen({super.key});
 
+  // แสดง dialog คู่มือระดับคำศัพท์
+  void _showVocabGuide(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => const VocabularyGuideDialog(),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final vocabularyService = VocabularyService();
-    final categories = vocabularyService.getVocabularyCategories();
+    final categories = VocabularyService().getVocabularyCategories();
     final userId = FirebaseAuth.instance.currentUser?.uid ?? '';
 
     return Scaffold(
@@ -30,49 +38,54 @@ class QuizScreen extends StatelessWidget {
             BootstrapRow(
               children: [
                 BootstrapCol(
-                  sizes: 'col-xs-12 col-sm-12 col-md-6 col-lg-6 col-xl-6',
-                  offsets:
-                      "offset-xs-0 offset-sm-0 offset-md-3 offset-lg-3 offset-xl-3",
+                  sizes: 'col-xs-12 col-sm-12 col-md-8 col-lg-6',
+                  offsets: 'offset-xs-0 offset-sm-0 offset-md-2 offset-lg-3',
                   child: const DailyVocabularyCard(),
                 ),
               ],
             ),
 
-            // เพิ่มระยะห่างระหว่าง rows
-            const SizedBox(height: 50),
+            const SizedBox(height: 40),
 
-            // Categories Header
+            // Categories Header with Help Button
             BootstrapRow(
               children: [
                 BootstrapCol(
-                  sizes: 'col-xs-12 col-sm-12 col-md-6 col-lg-6 col-xl-6',
-                  offsets:
-                      "offset-xs-0 offset-sm-0 offset-md-3 offset-lg-3 offset-xl-3",
+                  sizes: 'col-xs-12 col-sm-12 col-md-8 col-lg-6',
+                  offsets: 'offset-xs-0 offset-sm-0 offset-md-2 offset-lg-3',
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 10),
-                    child: Text(
-                      'หมวดหมู่คำศัพท์',
-                      style: AppTextStyles.subtitle,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('หมวดหมู่คำศัพท์', style: AppTextStyles.subtitle),
+                        IconButton(
+                          icon: const Icon(Icons.help_outline),
+                          tooltip: 'คู่มือระดับคำศัพท์',
+                          onPressed: () => _showVocabGuide(context),
+                        ),
+                      ],
                     ),
                   ),
                 ),
               ],
             ),
 
-            // Vocabulary Categories
+            // Vocabulary Categories with simplified layout
             ...categories.map((category) => BootstrapRow(
                   children: [
                     BootstrapCol(
-                      sizes: 'col-xs-12 col-sm-12 col-md-6 col-lg-6 col-xl-6',
+                      sizes: 'col-xs-12 col-sm-12 col-md-8 col-lg-6',
                       offsets:
-                          "offset-xs-0 offset-sm-0 offset-md-3 offset-lg-3 offset-xl-3",
-                      child: VocabularyItemWidget(
-                        title: category.title,
-                        level: category.level,
-                        difficulty: category.difficulty,
-                        imagePath: category.imagePath,
-                        onTap: () {
-                          Navigator.push(
+                          'offset-xs-0 offset-sm-0 offset-md-2 offset-lg-3',
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8.0),
+                        child: VocabularyItemWidget(
+                          title: category.title,
+                          level: category.level,
+                          difficulty: category.difficulty,
+                          imagePath: category.imagePath,
+                          onTap: () => Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (context) => CefrLevelScreen(
@@ -80,8 +93,8 @@ class QuizScreen extends StatelessWidget {
                                 userId: userId,
                               ),
                             ),
-                          );
-                        },
+                          ),
+                        ),
                       ),
                     ),
                   ],

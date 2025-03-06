@@ -5,7 +5,7 @@ class AppTextStyles {
   // ป้องกันการสร้าง instance
   AppTextStyles._();
   // สีหลักของแอป - โทนฤดูใบไม้ร่วงผสมหิมะ
-  static const Color primaryColor = Color(0xFFCDB4DB);
+  static const Color primaryColor = Color.fromARGB(255, 223, 195, 240);
   static const Color primaryDarkColor = Color.fromARGB(255, 132, 176, 214);
   static const Color accentColor = Color.fromARGB(255, 255, 209, 226);
   static const Color secondaryColor = Color.fromARGB(255, 62, 150, 233);

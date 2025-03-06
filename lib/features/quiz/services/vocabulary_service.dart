@@ -70,28 +70,28 @@ class VocabularyService {
     return [
       VocabularyItemModel(
         title: 'SPRING',
-        level: 'คำศัพท์ Basic & Intermediate',
+        level: 'Basic & Intermediate',
         difficulty: 'ระดับพื้นฐานถึงปานกลาง',
         imagePath: 'assets/images/oak_6977599.png',
         cefrLevel: 'B1',
       ),
       VocabularyItemModel(
         title: 'SUMMER',
-        level: 'คำศัพท์ Intermediate',
+        level: 'Intermediate',
         difficulty: 'ระดับปานกลาง',
         imagePath: 'assets/images/tree_6977578.png',
         cefrLevel: 'B2',
       ),
       VocabularyItemModel(
         title: 'AUTUMN',
-        level: 'คำศัพท์ Upper Intermediate',
+        level: 'Upper Intermediate',
         difficulty: 'ระดับกลางค่อนข้างสูง',
         imagePath: 'assets/images/tree_6977585.png',
         cefrLevel: 'C1',
       ),
       VocabularyItemModel(
         title: 'WINTER',
-        level: 'คำศัพท์ Advanced',
+        level: 'Advanced',
         difficulty: 'ระดับสูง',
         imagePath: 'assets/images/tree_6977597.png',
         cefrLevel: 'C2',

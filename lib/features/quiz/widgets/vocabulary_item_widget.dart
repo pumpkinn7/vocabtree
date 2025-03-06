@@ -32,7 +32,7 @@ class VocabularyItemWidget extends StatelessWidget {
           children: [
             // Image column
             BootstrapCol(
-              sizes: 'col-xs-3 col-sm-3 col-md-2 col-lg-2',
+              sizes: 'col-xs-4 col-sm-4 col-md-3 col-lg-3',
               child: AspectRatio(
                 aspectRatio: 1,
                 child: ClipRRect(
@@ -46,7 +46,7 @@ class VocabularyItemWidget extends StatelessWidget {
             ),
             // Content column
             BootstrapCol(
-              sizes: 'col-xs-9 col-sm-9 col-md-10 col-lg-10',
+              sizes: 'col-xs-8 col-sm-8 col-md-9 col-lg-9',
               child: Padding(
                 padding: const EdgeInsets.only(left: 16.0),
                 child: Column(
@@ -60,11 +60,6 @@ class VocabularyItemWidget extends StatelessWidget {
                     Text(
                       level,
                       style: AppTextStyles.label,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      difficulty,
-                      style: AppTextStyles.body,
                     ),
                   ],
                 ),

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
-import 'package:flutter_tts/flutter_tts.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:vocabtree/core/theme/text_styles.dart';
 import 'package:vocabtree/features/quiz/services/vocabulary_service.dart';
@@ -14,17 +13,14 @@ class DailyVocabularyCard extends StatefulWidget {
 }
 
 class _DailyVocabularyCardState extends State<DailyVocabularyCard> {
-  final FlutterTts _flutterTts = FlutterTts();
   final VocabularyService _vocabularyService = VocabularyService();
   String _word = '';
-  String _definition = '';
   String _partOfSpeech = '';
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _flutterTts.setLanguage("en-US");
     _fetchRandomWord();
   }
 
@@ -35,14 +31,12 @@ class _DailyVocabularyCardState extends State<DailyVocabularyCard> {
       final vocabulary = await _vocabularyService.getRandomVocabulary();
       setState(() {
         _word = vocabulary?.word ?? 'ไม่พบคำศัพท์';
-        _definition = vocabulary?.definition ?? '';
         _partOfSpeech = vocabulary?.type ?? '';
         _isLoading = false;
       });
     } catch (e) {
       setState(() {
         _word = 'เกิดข้อผิดพลาดในการโหลดคำศัพท์';
-        _definition = '';
         _partOfSpeech = '';
         _isLoading = false;
       });
@@ -67,35 +61,35 @@ class _DailyVocabularyCardState extends State<DailyVocabularyCard> {
 
   @override
   Widget build(BuildContext context) {
-    final ColorScheme colorScheme = Theme.of(context).colorScheme;
+    final colorScheme = Theme.of(context).colorScheme;
 
     if (_isLoading) {
       return Card(
-        elevation: 2,
-        surfaceTintColor: colorScheme.surfaceTint,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: const SizedBox(
-          height: 200,
-          child: Center(
-            child: CircularProgressIndicator(),
-          ),
-        ),
+        margin: EdgeInsets.zero,
+        elevation: 3,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: const Center(child: CircularProgressIndicator()),
       );
     }
 
     return Card(
-      elevation: 2,
-      surfaceTintColor: colorScheme.surfaceTint,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
+      margin: EdgeInsets.zero,
+      elevation: 3,
+      surfaceTintColor: colorScheme.primary,
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
       child: BootstrapContainer(
         fluid: true,
+        padding: EdgeInsets.zero,
         decoration: BoxDecoration(
-          color: colorScheme.surface,
-          borderRadius: BorderRadius.circular(16),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              colorScheme.surface,
+              colorScheme.surfaceVariant.withOpacity(0.5),
+            ],
+          ),
         ),
         children: [
           // Header
@@ -104,26 +98,20 @@ class _DailyVocabularyCardState extends State<DailyVocabularyCard> {
               BootstrapCol(
                 sizes: 'col-12',
                 child: Container(
+                  width: double.infinity,
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                   decoration: BoxDecoration(
-                    color: colorScheme.primaryContainer.withOpacity(0.3),
-                    borderRadius:
-                        const BorderRadius.vertical(top: Radius.circular(16)),
+                    color: colorScheme.primaryContainer,
+                    borderRadius: const BorderRadius.only(
+                      bottomLeft: Radius.circular(24),
+                      bottomRight: Radius.circular(24),
+                    ),
                   ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.auto_stories_rounded,
-                          color: colorScheme.primary),
-                      const SizedBox(width: 12),
-                      Text('คำศัพท์ประจำวัน', style: AppTextStyles.subtitle),
-                      const Spacer(),
-                      IconButton(
-                        onPressed: _fetchRandomWord,
-                        icon: const Icon(Icons.refresh_rounded),
-                        tooltip: 'สุ่มคำใหม่',
-                      ),
-                    ],
+                  child: Text(
+                    'แนะนำคำศัพท์ประจำวัน',
+                    style: AppTextStyles.subtitle,
+                    textAlign: TextAlign.center,
                   ),
                 ),
               ),
@@ -133,61 +121,42 @@ class _DailyVocabularyCardState extends State<DailyVocabularyCard> {
           // Content
           BootstrapRow(
             children: [
-              // Animation
+              // Animation Column
               BootstrapCol(
-                sizes: 'col-12 col-md-4',
+                sizes: 'col-xs-12 col-sm-12 col-md-6',
                 child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: SizedBox(
-                    height: 160,
+                  padding: const EdgeInsets.all(24),
+                  child: Center(
                     child: Lottie.asset(
                       'assets/animations/Animation - 1741196193367.json',
                       fit: BoxFit.contain,
+                      height: 125,
                     ),
                   ),
                 ),
               ),
-              // Word Details
+              // Word Details Column
               BootstrapCol(
-                sizes: 'col-12 col-md-8',
+                sizes: 'col-xs-12 col-sm-12 col-md-6',
                 child: Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(24),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text(
-                        _word,
-                        style: AppTextStyles.title.copyWith(
-                          fontSize: 32,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      if (_partOfSpeech.isNotEmpty) ...[
-                        const SizedBox(height: 8),
+                      if (_partOfSpeech.isNotEmpty)
                         Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 4,
-                          ),
+                              horizontal: 12, vertical: 6),
+                          margin: const EdgeInsets.only(bottom: 12),
                           decoration: BoxDecoration(
-                            color:
-                                colorScheme.primaryContainer.withOpacity(0.3),
-                            borderRadius: BorderRadius.circular(8),
+                            color: colorScheme.secondaryContainer,
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                          child: Text(_partOfSpeech,
-                              style: AppTextStyles.body.copyWith(
-                                color: colorScheme.primary,
-                                fontStyle: FontStyle.italic,
-                              )),
+                          child:
+                              Text(_partOfSpeech, style: AppTextStyles.caption),
                         ),
-                      ],
-                      if (_definition.isNotEmpty) ...[
-                        const SizedBox(height: 12),
-                        Text(
-                          _definition,
-                          style: AppTextStyles.body.copyWith(height: 1.5),
-                        ),
-                      ],
+                      Text(_word, style: AppTextStyles.headline),
                     ],
                   ),
                 ),
@@ -195,32 +164,34 @@ class _DailyVocabularyCardState extends State<DailyVocabularyCard> {
             ],
           ),
 
-          // Actions
+          // Action Bar
           BootstrapRow(
             children: [
               BootstrapCol(
                 sizes: 'col-12',
-                child: Padding(
+                child: Container(
                   padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: colorScheme.surfaceVariant.withOpacity(0.6),
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(24),
+                      topRight: Radius.circular(24),
+                    ),
+                  ),
                   child: Row(
-                    mainAxisAlignment: MainAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
-                      IconButton.filled(
-                        onPressed: () => _flutterTts.speak(_word),
-                        icon: const Icon(Icons.volume_up),
-                        tooltip: 'ฟังเสียง',
-                      ),
-                      const SizedBox(width: 8),
-                      IconButton.filled(
+                      _buildActionButton(
                         onPressed: _openGoogleTranslate,
-                        icon: const Icon(Icons.translate),
-                        tooltip: 'แปลด้วย Google',
+                        icon: Icons.translate,
+                        label: 'Google Translate',
+                        color: colorScheme.primary,
                       ),
-                      const SizedBox(width: 8),
-                      IconButton.filled(
+                      _buildActionButton(
                         onPressed: _openCambridgeDictionary,
-                        icon: const Icon(Icons.menu_book),
-                        tooltip: 'Cambridge Dictionary',
+                        icon: Icons.menu_book,
+                        label: 'Cambridge',
+                        color: colorScheme.tertiary,
                       ),
                     ],
                   ),
@@ -233,9 +204,26 @@ class _DailyVocabularyCardState extends State<DailyVocabularyCard> {
     );
   }
 
-  @override
-  void dispose() {
-    _flutterTts.stop();
-    super.dispose();
+  Widget _buildActionButton({
+    required VoidCallback onPressed,
+    required IconData icon,
+    required String label,
+    required Color color,
+  }) {
+    return InkWell(
+      onTap: onPressed,
+      borderRadius: BorderRadius.circular(16),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: color, size: 28),
+            const SizedBox(height: 8),
+            Text(label, style: AppTextStyles.caption),
+          ],
+        ),
+      ),
+    );
   }
 }

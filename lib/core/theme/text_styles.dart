@@ -6,9 +6,9 @@ class AppTextStyles {
   AppTextStyles._();
   // สีหลักของแอป - โทนฤดูใบไม้ร่วงผสมหิมะ
   static const Color primaryColor = Color(0xFFCDB4DB);
-  static const Color primaryDarkColor = Color(0xFFBDE0FE);
-  static const Color accentColor = Color(0xFFFFAFCC);
-  static const Color secondaryColor = Color(0xFFA2D2FF);
+  static const Color primaryDarkColor = Color.fromARGB(255, 132, 176, 214);
+  static const Color accentColor = Color.fromARGB(255, 255, 209, 226);
+  static const Color secondaryColor = Color.fromARGB(255, 62, 150, 233);
 
   // สีสำหรับข้อความและองค์ประกอบอื่น ๆ ในโหมดกลางวัน
   static const Color _lightTextColor = Color(0xFF4A4E69);

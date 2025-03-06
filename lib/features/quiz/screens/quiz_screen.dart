@@ -30,21 +30,26 @@ class QuizScreen extends StatelessWidget {
             BootstrapRow(
               children: [
                 BootstrapCol(
-                  sizes: 'col-12',
+                  sizes: 'col-xs-12 col-sm-12 col-md-6 col-lg-6 col-xl-6',
+                  offsets:
+                      "offset-xs-0 offset-sm-0 offset-md-3 offset-lg-3 offset-xl-3",
                   child: const DailyVocabularyCard(),
                 ),
               ],
             ),
 
-            const SizedBox(height: 16),
+            // เพิ่มระยะห่างระหว่าง rows
+            const SizedBox(height: 50),
 
             // Categories Header
             BootstrapRow(
               children: [
                 BootstrapCol(
-                  sizes: 'col-12',
+                  sizes: 'col-xs-12 col-sm-12 col-md-6 col-lg-6 col-xl-6',
+                  offsets:
+                      "offset-xs-0 offset-sm-0 offset-md-3 offset-lg-3 offset-xl-3",
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8.0),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
                     child: Text(
                       'หมวดหมู่คำศัพท์',
                       style: AppTextStyles.subtitle,
@@ -58,7 +63,9 @@ class QuizScreen extends StatelessWidget {
             ...categories.map((category) => BootstrapRow(
                   children: [
                     BootstrapCol(
-                      sizes: 'col-12',
+                      sizes: 'col-xs-12 col-sm-12 col-md-6 col-lg-6 col-xl-6',
+                      offsets:
+                          "offset-xs-0 offset-sm-0 offset-md-3 offset-lg-3 offset-xl-3",
                       child: VocabularyItemWidget(
                         title: category.title,
                         level: category.level,

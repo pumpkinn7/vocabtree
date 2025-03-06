@@ -22,8 +22,8 @@ class QuizScreen extends StatelessWidget {
               const SizedBox(height: 16),
               VocabularyItem(
                 title: 'SPRING',
-                level: 'คำศัพท์ภาษาอังกฤษ B1',
-                difficulty: 'กลาง (Intermediate)',
+                level: 'คำศัพท์ Basic & Intermediate',
+                difficulty: 'ระดับพื้นฐานถึงปานกลาง',
                 imagePath: 'assets/images/oak_6977599.png',
                 onTap: () {
                   Navigator.push(
@@ -39,8 +39,8 @@ class QuizScreen extends StatelessWidget {
               ),
               VocabularyItem(
                 title: 'SUMMER',
-                level: 'คำศัพท์ภาษาอังกฤษ B2',
-                difficulty: 'กลาง (Intermediate)',
+                level: 'คำศัพท์ Intermediate',
+                difficulty: 'ระดับปานกลาง',
                 imagePath: 'assets/images/tree_6977578.png',
                 onTap: () {
                   Navigator.push(
@@ -56,8 +56,8 @@ class QuizScreen extends StatelessWidget {
               ),
               VocabularyItem(
                 title: 'AUTUMN',
-                level: 'คำศัพท์ภาษาอังกฤษ C1',
-                difficulty: 'กลาง (Intermediate)',
+                level: 'คำศัพท์ Upper Intermediate',
+                difficulty: 'ระดับกลางค่อนข้างสูง',
                 imagePath: 'assets/images/tree_6977585.png',
                 onTap: () {
                   Navigator.push(
@@ -73,8 +73,8 @@ class QuizScreen extends StatelessWidget {
               ),
               VocabularyItem(
                 title: 'WINTER',
-                level: 'คำศัพท์ภาษาอังกฤษ C2',
-                difficulty: 'สูง (Advanced)',
+                level: 'คำศัพท์ Advanced',
+                difficulty: 'ระดับสูง',
                 imagePath: 'assets/images/tree_6977597.png',
                 onTap: () {
                   Navigator.push(

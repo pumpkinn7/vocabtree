@@ -90,7 +90,7 @@ class _CefrLevelScreenState extends State<CefrLevelScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('คำศัพท์ภาษาอังกฤษระดับ ${widget.cefrLevel}'),
+        title: Text(_getSeasonTitle(widget.cefrLevel)),
       ),
       body: FutureBuilder<Map<String, dynamic>>(
         future: _fetchAllData(),
@@ -281,5 +281,20 @@ class _CefrLevelScreenState extends State<CefrLevelScreen> {
         },
       ),
     );
+  }
+
+  String _getSeasonTitle(String cefrLevel) {
+    switch (cefrLevel) {
+      case 'B1':
+        return 'Spring ระดับพื้นฐานถึงปานกลาง';
+      case 'B2':
+        return 'Summer ระดับปานกลาง';
+      case 'C1':
+        return 'Autumn ระดับกลางค่อนข้างสูง';
+      case 'C2':
+        return 'Winter ระดับสูง';
+      default:
+        return 'หมวดคำศัพท์ภาษาอังกฤษ';
+    }
   }
 }

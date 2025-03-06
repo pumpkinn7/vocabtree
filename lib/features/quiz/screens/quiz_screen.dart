@@ -1,160 +1,85 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bootstrap/flutter_bootstrap.dart';
+import 'package:vocabtree/core/theme/text_styles.dart';
 import 'package:vocabtree/features/quiz/screens/cefr_level_screen.dart';
+import 'package:vocabtree/features/quiz/services/vocabulary_service.dart';
 import 'package:vocabtree/features/quiz/widgets/daily_vocabulary_card.dart';
+import 'package:vocabtree/features/quiz/widgets/vocabulary_item_widget.dart';
 
 class QuizScreen extends StatelessWidget {
   const QuizScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final vocabularyService = VocabularyService();
+    final categories = vocabularyService.getVocabularyCategories();
+    final userId = FirebaseAuth.instance.currentUser?.uid ?? '';
+
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        title: const Text('แบบทดสอบคำศัพท์ภาษาอังกฤษ'),
+        title: Text('แบบทดสอบคำศัพท์ภาษาอังกฤษ', style: AppTextStyles.headline),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
-              const DailyVocabularyCard(),
-              const SizedBox(height: 16),
-              VocabularyItem(
-                title: 'SPRING',
-                level: 'คำศัพท์ Basic & Intermediate',
-                difficulty: 'ระดับพื้นฐานถึงปานกลาง',
-                imagePath: 'assets/images/oak_6977599.png',
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => CefrLevelScreen(
-                        cefrLevel: 'B1',
-                        userId: FirebaseAuth.instance.currentUser?.uid ?? '',
-                      ),
-                    ),
-                  );
-                },
-              ),
-              VocabularyItem(
-                title: 'SUMMER',
-                level: 'คำศัพท์ Intermediate',
-                difficulty: 'ระดับปานกลาง',
-                imagePath: 'assets/images/tree_6977578.png',
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => CefrLevelScreen(
-                        cefrLevel: 'B2',
-                        userId: FirebaseAuth.instance.currentUser?.uid ?? '',
-                      ),
-                    ),
-                  );
-                },
-              ),
-              VocabularyItem(
-                title: 'AUTUMN',
-                level: 'คำศัพท์ Upper Intermediate',
-                difficulty: 'ระดับกลางค่อนข้างสูง',
-                imagePath: 'assets/images/tree_6977585.png',
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => CefrLevelScreen(
-                        cefrLevel: 'C1',
-                        userId: FirebaseAuth.instance.currentUser?.uid ?? '',
-                      ),
-                    ),
-                  );
-                },
-              ),
-              VocabularyItem(
-                title: 'WINTER',
-                level: 'คำศัพท์ Advanced',
-                difficulty: 'ระดับสูง',
-                imagePath: 'assets/images/tree_6977597.png',
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => CefrLevelScreen(
-                        cefrLevel: 'C2',
-                        userId: FirebaseAuth.instance.currentUser?.uid ?? '',
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class VocabularyItem extends StatelessWidget {
-  final String title;
-  final String level;
-  final String difficulty;
-  final String imagePath;
-  final VoidCallback onTap;
-
-  const VocabularyItem({
-    super.key,
-    required this.title,
-    required this.level,
-    required this.difficulty,
-    required this.imagePath,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8.0),
-        child: Container(
+      body: SingleChildScrollView(
+        child: BootstrapContainer(
+          fluid: true,
           padding: const EdgeInsets.all(16.0),
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 50,
-                height: 50,
-                decoration: BoxDecoration(
-                  image: DecorationImage(
-                    image: AssetImage(imagePath),
-                    fit: BoxFit.cover,
+          children: [
+            // Daily Vocabulary Card
+            BootstrapRow(
+              children: [
+                BootstrapCol(
+                  sizes: 'col-12',
+                  child: const DailyVocabularyCard(),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 16),
+
+            // Categories Header
+            BootstrapRow(
+              children: [
+                BootstrapCol(
+                  sizes: 'col-12',
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8.0),
+                    child: Text(
+                      'หมวดหมู่คำศัพท์',
+                      style: AppTextStyles.subtitle,
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 16),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
+              ],
+            ),
+
+            // Vocabulary Categories
+            ...categories.map((category) => BootstrapRow(
+                  children: [
+                    BootstrapCol(
+                      sizes: 'col-12',
+                      child: VocabularyItemWidget(
+                        title: category.title,
+                        level: category.level,
+                        difficulty: category.difficulty,
+                        imagePath: category.imagePath,
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => CefrLevelScreen(
+                                cefrLevel: category.cefrLevel,
+                                userId: userId,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(level),
-                  const SizedBox(height: 4),
-                  Text(difficulty),
-                ],
-              ),
-            ],
-          ),
+                  ],
+                )),
+          ],
         ),
       ),
     );

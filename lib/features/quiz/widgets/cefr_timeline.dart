@@ -16,51 +16,50 @@ class CefrTimeline extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // สร้าง timeline แบบง่าย โดยใช้เพียง ListView แทนการใช้ timelines package
-    return ListView.builder(
-      itemCount: topics.length,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemBuilder: (context, index) {
-        final topic = topics[index];
-        return Column(
-          children: [
-            // เส้นเชื่อมต่อด้านบน (ยกเว้นรายการแรก)
-            if (index > 0)
-              Container(
-                width: 2,
-                height: 20,
-                color: topics[index - 1].statusColor,
-              ),
+    // แยกหัวข้อเป็นชุด (ละ 3-5 หัวข้อตามความยาวของลิสต์) เพื่อแสดงผลเป็นกลุ่ม
+    final chunkSize = topics.length <= 6 ? 3 : 5;
+    final topicChunks = _chunkList(topics, chunkSize);
 
-            // Indicator และ Content
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    return Column(
+      children: [
+        // แสดงแต่ละกลุ่มหัวข้อ
+        for (int chunkIndex = 0; chunkIndex < topicChunks.length; chunkIndex++)
+          _buildTopicGroup(context, topicChunks[chunkIndex], chunkIndex),
+      ],
+    );
+  }
+
+  // สร้างกลุ่มหัวข้อ
+  Widget _buildTopicGroup(
+      BuildContext context, List<TopicModel> topicGroup, int groupIndex) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (TopicModel topic in topicGroup)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8.0),
+            child: Row(
+              crossAxisAlignment:
+                  CrossAxisAlignment.center, // เปลี่ยนเป็น center
               children: [
-                // Indicator (จุดกลม)
-                Column(
-                  children: [
-                    Container(
-                      width: 20,
-                      height: 20,
-                      decoration: BoxDecoration(
-                        color: topic.statusColor,
-                        shape: BoxShape.circle,
+                // แสดงเฉพาะจุดสถานะ
+                SizedBox(
+                  width: 40,
+                  child: Container(
+                    width: 16, // ลดขนาดจุดลง
+                    height: 16, // ลดขนาดจุดลง
+                    decoration: BoxDecoration(
+                      color: topic.statusColor,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: Theme.of(context).scaffoldBackgroundColor,
+                        width: 2,
                       ),
                     ),
-                    // เส้นเชื่อมต่อด้านล่าง (ยกเว้นรายการสุดท้าย)
-                    if (index < topics.length - 1)
-                      Container(
-                        width: 2,
-                        height: 140, // ความสูงประมาณหนึ่งการ์ด
-                        color: topic.statusColor,
-                      ),
-                  ],
+                  ),
                 ),
 
-                const SizedBox(width: 12),
-
-                // Content
+                // เนื้อหาของหัวข้อ
                 Expanded(
                   child: CefrTopicCard(
                     topic: topic,
@@ -70,9 +69,18 @@ class CefrTimeline extends StatelessWidget {
                 ),
               ],
             ),
-          ],
-        );
-      },
+          ),
+      ],
     );
+  }
+
+  // Helper function สำหรับแบ่ง List เป็นกลุ่มย่อย
+  List<List<TopicModel>> _chunkList(List<TopicModel> list, int chunkSize) {
+    List<List<TopicModel>> chunks = [];
+    for (var i = 0; i < list.length; i += chunkSize) {
+      chunks.add(list.sublist(
+          i, i + chunkSize > list.length ? list.length : i + chunkSize));
+    }
+    return chunks;
   }
 }

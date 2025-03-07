@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/text_styles.dart';
 
 class TopicModel {
   final String id;
@@ -20,5 +21,21 @@ class TopicModel {
   String get formattedTitle =>
       '${index + 1}. ${title.split('_').map((w) => w[0].toUpperCase() + w.substring(1)).join(' ')}';
 
-  Color get statusColor => isUnlocked ? Colors.green : Colors.grey;
+  // ปรับปรุงสถานะสีตามระดับ CEFR
+  Color get statusColor {
+    if (!isUnlocked) return Colors.grey;
+
+    switch (cefrLevel) {
+      case 'B1':
+        return Colors.green;
+      case 'B2':
+        return Colors.orange;
+      case 'C1':
+        return Colors.deepOrange;
+      case 'C2':
+        return Colors.blue;
+      default:
+        return AppTextStyles.primaryColor;
+    }
+  }
 }

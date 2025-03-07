@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bootstrap/flutter_bootstrap.dart';
 import '../../../core/theme/text_styles.dart';
 import '../models/topic_model.dart';
 
@@ -8,7 +7,6 @@ class CefrTopicCard extends StatelessWidget {
   final VoidCallback onFlashcardTap;
   final VoidCallback onQuizTap;
 
-  // แก้ไขการใช้ key เป็น super parameter
   const CefrTopicCard({
     super.key,
     required this.topic,
@@ -19,32 +17,21 @@ class CefrTopicCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Opacity(
-      opacity: topic.isUnlocked ? 1.0 : 0.5,
+      opacity: topic.isUnlocked ? 1.0 : 0.7,
       child: Stack(
         children: [
-          Container(
-            margin: const EdgeInsets.symmetric(
-              vertical: 12.0,
-              horizontal: 8.0,
-            ),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: const [
-                BoxShadow(
-                  color: Colors.black12,
-                  blurRadius: 4,
-                  spreadRadius: 2,
-                  offset: Offset(0, 2),
-                )
-              ],
+          Card(
+            margin: const EdgeInsets.symmetric(vertical: 8.0),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: BorderSide(color: Theme.of(context).dividerColor),
             ),
             child: Padding(
               padding: const EdgeInsets.all(16.0),
-              child: BootstrapRow(
+              child: Row(
                 children: [
-                  BootstrapCol(
-                    sizes: 'col-8',
+                  Expanded(
+                    flex: 8,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -52,24 +39,33 @@ class CefrTopicCard extends StatelessWidget {
                           topic.formattedTitle,
                           style: AppTextStyles.subtitle,
                         ),
-                        const SizedBox(height: 8),
-                        BootstrapRow(
+                        const SizedBox(height: 12),
+                        Row(
                           children: [
-                            BootstrapCol(
-                              sizes: 'col-6',
-                              child: TextButton(
-                                onPressed:
-                                    topic.isUnlocked ? onFlashcardTap : null,
-                                child: Text('Flashcard',
-                                    style: AppTextStyles.buttonText),
+                            Expanded(
+                              child: Padding(
+                                padding: const EdgeInsets.only(right: 8),
+                                child: OutlinedButton.icon(
+                                  onPressed:
+                                      topic.isUnlocked ? onFlashcardTap : null,
+                                  icon: const Icon(Icons.style, size: 20),
+                                  label: const Text('Flashcard'),
+                                ),
                               ),
                             ),
-                            BootstrapCol(
-                              sizes: 'col-6',
-                              child: TextButton(
-                                onPressed: topic.isUnlocked ? onQuizTap : null,
-                                child: Text('Quiz',
-                                    style: AppTextStyles.buttonText),
+                            Expanded(
+                              child: Padding(
+                                padding: const EdgeInsets.only(left: 8),
+                                child: ElevatedButton.icon(
+                                  onPressed:
+                                      topic.isUnlocked ? onQuizTap : null,
+                                  icon: const Icon(Icons.quiz, size: 20),
+                                  label: const Text('Quiz'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: topic.statusColor,
+                                    foregroundColor: Colors.white,
+                                  ),
+                                ),
                               ),
                             ),
                           ],
@@ -78,21 +74,38 @@ class CefrTopicCard extends StatelessWidget {
                     ),
                   ),
                   if (topic.imagePath != null)
-                    BootstrapCol(
-                      sizes: 'col-4',
+                    Expanded(
+                      flex: 4,
                       child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(8.0),
-                            child: Image.asset(
-                              topic.imagePath!,
-                              width: 60,
-                              height: 60,
-                              fit: BoxFit.cover,
+                          DecoratedBox(
+                            decoration: BoxDecoration(
+                              border: Border.all(
+                                  color: Theme.of(context).dividerColor),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: Image.asset(
+                                topic.imagePath!,
+                                width: 80,
+                                height: 80,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, _, __) => Icon(
+                                  Icons.image_not_supported,
+                                  size: 40,
+                                  color: Theme.of(context).disabledColor,
+                                ),
+                              ),
                             ),
                           ),
                           const SizedBox(height: 8),
-                          Text('การปลดล็อค', style: AppTextStyles.caption),
+                          Text(
+                            'รางวัล',
+                            style: AppTextStyles.caption,
+                            textAlign: TextAlign.center,
+                          ),
                         ],
                       ),
                     ),
@@ -102,12 +115,21 @@ class CefrTopicCard extends StatelessWidget {
           ),
           if (!topic.isUnlocked)
             Positioned.fill(
-              child: Align(
-                alignment: Alignment.center,
-                child: Icon(
-                  Icons.lock,
-                  size: 50,
-                  color: Colors.grey.withOpacity(0.8),
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.lock_outlined,
+                      size: 40,
+                      color: Theme.of(context).disabledColor,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'ยังไม่ปลดล็อค',
+                      style: AppTextStyles.caption,
+                    ),
+                  ],
                 ),
               ),
             ),

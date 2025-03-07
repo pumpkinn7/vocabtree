@@ -124,30 +124,23 @@ class CefrTopicCard extends StatelessWidget {
                               children: [
                                 // Flashcard Button
                                 BootstrapCol(
-                                  sizes: 'col-6',
-                                  child: OutlinedButton.icon(
+                                  sizes: 'col-xs-6 col-sm-6 col-md-6 col-lg-4',
+                                  child: OutlinedButton(
                                     onPressed: topic.isUnlocked
                                         ? onFlashcardTap
                                         : null,
-                                    icon: const Icon(Icons.style, size: 20),
-                                    label: const Text('Flashcard'),
-                                    style: OutlinedButton.styleFrom(
-                                      foregroundColor: colorScheme.primary,
-                                    ),
+                                    child: Text('Flashcard',
+                                        style: AppTextStyles.buttonText),
                                   ),
                                 ),
                                 // Quiz Button
                                 BootstrapCol(
-                                  sizes: 'col-6',
-                                  child: ElevatedButton.icon(
+                                  sizes: 'col-xs-6 col-sm-6 col-md-6 col-lg-4',
+                                  child: OutlinedButton(
                                     onPressed:
                                         topic.isUnlocked ? onQuizTap : null,
-                                    icon: const Icon(Icons.quiz, size: 20),
-                                    label: const Text('Quiz'),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: topic.statusColor,
-                                      foregroundColor: Colors.white,
-                                    ),
+                                    child: Text('Quiz',
+                                        style: AppTextStyles.buttonText),
                                   ),
                                 ),
                               ],

@@ -57,6 +57,11 @@ class _CefrLevelScreenState extends State<CefrLevelScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Text('หัวข้อแบบทดสอบ', style: AppTextStyles.headline),
       ),
       body: SafeArea(
         child: _buildBody(),

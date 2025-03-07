@@ -27,7 +27,7 @@ class QuizScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        title: Text('แบบทดสอบคำศัพท์ภาษาอังกฤษ', style: AppTextStyles.headline),
+        title: Text('แบบทดสอบคำศัพท์', style: AppTextStyles.headline),
       ),
       body: SingleChildScrollView(
         child: BootstrapContainer(

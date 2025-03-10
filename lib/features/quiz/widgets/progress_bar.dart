@@ -47,14 +47,26 @@ class ProgressBar extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 8),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
-                    child: LinearProgressIndicator(
-                      value: progress,
-                      backgroundColor: colorScheme.surfaceVariant,
-                      valueColor:
-                          AlwaysStoppedAnimation<Color>(colorScheme.primary),
-                      minHeight: 8,
+                  Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(4),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 2,
+                          offset: const Offset(0, 1),
+                        ),
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: progress,
+                        backgroundColor: colorScheme.surfaceVariant,
+                        valueColor:
+                            AlwaysStoppedAnimation<Color>(colorScheme.primary),
+                        minHeight: 8,
+                      ),
                     ),
                   ),
                 ],

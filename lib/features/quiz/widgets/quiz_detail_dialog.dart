@@ -16,7 +16,6 @@ class _QuizDetailDialogState extends State<QuizDetailDialog> {
   bool isTranslated = false;
   Map<String, String> translations = {};
 
-  // แปลภาษาแบบกระชับ
   Future<void> _toggleTranslation() async {
     if (isTranslated) {
       setState(() => isTranslated = false);
@@ -72,6 +71,10 @@ class _QuizDetailDialogState extends State<QuizDetailDialog> {
 
     return AlertDialog(
       backgroundColor: colorScheme.surface,
+      elevation: 8, // เพิ่มค่า elevation
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
       title: Row(
         children: [
           Expanded(
@@ -136,7 +139,8 @@ class _QuizDetailDialogState extends State<QuizDetailDialog> {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       color: colorScheme.surface,
-      elevation: 1,
+      elevation: 2, // เพิ่มค่า elevation
+      shadowColor: Colors.black.withOpacity(0.1),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: BorderSide(

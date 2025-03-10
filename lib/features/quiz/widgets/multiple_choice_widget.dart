@@ -170,6 +170,13 @@ class MultipleChoiceWidget extends StatelessWidget {
                 color: borderColor,
                 width: isSelected ? 2 : 1,
               ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
             child: Center(
               child: Text(

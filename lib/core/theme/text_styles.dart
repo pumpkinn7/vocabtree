@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// คลาสนี้กำหนด Text Styles และ Theme ที่ใช้ทั่วทั้งแอป VocabTree
 class AppTextStyles {
-  // ป้องกันการสร้าง instance
   AppTextStyles._();
   // สีหลักของแอป - โทนฤดูใบไม้ร่วงผสมหิมะ
   static const Color primaryColor = Color.fromARGB(255, 195, 147, 224);

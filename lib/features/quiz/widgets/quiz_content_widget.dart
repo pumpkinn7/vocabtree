@@ -37,6 +37,9 @@ class QuizContentWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
+        // เพิ่มระยะห่าง 25 ด้านบน ProgressBar
+        const SizedBox(height: 25),
+
         // Progress bar
         ProgressBar(
           current: currentQuestionIndex + 1,
@@ -44,7 +47,7 @@ class QuizContentWidget extends StatelessWidget {
         ),
         const SizedBox(height: 16),
 
-        // Question content (using Expanded inside a Flex container)
+        // Question content
         Expanded(
           child: SingleChildScrollView(
             child: MultipleChoiceWidget(
@@ -80,10 +83,7 @@ class QuizContentWidget extends StatelessWidget {
                   backgroundColor: Colors.grey,
                   minimumSize: const Size.fromHeight(50),
                 ),
-                child: Text(
-                  'ข้าม',
-                  style: AppTextStyles.buttonText,
-                ),
+                child: Text('ข้าม', style: AppTextStyles.buttonText),
               ),
             ),
           ),
@@ -98,10 +98,7 @@ class QuizContentWidget extends StatelessWidget {
                   minimumSize: const Size.fromHeight(50),
                   disabledBackgroundColor: Colors.grey.shade300,
                 ),
-                child: Text(
-                  'ตรวจ',
-                  style: AppTextStyles.buttonText,
-                ),
+                child: Text('ตรวจ', style: AppTextStyles.buttonText),
               ),
             ),
           ),

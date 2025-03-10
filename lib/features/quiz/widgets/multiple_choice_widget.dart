@@ -24,12 +24,8 @@ class MultipleChoiceWidget extends StatelessWidget {
     required this.wrongCount,
   });
 
-  String _formatCEFR(String? cefr) {
-    if (cefr == null || cefr.contains('›')) {
-      return 'N/A';
-    }
-    return cefr;
-  }
+  String _formatCEFR(String? cefr) =>
+      (cefr == null || cefr.contains('›')) ? 'N/A' : cefr;
 
   @override
   Widget build(BuildContext context) {
@@ -50,21 +46,40 @@ class MultipleChoiceWidget extends StatelessWidget {
                   if (isFrequentlyWrong) _buildFrequentlyWrongWarning(context),
 
                   // แสดงระดับ CEFR
-                  _buildCefrLevel(),
+                  Text(
+                    'CEFR Level: ${_formatCEFR(question.senses.isNotEmpty ? question.senses[0]['cefr'] : null)}',
+                    style: AppTextStyles.subtitle
+                        .copyWith(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
 
                   const SizedBox(height: 16),
 
                   // แสดงคำถาม/คำอธิบาย
-                  _buildDefinition(),
+                  Text(
+                    question.definition,
+                    style: AppTextStyles.body.copyWith(fontSize: 18),
+                  ),
 
                   const SizedBox(height: 8),
 
                   // ปุ่มดูรายละเอียดเพิ่มเติม
-                  _buildDetailsButton(context),
+                  TextButton(
+                    onPressed: () => showDialog(
+                      context: context,
+                      builder: (context) =>
+                          QuizDetailDialog(senses: question.senses),
+                    ),
+                    child: Text(
+                      'ดูรายละเอียดเพิ่มเติม',
+                      style: AppTextStyles.buttonText.copyWith(
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
+                  ),
 
                   const SizedBox(height: 24),
 
-                  // แสดงตัวเลือก Duolingo style (grid layout)
+                  // แสดงตัวเลือก
                   _buildOptionsGrid(),
                 ],
               ),
@@ -80,21 +95,18 @@ class MultipleChoiceWidget extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
       decoration: BoxDecoration(
-        color: Colors.orange[50],
+        color: Colors.orange.withOpacity(0.1), // ทำให้พื้นหลังมี opacity ต่ำ
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.orange[700]!),
+        border: Border.all(color: Colors.orange.withOpacity(0.7)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text(
-            "🔔", // เพิ่มไอคอนกระดิ่งเตือน
-            style: TextStyle(fontSize: 18),
-          ),
+          const Text("🔔", style: TextStyle(fontSize: 18)),
+          const SizedBox(width: 8),
           Text(
             'ตอบผิด $wrongCount ครั้ง',
-            style: TextStyle(
-              color: Colors.orange[700],
+            style: AppTextStyles.body.copyWith(
               fontSize: 14,
               fontWeight: FontWeight.bold,
             ),
@@ -104,139 +116,74 @@ class MultipleChoiceWidget extends StatelessWidget {
     );
   }
 
-  Widget _buildCefrLevel() {
-    return Text(
-      'CEFR Level: ${_formatCEFR(question.senses.isNotEmpty ? question.senses[0]['cefr'] : null)}',
-      style: AppTextStyles.subtitle
-          .copyWith(fontSize: 16, fontWeight: FontWeight.bold),
-    );
-  }
-
-  Widget _buildDefinition() {
-    return Text(
-      question.definition,
-      style: AppTextStyles.body.copyWith(fontSize: 18),
-    );
-  }
-
-  Widget _buildDetailsButton(BuildContext context) {
-    return TextButton(
-      onPressed: () {
-        showDialog(
-          context: context,
-          builder: (context) => QuizDetailDialog(senses: question.senses),
-        );
-      },
-      child: Text(
-        'ดูรายละเอียดเพิ่มเติม',
-        style: AppTextStyles.buttonText.copyWith(
-          color: Theme.of(context).colorScheme.primary,
-        ),
-      ),
-    );
-  }
-
   Widget _buildOptionsGrid() {
-    return BootstrapContainer(
-      fluid: true,
-      padding: EdgeInsets.zero,
-      children: [
-        BootstrapRow(
-          children: _buildOptionPairs(),
-        ),
-      ],
+    return BootstrapRow(
+      children: question.options
+          .map((option) => BootstrapCol(
+                sizes: 'col-xs-6 col-sm-6 col-md-6 col-lg-6 col-xl-6',
+                child: _buildOptionTile(option),
+              ))
+          .toList(),
     );
-  }
-
-  List<BootstrapCol> _buildOptionPairs() {
-    final List<BootstrapCol> optionPairs = [];
-
-    for (int i = 0; i < question.options.length; i++) {
-      final option = question.options[i];
-      optionPairs.add(
-        BootstrapCol(
-          sizes: 'col-xs-6 col-sm-6 col-md-6 col-lg-6 col-xl-6',
-          child: _buildOptionTile(option),
-        ),
-      );
-    }
-
-    return optionPairs;
   }
 
   Widget _buildOptionTile(String option) {
-    final bool isSelected = selectedOption == option;
-    final bool isCorrectOption = question.mainWord == option;
-    final bool showResult = isAnswerChecked;
+    // ส่ง context เข้ามาเป็นพารามิเตอร์
+    return Builder(builder: (context) {
+      final bool isSelected = selectedOption == option;
+      final bool isCorrectOption = question.mainWord == option;
+      final bool showResult = isAnswerChecked;
+      final colorScheme = Theme.of(context).colorScheme;
 
-    // กำหนดสีตามสถานะ
-    Color? backgroundColor;
-    Color? textColor;
-    Color borderColor = Colors.grey.shade300;
-    IconData? trailingIcon;
+      // กำหนดสีตามสถานะ (ทุกสีใช้ opacity 30%)
+      Color? backgroundColor;
+      Color? textColor;
+      Color borderColor = colorScheme.outline.withOpacity(0.3);
 
-    if (showResult) {
-      if (isCorrectOption) {
-        backgroundColor = Colors.green.shade100;
-        borderColor = Colors.green;
-        textColor = Colors.green.shade900;
-        trailingIcon = Icons.check_circle;
-      } else if (isSelected && !isCorrectOption) {
-        backgroundColor = Colors.red.shade100;
-        borderColor = Colors.red;
-        textColor = Colors.red.shade900;
-        trailingIcon = Icons.cancel;
+      if (showResult) {
+        if (isCorrectOption) {
+          backgroundColor = Colors.green.withOpacity(0.3);
+          borderColor = Colors.green.withOpacity(0.7);
+          textColor = colorScheme.onSurface;
+        } else if (isSelected && !isCorrectOption) {
+          backgroundColor = Colors.red.withOpacity(0.3);
+          borderColor = Colors.red.withOpacity(0.7);
+          textColor = colorScheme.onSurface;
+        }
+      } else if (isSelected) {
+        backgroundColor = colorScheme.primary.withOpacity(0.3);
+        borderColor = colorScheme.primary.withOpacity(0.7);
+        textColor = colorScheme.onSurface;
       }
-    } else if (isSelected) {
-      backgroundColor = Colors.blue.shade100;
-      borderColor = Colors.blue;
-      textColor = Colors.blue.shade900;
-    }
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12, right: 6, left: 6),
-      child: InkWell(
-        onTap: isAnswerChecked ? null : () => onOptionSelected(option),
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          decoration: BoxDecoration(
-            color: backgroundColor ?? Colors.grey.shade50,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: borderColor,
-              width: isSelected ? 2 : 1,
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: InkWell(
+          onTap: isAnswerChecked ? null : () => onOptionSelected(option),
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            decoration: BoxDecoration(
+              color: backgroundColor ?? colorScheme.surface.withOpacity(0.3),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: borderColor,
+                width: isSelected ? 2 : 1,
+              ),
+            ),
+            child: Center(
+              child: Text(
+                option,
+                textAlign: TextAlign.center,
+                style: AppTextStyles.body.copyWith(
+                  color: textColor,
+                  fontSize: 14,
+                ),
+              ),
             ),
           ),
-          child: Row(
-            children: [
-              Radio<String>(
-                value: option,
-                groupValue: selectedOption,
-                onChanged: isAnswerChecked
-                    ? null
-                    : (value) => value != null ? onOptionSelected(value) : null,
-                activeColor: textColor ?? Colors.blue,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  option,
-                  style: AppTextStyles.body.copyWith(
-                    color: textColor,
-                    fontWeight: isSelected ? FontWeight.bold : null,
-                  ),
-                ),
-              ),
-              if (trailingIcon != null)
-                Icon(
-                  trailingIcon,
-                  color: textColor,
-                ),
-            ],
-          ),
         ),
-      ),
-    );
+      );
+    });
   }
 }

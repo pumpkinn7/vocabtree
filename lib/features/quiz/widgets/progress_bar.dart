@@ -35,9 +35,7 @@ class ProgressBar extends StatelessWidget {
                     children: [
                       Text(
                         'คำถาม $current จาก $total',
-                        style: AppTextStyles.subtitle.copyWith(
-                          fontSize: 16,
-                        ),
+                        style: AppTextStyles.subtitle.copyWith(fontSize: 16),
                       ),
                       Text(
                         '${(progress * 100).toInt()}%',

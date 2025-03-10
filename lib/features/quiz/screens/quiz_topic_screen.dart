@@ -39,10 +39,8 @@ class _QuizTopicScreenState extends State<QuizTopicScreen> {
   bool _isAnswerCorrect = false;
 
   final List<QuizQuestionModel> wrongAnswers = [];
-
   final Map<int, dynamic> _selectedAnswers = {};
-  Set<String> _topFiveWrongWords =
-      {}; // เพิ่มตัวแปรใหม่สำหรับเก็บ 5 คำที่ผิดบ่อยที่สุด
+  Set<String> _topFiveWrongWords = {};
   Map<String, Map<String, dynamic>> _wrongWordsStats = {};
 
   @override
@@ -76,16 +74,12 @@ class _QuizTopicScreenState extends State<QuizTopicScreen> {
         for (var word in wrongWords) word['word'] as String: word,
       };
 
-      // เพิ่มโค้ดเพื่อจัดลำดับและเลือก 5 คำที่ตอบผิดมากที่สุด
       final sortedWrongWords = List.of(wrongWords);
       sortedWrongWords.sort(
           (a, b) => (b['wrongCount'] as int).compareTo(a['wrongCount'] as int));
 
-      // เลือกเพียง 5 คำแรกที่มีค่า wrongCount สูงสุด
-      _topFiveWrongWords = sortedWrongWords
-          .take(5) // เลือกเพียง 5 คำแรก
-          .map((w) => w['word'] as String)
-          .toSet();
+      _topFiveWrongWords =
+          sortedWrongWords.take(5).map((w) => w['word'] as String).toSet();
     }
 
     return questions;
@@ -105,14 +99,13 @@ class _QuizTopicScreenState extends State<QuizTopicScreen> {
       if (correct) {
         _score++;
       } else {
-        wrongAnswers.add(currentQuestion); // เพิ่มคำที่ตอบผิดเข้าไปในลิสต์
+        wrongAnswers.add(currentQuestion);
       }
     });
   }
 
   void _skipQuestion() {
     if (_isAnswerChecked) return;
-
     setState(() {
       _isAnswerChecked = true;
       _isAnswerCorrect = false;
@@ -138,9 +131,7 @@ class _QuizTopicScreenState extends State<QuizTopicScreen> {
     final totalQuestions = _questions.length;
     final percentage = (correctAnswers / totalQuestions) * 100;
 
-    setState(() {
-      _isQuizFinished = true;
-    });
+    setState(() => _isQuizFinished = true);
 
     if (user != null) {
       FirebaseService.manageProgress(
@@ -173,25 +164,18 @@ class _QuizTopicScreenState extends State<QuizTopicScreen> {
     );
   }
 
-  @override
-  void dispose() {
-    super.dispose();
-  }
-
-  bool _hasSelectedAnswer() {
-    return _selectedAnswers[_currentQuestionIndex] != null;
-  }
+  bool _hasSelectedAnswer() => _selectedAnswers[_currentQuestionIndex] != null;
 
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
       onWillPop: () async {
         if (!_isQuizFinished) {
-          final shouldExit = await showDialog<bool>(
-            context: context,
-            builder: (context) => const ExitConfirmationDialog(),
-          );
-          return shouldExit ?? false;
+          return await showDialog<bool>(
+                context: context,
+                builder: (context) => const ExitConfirmationDialog(),
+              ) ??
+              false;
         }
         return true;
       },
@@ -217,25 +201,7 @@ class _QuizTopicScreenState extends State<QuizTopicScreen> {
                         return const Center(child: CircularProgressIndicator());
                       }
 
-                      if (snapshot.hasError) {
-                        return Center(
-                          child: Text(
-                            'เกิดข้อผิดพลาดในการโหลดคำถาม',
-                            style: AppTextStyles.subtitle,
-                          ),
-                        );
-                      }
-
                       final data = snapshot.data ?? [];
-                      if (data.isEmpty) {
-                        return Center(
-                          child: Text(
-                            'ไม่มีคำถามสำหรับหัวข้อนี้',
-                            style: AppTextStyles.subtitle,
-                          ),
-                        );
-                      }
-
                       if (_questions.isEmpty) {
                         _questions = data;
                       }
@@ -262,7 +228,7 @@ class _QuizTopicScreenState extends State<QuizTopicScreen> {
           height: MediaQuery.of(context).size.height -
               AppBar().preferredSize.height -
               MediaQuery.of(context).padding.top -
-              32, // Account for padding
+              32,
           child: QuizContentWidget(
             question: question,
             currentQuestionIndex: _currentQuestionIndex,

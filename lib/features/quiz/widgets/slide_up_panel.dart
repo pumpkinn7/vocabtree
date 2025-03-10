@@ -2,17 +2,22 @@ import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:translator/translator.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class SlideUpPanel extends StatefulWidget {
   final bool isCorrect;
   final String correctAnswer;
   final VoidCallback onNextPressed;
+  // เพิ่ม parameter เพื่อรับ topic
+  final String topic;
 
   const SlideUpPanel({
     super.key,
     required this.isCorrect,
     required this.correctAnswer,
     required this.onNextPressed,
+    required this.topic, // เพิ่ม parameter นี้
   });
 
   @override
@@ -27,6 +32,7 @@ class _SlideUpPanelState extends State<SlideUpPanel>
   final translator = GoogleTranslator();
   String translatedWord = '';
   bool isLoading = true;
+  bool _isAddingToFlashcard = false;
 
   @override
   void initState() {
@@ -49,7 +55,7 @@ class _SlideUpPanelState extends State<SlideUpPanel>
   }
 
   Future<void> _translateWord() async {
-    if (!mounted) return; // เช็ค mounted ก่อน
+    if (!mounted) return;
 
     try {
       final translation = await translator.translate(
@@ -57,7 +63,7 @@ class _SlideUpPanelState extends State<SlideUpPanel>
         from: 'en',
         to: 'th',
       );
-      if (!mounted) return; // เช็คอีกครั้งก่อน setState
+      if (!mounted) return;
       setState(() {
         translatedWord = translation.text;
         isLoading = false;
@@ -77,7 +83,6 @@ class _SlideUpPanelState extends State<SlideUpPanel>
 
   Future<void> _openGoogleTranslate() async {
     final word = Uri.encodeComponent(widget.correctAnswer);
-    // ลองใช้ URL แบบโมบายล์ก่อน
     var url = Uri.parse(
         'googletranslate://x-callback-url/translate?sl=en&tl=th&q=$word');
 
@@ -88,14 +93,12 @@ class _SlideUpPanelState extends State<SlideUpPanel>
         return;
       }
 
-      // ถ้าเปิดแอพไม่ได้ ให้เปิดเว็บแทน
       url = Uri.parse('https://translate.google.com/?sl=en&tl=th&text=$word');
       await launchUrl(
         url,
         mode: LaunchMode.externalApplication,
       );
     } catch (e) {
-      // ถ้าเกิดข้อผิดพลาด ให้ลองเปิดใน browser mode
       url = Uri.parse('https://translate.google.com/?sl=en&tl=th&text=$word');
       await launchUrl(
         url,
@@ -118,7 +121,6 @@ class _SlideUpPanelState extends State<SlideUpPanel>
         mode: LaunchMode.externalApplication,
       );
     } catch (e) {
-      // ถ้าเปิดในแอพภายนอกไม่ได้ ให้ลองเปิดใน webview
       await launchUrl(
         url,
         mode: LaunchMode.inAppWebView,
@@ -126,6 +128,46 @@ class _SlideUpPanelState extends State<SlideUpPanel>
           enableJavaScript: true,
         ),
       );
+    }
+  }
+
+  // แก้ไขฟังก์ชันเพิ่มคำศัพท์
+  Future<void> _addToFlashcard() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    setState(() {
+      _isAddingToFlashcard = true;
+    });
+
+    try {
+      final wordDoc = await FirebaseFirestore.instance
+          .collection('words')
+          .where('mainWord', isEqualTo: widget.correctAnswer)
+          .limit(1)
+          .get();
+
+      if (wordDoc.docs.isEmpty) return;
+
+      final wordId = wordDoc.docs.first.id;
+
+      // แก้ไขให้ใช้ widget.topic แทนที่จะใช้ 'review'
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('vocabulary_progress')
+          .doc(widget.topic) // ใช้ topic จาก parameter
+          .set({
+        'review_words': FieldValue.arrayUnion([wordId])
+      }, SetOptions(merge: true));
+    } catch (e) {
+      // ไม่ต้องแสดง SnackBar เมื่อเกิดข้อผิดพลาด
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isAddingToFlashcard = false;
+        });
+      }
     }
   }
 
@@ -144,7 +186,7 @@ class _SlideUpPanelState extends State<SlideUpPanel>
           width: double.infinity,
           decoration: BoxDecoration(
             color: widget.isCorrect ? Colors.green[50] : Colors.red[50],
-            borderRadius: BorderRadius.circular(16), // มุมโค้งทั้งหมด
+            borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withOpacity(0.1),
@@ -153,7 +195,7 @@ class _SlideUpPanelState extends State<SlideUpPanel>
               ),
             ],
           ),
-          margin: const EdgeInsets.all(16), // เพิ่ม margin รอบด้าน
+          margin: const EdgeInsets.all(16),
           child: Material(
             color: Colors.transparent,
             child: Padding(
@@ -262,6 +304,22 @@ class _SlideUpPanelState extends State<SlideUpPanel>
                           Icons.menu_book,
                           _openCambridgeDictionary,
                         ),
+                        const SizedBox(width: 8),
+                        _isAddingToFlashcard
+                            ? Container(
+                                height: 36,
+                                width: 36,
+                                padding: const EdgeInsets.all(8),
+                                child: const CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : _buildToolButton(
+                                'เพิ่มเข้าทบทวน',
+                                Icons.bookmark_add_outlined,
+                                _addToFlashcard,
+                                color: Colors.orange,
+                              ),
                       ],
                     ),
                   ),
@@ -297,13 +355,16 @@ class _SlideUpPanelState extends State<SlideUpPanel>
     );
   }
 
-  Widget _buildToolButton(String label, IconData icon, VoidCallback onPressed) {
+  Widget _buildToolButton(String label, IconData icon, VoidCallback onPressed,
+      {Color color = Colors.blue}) {
     return TextButton.icon(
       onPressed: onPressed,
-      icon: Icon(icon, size: 20),
-      label: Text(label),
+      icon: Icon(icon, size: 20, color: color),
+      label: Text(
+        label,
+        style: TextStyle(color: color),
+      ),
       style: TextButton.styleFrom(
-        foregroundColor: Colors.blue,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       ),
     );

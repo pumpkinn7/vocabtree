@@ -39,7 +39,8 @@ class _QuizTopicScreenState extends State<QuizTopicScreen> {
   final List<QuizQuestionModel> wrongAnswers = [];
 
   final Map<int, dynamic> _selectedAnswers = {};
-  Set<String> _frequentlyWrongWords = {};
+  Set<String> _topFiveWrongWords =
+      {}; // เพิ่มตัวแปรใหม่สำหรับเก็บ 5 คำที่ผิดบ่อยที่สุด
   Map<String, Map<String, dynamic>> _wrongWordsStats = {};
 
   @override
@@ -73,8 +74,16 @@ class _QuizTopicScreenState extends State<QuizTopicScreen> {
         for (var word in wrongWords) word['word'] as String: word,
       };
 
-      _frequentlyWrongWords =
-          wrongWords.map((w) => w['word'] as String).toSet();
+      // เพิ่มโค้ดเพื่อจัดลำดับและเลือก 5 คำที่ตอบผิดมากที่สุด
+      final sortedWrongWords = List.of(wrongWords);
+      sortedWrongWords.sort(
+          (a, b) => (b['wrongCount'] as int).compareTo(a['wrongCount'] as int));
+
+      // เลือกเพียง 5 คำแรกที่มีค่า wrongCount สูงสุด
+      _topFiveWrongWords = sortedWrongWords
+          .take(5) // เลือกเพียง 5 คำแรก
+          .map((w) => w['word'] as String)
+          .toSet();
     }
 
     return questions;
@@ -285,6 +294,7 @@ class _QuizTopicScreenState extends State<QuizTopicScreen> {
                         isCorrect: _isAnswerCorrect,
                         correctAnswer: question.mainWord,
                         onNextPressed: _nextQuestion,
+                        topic: widget.topic, // เพิ่ม topic ตรงนี้
                       ),
                     ),
                 ],
@@ -304,7 +314,8 @@ class _QuizTopicScreenState extends State<QuizTopicScreen> {
   }
 
   Widget _buildQuestionWidget(QuizQuestionModel question, int index) {
-    final isFrequentlyWrong = _frequentlyWrongWords.contains(question.mainWord);
+    // เปลี่ยนเงื่อนไขในการตรวจสอบว่าเป็นคำที่ตอบผิดบ่อยที่สุด 5 คำหรือไม่
+    final isFrequentlyWrong = _topFiveWrongWords.contains(question.mainWord);
     // ค้นหาจำนวนครั้งที่ตอบผิดจาก wrongWords
     final wrongCount =
         _wrongWordsStats[question.mainWord]?['wrongCount'] as int? ?? 0;

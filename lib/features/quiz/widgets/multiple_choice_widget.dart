@@ -53,6 +53,11 @@ class MultipleChoiceWidget extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    const Text(
+                      "🔔", // เพิ่มไอคอนกระดิ่งเตือน
+                      style: TextStyle(fontSize: 18),
+                    ),
+                    const SizedBox(width: 4),
                     Icon(Icons.warning_amber_rounded,
                         color: Colors.orange[700], size: 20),
                     const SizedBox(width: 4),

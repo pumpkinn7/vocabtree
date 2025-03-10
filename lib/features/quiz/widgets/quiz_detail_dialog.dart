@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:translator/translator.dart';
+import 'package:vocabtree/core/theme/text_styles.dart';
 
 class QuizDetailDialog extends StatefulWidget {
   final List<Map<String, dynamic>> senses;
@@ -67,14 +68,22 @@ class _QuizDetailDialogState extends State<QuizDetailDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return AlertDialog(
+      backgroundColor: colorScheme.surface,
       title: Row(
         children: [
-          const Expanded(child: Text("All Meanings")),
+          Expanded(
+            child: Text(
+              "ความหมายทั้งหมด",
+              style: AppTextStyles.subtitle,
+            ),
+          ),
           IconButton(
             icon: Icon(
               isTranslated ? Icons.g_translate_outlined : Icons.translate,
-              color: Colors.blue,
+              color: colorScheme.primary,
             ),
             onPressed: _toggleTranslation,
             tooltip: isTranslated ? 'แสดงภาษาอังกฤษ' : 'แปลเป็นภาษาไทย',
@@ -87,21 +96,28 @@ class _QuizDetailDialogState extends State<QuizDetailDialog> {
           children: widget.senses
               .asMap()
               .entries
-              .map((entry) => _buildSenseCard(entry.key, entry.value))
+              .map((entry) =>
+                  _buildSenseCard(entry.key, entry.value, colorScheme))
               .toList(),
         ),
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('ปิด'),
+          child: Text(
+            'ปิด',
+            style: AppTextStyles.buttonText.copyWith(
+              color: colorScheme.primary,
+            ),
+          ),
         ),
       ],
     );
   }
 
   // สร้างการ์ดแสดงความหมายแบบกระชับ
-  Widget _buildSenseCard(int index, Map<String, dynamic> sense) {
+  Widget _buildSenseCard(
+      int index, Map<String, dynamic> sense, ColorScheme colorScheme) {
     // กำหนดค่าที่ใช้แสดงผล
     final String title = sense['title']?.toString().isNotEmpty == true
         ? sense['title'].toString()
@@ -119,6 +135,15 @@ class _QuizDetailDialogState extends State<QuizDetailDialog> {
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
+      color: colorScheme.surface,
+      elevation: 1,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(
+          color: colorScheme.outline.withOpacity(0.3),
+          width: 1,
+        ),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -130,20 +155,19 @@ class _QuizDetailDialogState extends State<QuizDetailDialog> {
                 Expanded(
                   child: Text(
                     title,
-                    style: const TextStyle(
-                      fontSize: 18,
+                    style: AppTextStyles.subtitle.copyWith(
+                      fontSize: 16,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
                 Text(
                   usage,
-                  style: TextStyle(
-                    fontSize: 14,
+                  style: AppTextStyles.caption.copyWith(
                     fontStyle: FontStyle.italic,
                     color: usage == 'N/A'
-                        ? Colors.grey.withOpacity(0.6)
-                        : Colors.grey,
+                        ? colorScheme.outline.withOpacity(0.6)
+                        : colorScheme.outline,
                   ),
                 ),
               ],
@@ -156,17 +180,16 @@ class _QuizDetailDialogState extends State<QuizDetailDialog> {
                 Expanded(
                   child: Text(
                     partOfSpeech,
-                    style: const TextStyle(
+                    style: AppTextStyles.body.copyWith(
                       fontWeight: FontWeight.w500,
-                      color: Colors.blue,
+                      color: colorScheme.primary,
                     ),
                   ),
                 ),
                 Text(
                   'CEFR: $cefr',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey,
+                  style: AppTextStyles.caption.copyWith(
+                    color: colorScheme.outline,
                   ),
                 ),
               ],
@@ -179,8 +202,7 @@ class _QuizDetailDialogState extends State<QuizDetailDialog> {
                 isTranslated
                     ? (translations['def_$index'] ?? definition)
                     : definition,
-                style: TextStyle(
-                  fontSize: 16,
+                style: AppTextStyles.body.copyWith(
                   fontStyle: isTranslated ? FontStyle.italic : FontStyle.normal,
                 ),
               ),
@@ -189,12 +211,10 @@ class _QuizDetailDialogState extends State<QuizDetailDialog> {
             // ตัวอย่างประโยค (แสดงเฉพาะเมื่อมีข้อมูล)
             if (examples.isNotEmpty) ...[
               const SizedBox(height: 8),
-              const Text(
+              Text(
                 'Examples:',
-                style: TextStyle(
-                  fontSize: 14,
+                style: AppTextStyles.caption.copyWith(
                   fontWeight: FontWeight.w500,
-                  color: Colors.grey,
                 ),
               ),
               const SizedBox(height: 4),
@@ -205,10 +225,9 @@ class _QuizDetailDialogState extends State<QuizDetailDialog> {
                   padding: const EdgeInsets.only(left: 8, bottom: 4),
                   child: Text(
                     '• ${isTranslated ? translatedExample : e.value}',
-                    style: const TextStyle(
+                    style: AppTextStyles.body.copyWith(
                       fontSize: 14,
                       fontStyle: FontStyle.italic,
-                      color: Colors.black87,
                     ),
                   ),
                 );

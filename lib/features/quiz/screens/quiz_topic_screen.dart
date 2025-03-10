@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bootstrap/flutter_bootstrap.dart';
+import 'package:lottie/lottie.dart';
 import 'package:vocabtree/core/theme/text_styles.dart';
 import 'package:vocabtree/features/quiz/widgets/quiz_content_widget.dart';
 import 'package:vocabtree/features/quiz/widgets/slide_up_panel.dart';
@@ -186,33 +187,53 @@ class _QuizTopicScreenState extends State<QuizTopicScreen> {
             style: AppTextStyles.headline,
           ),
         ),
-        body: BootstrapContainer(
-          fluid: true,
-          padding: const EdgeInsets.all(16.0),
-          children: [
-            BootstrapRow(
+        body: FutureBuilder<List<QuizQuestionModel>>(
+          future: _questionsFuture,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    SizedBox(
+                      height: 200,
+                      width: 200,
+                      child: Lottie.asset(
+                        'assets/animations/Animation - 1741196193367.json',
+                        frameRate: FrameRate.max,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      "กำลังจัดเตรียมคำถาม...",
+                      style: AppTextStyles.subtitle,
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            final data = snapshot.data ?? [];
+            if (_questions.isEmpty) {
+              _questions = data;
+            }
+
+            // แสดงเนื้อหาเมื่อโหลดเสร็จแล้ว
+            return BootstrapContainer(
+              fluid: true,
+              padding: const EdgeInsets.all(16.0),
               children: [
-                BootstrapCol(
-                  sizes: 'col-12',
-                  child: FutureBuilder<List<QuizQuestionModel>>(
-                    future: _questionsFuture,
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Center(child: CircularProgressIndicator());
-                      }
-
-                      final data = snapshot.data ?? [];
-                      if (_questions.isEmpty) {
-                        _questions = data;
-                      }
-
-                      return _buildQuizContent();
-                    },
-                  ),
+                BootstrapRow(
+                  children: [
+                    BootstrapCol(
+                      sizes: 'col-12',
+                      child: _buildQuizContent(),
+                    ),
+                  ],
                 ),
               ],
-            ),
-          ],
+            );
+          },
         ),
       ),
     );

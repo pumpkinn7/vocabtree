@@ -69,41 +69,64 @@ class QuizContentWidget extends StatelessWidget {
   }
 
   Widget _buildActionButtons() {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16, top: 16),
-      child: BootstrapRow(
-        children: [
-          BootstrapCol(
-            sizes: 'col-6',
-            child: Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: ElevatedButton(
-                onPressed: onSkipQuestion,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.grey,
-                  minimumSize: const Size.fromHeight(50),
+    return Builder(builder: (context) {
+      final colorScheme = Theme.of(context).colorScheme;
+
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 16, top: 16),
+        child: BootstrapRow(
+          children: [
+            BootstrapCol(
+              sizes: 'col-6',
+              child: Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: ElevatedButton(
+                  onPressed: onSkipQuestion,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: colorScheme.surfaceVariant,
+                    foregroundColor: colorScheme.onSurfaceVariant,
+                    minimumSize: const Size.fromHeight(50),
+                    elevation: 3, // เพิ่ม elevation
+                    shadowColor: Colors.black.withOpacity(0.2), // กำหนดสีเงา
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: Text(
+                    'ข้าม',
+                    style: AppTextStyles.buttonText,
+                  ),
                 ),
-                child: Text('ข้าม', style: AppTextStyles.buttonText),
               ),
             ),
-          ),
-          BootstrapCol(
-            sizes: 'col-6',
-            child: Padding(
-              padding: const EdgeInsets.only(left: 8),
-              child: ElevatedButton(
-                onPressed: onCheckAnswer,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                  minimumSize: const Size.fromHeight(50),
-                  disabledBackgroundColor: Colors.grey.shade300,
+            BootstrapCol(
+              sizes: 'col-6',
+              child: Padding(
+                padding: const EdgeInsets.only(left: 8),
+                child: ElevatedButton(
+                  onPressed: onCheckAnswer,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: colorScheme.primary,
+                    foregroundColor: colorScheme.onPrimary,
+                    minimumSize: const Size.fromHeight(50),
+                    elevation: 3, // เพิ่ม elevation
+                    shadowColor: Colors.black.withOpacity(0.2), // กำหนดสีเงา
+                    disabledBackgroundColor:
+                        colorScheme.surfaceVariant.withOpacity(0.5),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: Text(
+                    'ตรวจ',
+                    style: AppTextStyles.buttonText,
+                  ),
                 ),
-                child: Text('ตรวจ', style: AppTextStyles.buttonText),
               ),
             ),
-          ),
-        ],
-      ),
-    );
+          ],
+        ),
+      );
+    });
   }
 }

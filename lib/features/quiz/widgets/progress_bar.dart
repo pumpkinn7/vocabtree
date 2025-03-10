@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bootstrap/flutter_bootstrap.dart';
+import 'package:vocabtree/core/theme/text_styles.dart';
 
 class ProgressBar extends StatelessWidget {
   final int current;
@@ -13,19 +15,54 @@ class ProgressBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     double progress = (current / total).clamp(0.0, 1.0);
+    final colorScheme = Theme.of(context).colorScheme;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return BootstrapContainer(
+      fluid: true,
+      padding: EdgeInsets.zero,
       children: [
-        Text(
-          'Question $current of $total',
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 8),
-        LinearProgressIndicator(
-          value: progress,
-          backgroundColor: Colors.grey[300],
-          valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
+        BootstrapRow(
+          children: [
+            BootstrapCol(
+              sizes: 'col-xs-12 col-sm-12 col-md-10 col-lg-8 col-xl-6',
+              offsets:
+                  'offset-xs-0 offset-sm-0 offset-md-1 offset-lg-2 offset-xl-3',
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'คำถาม $current จาก $total',
+                        style: AppTextStyles.subtitle.copyWith(
+                          fontSize: 16,
+                        ),
+                      ),
+                      Text(
+                        '${(progress * 100).toInt()}%',
+                        style: AppTextStyles.caption.copyWith(
+                          color: colorScheme.primary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      value: progress,
+                      backgroundColor: colorScheme.surfaceVariant,
+                      valueColor:
+                          AlwaysStoppedAnimation<Color>(colorScheme.primary),
+                      minHeight: 8,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ],
     );

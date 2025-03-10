@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-
+import 'package:flutter_bootstrap/flutter_bootstrap.dart';
+import 'package:vocabtree/core/theme/text_styles.dart';
 import '../models/quiz_question_model.dart';
-import 'quiz_detail_dialog.dart';
+import '../widgets/quiz_detail_dialog.dart';
 
 class MultipleChoiceWidget extends StatelessWidget {
   final QuizQuestionModel question;
@@ -9,93 +10,112 @@ class MultipleChoiceWidget extends StatelessWidget {
   final Function(String) onOptionSelected;
   final bool isAnswerChecked;
   final bool isCorrect;
-  final bool isFrequentlyWrong; // Add this
-  final int wrongCount; // เพิ่ม property ใหม่
+  final bool isFrequentlyWrong;
+  final int wrongCount;
 
   const MultipleChoiceWidget({
     super.key,
     required this.question,
-    this.selectedOption,
+    required this.selectedOption,
     required this.onOptionSelected,
     required this.isAnswerChecked,
     required this.isCorrect,
-    this.isFrequentlyWrong = false, // Add this
-    this.wrongCount = 0, // เพิ่ม parameter ใหม่
+    required this.isFrequentlyWrong,
+    required this.wrongCount,
   });
 
   String _formatCEFR(String? cefr) {
-    // ถ้า cefr เป็น null หรือมีเครื่องหมาย › หรือเป็นค่าว่าง ให้แสดง N/A
-    return (cefr == null || cefr.isEmpty || cefr.contains('›')) ? 'N/A' : cefr;
+    if (cefr == null || cefr.contains('›')) {
+      return 'N/A';
+    }
+    return cefr;
   }
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return BootstrapContainer(
+      fluid: true,
+      padding: EdgeInsets.zero,
       children: [
-        Row(
+        BootstrapRow(
           children: [
-            Expanded(
-              child: Text(
-                question.thaiWord,
-                style:
-                    const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            BootstrapCol(
+              sizes: 'col-xs-12 col-sm-12 col-md-10 col-lg-8 col-xl-6',
+              offsets:
+                  'offset-xs-0 offset-sm-0 offset-md-1 offset-lg-2 offset-xl-3',
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // แสดงส่วนคำเตือนสำหรับคำที่ตอบผิดบ่อย
+                  if (isFrequentlyWrong) _buildFrequentlyWrongWarning(context),
+
+                  // แสดงระดับ CEFR
+                  _buildCefrLevel(),
+
+                  const SizedBox(height: 16),
+
+                  // แสดงคำถาม/คำอธิบาย
+                  _buildDefinition(),
+
+                  const SizedBox(height: 8),
+
+                  // ปุ่มดูรายละเอียดเพิ่มเติม
+                  _buildDetailsButton(context),
+
+                  const SizedBox(height: 24),
+
+                  // แสดงตัวเลือก Duolingo style (grid layout)
+                  _buildOptionsGrid(),
+                ],
               ),
             ),
-            if (isFrequentlyWrong) // แสดงเฉพาะคำที่ตอบผิดบ่อย
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.orange[100],
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.orange[700]!),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text(
-                      "🔔", // เพิ่มไอคอนกระดิ่งเตือน
-                      style: TextStyle(fontSize: 18),
-                    ),
-                    const SizedBox(width: 4),
-                    Icon(Icons.warning_amber_rounded,
-                        color: Colors.orange[700], size: 20),
-                    const SizedBox(width: 4),
-                    Text(
-                      'ตอบผิด $wrongCount ครั้ง',
-                      style: TextStyle(
-                        color: Colors.orange[700],
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
           ],
         ),
-        _buildCefrLevel(),
-        const SizedBox(height: 16),
-        _buildDefinition(),
-        const SizedBox(height: 8),
-        _buildDetailsButton(context),
-        const SizedBox(height: 16),
-        ..._buildOptions(),
       ],
+    );
+  }
+
+  Widget _buildFrequentlyWrongWarning(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+      decoration: BoxDecoration(
+        color: Colors.orange[50],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.orange[700]!),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text(
+            "🔔", // เพิ่มไอคอนกระดิ่งเตือน
+            style: TextStyle(fontSize: 18),
+          ),
+          Text(
+            'ตอบผิด $wrongCount ครั้ง',
+            style: TextStyle(
+              color: Colors.orange[700],
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildCefrLevel() {
     return Text(
       'CEFR Level: ${_formatCEFR(question.senses.isNotEmpty ? question.senses[0]['cefr'] : null)}',
-      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+      style: AppTextStyles.subtitle
+          .copyWith(fontSize: 16, fontWeight: FontWeight.bold),
     );
   }
 
   Widget _buildDefinition() {
     return Text(
       question.definition,
-      style: const TextStyle(fontSize: 18),
+      style: AppTextStyles.body.copyWith(fontSize: 18),
     );
   }
 
@@ -107,31 +127,116 @@ class MultipleChoiceWidget extends StatelessWidget {
           builder: (context) => QuizDetailDialog(senses: question.senses),
         );
       },
-      child: const Text('ดูรายละเอียดเพิ่มเติม'),
+      child: Text(
+        'ดูรายละเอียดเพิ่มเติม',
+        style: AppTextStyles.buttonText.copyWith(
+          color: Theme.of(context).colorScheme.primary,
+        ),
+      ),
     );
   }
 
-  List<Widget> _buildOptions() {
-    return question.options
-        .map((option) => ListTile(
-              title: Text(option),
-              leading: Radio<String>(
+  Widget _buildOptionsGrid() {
+    return BootstrapContainer(
+      fluid: true,
+      padding: EdgeInsets.zero,
+      children: [
+        BootstrapRow(
+          children: _buildOptionPairs(),
+        ),
+      ],
+    );
+  }
+
+  List<BootstrapCol> _buildOptionPairs() {
+    final List<BootstrapCol> optionPairs = [];
+
+    for (int i = 0; i < question.options.length; i++) {
+      final option = question.options[i];
+      optionPairs.add(
+        BootstrapCol(
+          sizes: 'col-xs-6 col-sm-6 col-md-6 col-lg-6 col-xl-6',
+          child: _buildOptionTile(option),
+        ),
+      );
+    }
+
+    return optionPairs;
+  }
+
+  Widget _buildOptionTile(String option) {
+    final bool isSelected = selectedOption == option;
+    final bool isCorrectOption = question.mainWord == option;
+    final bool showResult = isAnswerChecked;
+
+    // กำหนดสีตามสถานะ
+    Color? backgroundColor;
+    Color? textColor;
+    Color borderColor = Colors.grey.shade300;
+    IconData? trailingIcon;
+
+    if (showResult) {
+      if (isCorrectOption) {
+        backgroundColor = Colors.green.shade100;
+        borderColor = Colors.green;
+        textColor = Colors.green.shade900;
+        trailingIcon = Icons.check_circle;
+      } else if (isSelected && !isCorrectOption) {
+        backgroundColor = Colors.red.shade100;
+        borderColor = Colors.red;
+        textColor = Colors.red.shade900;
+        trailingIcon = Icons.cancel;
+      }
+    } else if (isSelected) {
+      backgroundColor = Colors.blue.shade100;
+      borderColor = Colors.blue;
+      textColor = Colors.blue.shade900;
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12, right: 6, left: 6),
+      child: InkWell(
+        onTap: isAnswerChecked ? null : () => onOptionSelected(option),
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: backgroundColor ?? Colors.grey.shade50,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: borderColor,
+              width: isSelected ? 2 : 1,
+            ),
+          ),
+          child: Row(
+            children: [
+              Radio<String>(
                 value: option,
                 groupValue: selectedOption,
                 onChanged: isAnswerChecked
                     ? null
-                    : (value) {
-                        if (value != null) onOptionSelected(value);
-                      },
+                    : (value) => value != null ? onOptionSelected(value) : null,
+                activeColor: textColor ?? Colors.blue,
               ),
-              tileColor: isAnswerChecked
-                  ? (option == question.mainWord
-                      ? Colors.green.withOpacity(0.2)
-                      : (option == selectedOption
-                          ? Colors.red.withOpacity(0.2)
-                          : null))
-                  : null,
-            ))
-        .toList();
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  option,
+                  style: AppTextStyles.body.copyWith(
+                    color: textColor,
+                    fontWeight: isSelected ? FontWeight.bold : null,
+                  ),
+                ),
+              ),
+              if (trailingIcon != null)
+                Icon(
+                  trailingIcon,
+                  color: textColor,
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

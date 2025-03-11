@@ -244,7 +244,7 @@ class _SlideUpPanelState extends State<SlideUpPanel>
         BootstrapCol(
           sizes: 'col-4',
           child: _buildTool(
-            'Google Translate',
+            'Translate',
             Icons.translate_rounded,
             _openGoogleTranslate,
             colorScheme.primary,

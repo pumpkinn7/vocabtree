@@ -26,7 +26,6 @@ class _DailyVocabularyCardState extends State<DailyVocabularyCard> {
 
   Future<void> _fetchRandomWord() async {
     setState(() => _isLoading = true);
-
     try {
       final vocabulary = await _vocabularyService.getRandomVocabulary();
       setState(() {
@@ -34,10 +33,9 @@ class _DailyVocabularyCardState extends State<DailyVocabularyCard> {
         _partOfSpeech = vocabulary?.type ?? '';
         _isLoading = false;
       });
-    } catch (e) {
+    } catch (_) {
       setState(() {
         _word = 'เกิดข้อผิดพลาดในการโหลดคำศัพท์';
-        _partOfSpeech = '';
         _isLoading = false;
       });
     }
@@ -46,201 +44,154 @@ class _DailyVocabularyCardState extends State<DailyVocabularyCard> {
   Future<void> _openGoogleTranslate() async {
     final url =
         Uri.parse('https://translate.google.com/?sl=en&tl=th&text=$_word');
-    if (await canLaunchUrl(url)) {
-      await launchUrl(url, mode: LaunchMode.externalApplication);
-    }
+    await launchUrl(url, mode: LaunchMode.externalApplication);
   }
 
   Future<void> _openCambridgeDictionary() async {
     final url =
         Uri.parse('https://dictionary.cambridge.org/dictionary/english/$_word');
-    if (await canLaunchUrl(url)) {
-      await launchUrl(url, mode: LaunchMode.externalApplication);
-    }
+    await launchUrl(url, mode: LaunchMode.externalApplication);
   }
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    if (_isLoading) {
-      return Card(
-        margin: EdgeInsets.zero,
-        elevation: 3,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        child: const Center(child: CircularProgressIndicator()),
-      );
-    }
-
     return Card(
       margin: EdgeInsets.zero,
       elevation: 3,
-      surfaceTintColor: colorScheme.primary,
-      clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-      child: BootstrapContainer(
-        fluid: true,
-        padding: EdgeInsets.zero,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              colorScheme.surface,
-              colorScheme.surfaceVariant.withOpacity(0.5),
-            ],
-          ),
-        ),
-        children: [
-          // Header
-          BootstrapRow(
-            children: [
-              BootstrapCol(
-                sizes: 'col-12',
-                child: Container(
-                  width: double.infinity,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                  decoration: BoxDecoration(
-                    color: colorScheme.primaryContainer,
-                    borderRadius: const BorderRadius.only(
-                      bottomLeft: Radius.circular(24),
-                      bottomRight: Radius.circular(24),
+      child: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : BootstrapContainer(
+              fluid: true,
+              padding: EdgeInsets.zero,
+              children: [
+                // Header
+                BootstrapRow(
+                  children: [
+                    BootstrapCol(
+                      sizes: 'col-xs-10 col-sm-10 col-md-8 col-lg-8',
+                      offsets:
+                          'offset-xs-1 offset-sm-1 offset-md-2 offset-lg-2',
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        decoration: BoxDecoration(
+                          color: colorScheme.primaryContainer,
+                          borderRadius: const BorderRadius.only(
+                            bottomLeft: Radius.circular(10),
+                            bottomRight: Radius.circular(10),
+                          ),
+                        ),
+                        child: Text(
+                          'แนะนำคำศัพท์ประจำวัน',
+                          style: AppTextStyles.subtitle,
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
                     ),
-                  ),
-                  child: Text(
-                    'แนะนำคำศัพท์ประจำวัน',
-                    style: AppTextStyles.subtitle,
-                    textAlign: TextAlign.center,
-                  ),
+                  ],
                 ),
-              ),
-            ],
-          ),
 
-          // Content
-          BootstrapRow(
-            children: [
-              // Animation Column
-              BootstrapCol(
-                sizes: 'col-xs-12 col-sm-12 col-md-6',
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Center(
-                    child: Lottie.asset(
-                      'assets/animations/Animation - 1741196193367.json',
-                      fit: BoxFit.contain,
-                      height: 125,
+                // Content
+                BootstrapRow(
+                  children: [
+                    // Animation
+                    BootstrapCol(
+                      sizes: 'col-xs-12 col-sm-12 col-md-6',
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Lottie.asset(
+                          'assets/animations/Animation - 1741196193367.json',
+                          height: 125,
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-              ),
-              _buildWordDetails(colorScheme),
-            ],
-          ),
-
-          // Action Bar
-          BootstrapRow(
-            children: [
-              BootstrapCol(
-                sizes: 'col-12',
-                child: Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: colorScheme.surfaceVariant.withOpacity(0.6),
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(24),
-                      topRight: Radius.circular(24),
+                    // Word Details
+                    BootstrapCol(
+                      sizes: 'col-xs-12 col-sm-12 col-md-6',
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (_partOfSpeech.isNotEmpty)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 6),
+                                margin: const EdgeInsets.only(bottom: 12),
+                                decoration: BoxDecoration(
+                                  color: colorScheme.secondaryContainer,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  _partOfSpeech,
+                                  style: AppTextStyles.caption.copyWith(
+                                    color: colorScheme.onSecondaryContainer,
+                                  ),
+                                ),
+                              ),
+                            Text(_word, style: AppTextStyles.headline),
+                          ],
+                        ),
+                      ),
                     ),
-                  ),
-                  child: _buildToolButtons(colorScheme),
+                  ],
                 ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
 
-  Widget _buildPartOfSpeech(ColorScheme colorScheme) {
-    if (_partOfSpeech.isEmpty) return const SizedBox.shrink();
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: colorScheme.secondaryContainer,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(
-        _partOfSpeech,
-        style: AppTextStyles.caption.copyWith(
-          color: colorScheme.onSecondaryContainer,
-        ),
-      ),
-    );
-  }
-
-  BootstrapCol _buildWordDetails(ColorScheme colorScheme) {
-    // เปลี่ยนจาก Widget เป็น BootstrapCol
-    return BootstrapCol(
-      sizes: 'col-xs-12 col-sm-12 col-md-6',
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            _buildPartOfSpeech(colorScheme),
-            Text(
-              _word,
-              style: AppTextStyles.headline,
+                // Actions
+                BootstrapRow(
+                  children: [
+                    BootstrapCol(
+                      sizes: 'col-12',
+                      child: ColoredBox(
+                        color: colorScheme.surfaceVariant.withOpacity(0.6),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: [
+                              _ActionButton(
+                                onPressed: _openGoogleTranslate,
+                                icon: Icons.translate,
+                                label: 'Translate',
+                                color: colorScheme.secondary,
+                              ),
+                              _ActionButton(
+                                onPressed: _openCambridgeDictionary,
+                                icon: Icons.menu_book,
+                                label: 'Cambridge',
+                                color: colorScheme.secondary,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
     );
   }
+}
 
-  Widget _buildToolButtons(ColorScheme colorScheme) {
-    final buttonColor = colorScheme.secondary;
+class _ActionButton extends StatelessWidget {
+  final VoidCallback onPressed;
+  final IconData icon;
+  final String label;
+  final Color color;
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceVariant.withOpacity(0.6),
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(24),
-          topRight: Radius.circular(24),
-        ),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          _buildActionButton(
-            onPressed: _openGoogleTranslate,
-            icon: Icons.translate,
-            label: 'Google Translate',
-            color: buttonColor,
-          ),
-          _buildActionButton(
-            onPressed: _openCambridgeDictionary,
-            icon: Icons.menu_book,
-            label: 'Cambridge',
-            color: buttonColor,
-          ),
-        ],
-      ),
-    );
-  }
+  const _ActionButton({
+    required this.onPressed,
+    required this.icon,
+    required this.label,
+    required this.color,
+  });
 
-  Widget _buildActionButton({
-    required VoidCallback onPressed,
-    required IconData icon,
-    required String label,
-    required Color color,
-  }) {
+  @override
+  Widget build(BuildContext context) {
     return InkWell(
       onTap: onPressed,
       borderRadius: BorderRadius.circular(16),
@@ -251,10 +202,7 @@ class _DailyVocabularyCardState extends State<DailyVocabularyCard> {
           children: [
             Icon(icon, color: color, size: 28),
             const SizedBox(height: 8),
-            Text(
-              label,
-              style: AppTextStyles.caption.copyWith(color: color),
-            ),
+            Text(label, style: AppTextStyles.caption.copyWith(color: color)),
           ],
         ),
       ),

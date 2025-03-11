@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-
+import '../../../core/theme/text_styles.dart';
 import '../model/flashcard_topic_model.dart';
 
 /// แสดงการ์ดคำศัพท์
@@ -8,6 +8,9 @@ class FlashcardItem extends StatelessWidget {
   final int currentIndex;
   final int totalItems;
   final bool showMeaning;
+  final bool showThaiTranslation; // เพิ่มพารามิเตอร์
+  final String thaiTranslation; // เพิ่มพารามิเตอร์
+  final bool isTranslating; // เพิ่มพารามิเตอร์
   final VoidCallback onDetailPressed;
 
   const FlashcardItem({
@@ -16,83 +19,86 @@ class FlashcardItem extends StatelessWidget {
     required this.currentIndex,
     required this.totalItems,
     required this.showMeaning,
+    required this.showThaiTranslation, // เพิ่มพารามิเตอร์
+    required this.thaiTranslation, // เพิ่มพารามิเตอร์
+    required this.isTranslating, // เพิ่มพารามิเตอร์
     required this.onDetailPressed,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: SizedBox(
-        width: MediaQuery.of(context).size.width * 0.85,
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Stack(
-            children: [
-              Center(
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      // 1. คำศัพท์
-                      Text(
-                        showMeaning
-                            ? flashcard.definition
-                            : flashcard
-                                .mainWord, // เปลี่ยนจาก word เป็น mainWord
-                        style: const TextStyle(
-                          fontSize: 35,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
+    final colorScheme = Theme.of(context).colorScheme;
 
-                      // 2. ชนิดคำ
-                      Text(
-                        flashcard.partOfSpeech,
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontStyle: FontStyle.italic,
-                        ),
+    // กำหนดข้อความที่จะแสดง
+    String displayText;
+    bool isItalic = false;
+
+    if (isTranslating) {
+      displayText = 'กำลังแปล...';
+      isItalic = true;
+    } else if (showThaiTranslation) {
+      displayText = thaiTranslation;
+      isItalic = true;
+    } else if (showMeaning) {
+      displayText = flashcard.definition;
+    } else {
+      displayText = flashcard.mainWord;
+    }
+
+    return Card(
+      elevation: 8,
+      margin: const EdgeInsets.all(16),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+      ),
+      // กลับไปใช้ขนาดการ์ดแบบเดิม
+      child: Stack(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Center(
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      displayText,
+                      style: AppTextStyles.headline.copyWith(
+                        fontSize: 32,
+                        fontWeight: FontWeight.bold,
+                        fontStyle:
+                            isItalic ? FontStyle.italic : FontStyle.normal,
                       ),
-                      // Definition และ CEFR level ถูกลบออกตามที่กำหนด
-                    ],
-                  ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 16),
+
+                    // แสดงชนิดคำตลอดเวลาโดยไม่ขึ้นกับสถานะการแปล
+                    Text(
+                      flashcard.partOfSpeech,
+                      style: AppTextStyles.body.copyWith(
+                        fontSize: 18,
+                        fontStyle: FontStyle.italic,
+                        color: colorScheme.primary,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              // Only keep the detail button
-              _buildDetailButton(),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDetailButton() {
-    return Positioned(
-      top: 16,
-      right: 16,
-      child: GestureDetector(
-        onTap: onDetailPressed,
-        child: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: const BoxDecoration(
-            color: Colors.blue,
-            shape: BoxShape.circle,
-          ),
-          child: const Text(
-            '?',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
             ),
           ),
-        ),
+          Positioned(
+            top: 8,
+            right: 8,
+            child: IconButton(
+              icon: Icon(
+                Icons.info_outline,
+                color: colorScheme.primary,
+              ),
+              onPressed: onDetailPressed,
+            ),
+          ),
+        ],
       ),
     );
   }

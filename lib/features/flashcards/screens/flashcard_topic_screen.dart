@@ -1,13 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bootstrap/flutter_bootstrap.dart';
 import 'package:swipe_cards/swipe_cards.dart';
+import 'package:translator/translator.dart';
 
 import '../controllers/flashcard_controller.dart';
 import '../model/flashcard_topic_model.dart';
 import '../model/swipe_direction.dart';
 import '../widgets/flashcard_action_bar.dart';
+import '../widgets/flashcard_counter.dart';
 import '../widgets/flashcard_detail_dialog.dart';
+import '../widgets/flashcard_empty_state.dart';
 import '../widgets/flashcard_header.dart';
 import '../widgets/flashcard_item.dart';
+import '../widgets/flashcard_loading.dart';
 import 'flashcard_summary_screen.dart';
 
 class FlashcardScreen extends StatefulWidget {
@@ -28,9 +33,13 @@ class FlashcardScreenState extends State<FlashcardScreen> {
   late FlashcardController _controller;
   bool _isLoading = true;
   bool _isShowingMeaning = false;
+  bool _isShowingThaiTranslation = false;
   int _currentIndex = 0;
   List<SwipeItem> _swipeItems = [];
   late MatchEngine _matchEngine;
+  final GoogleTranslator _translator = GoogleTranslator();
+  String _currentTranslation = '';
+  bool _isTranslating = false;
 
   @override
   void initState() {
@@ -54,14 +63,73 @@ class FlashcardScreenState extends State<FlashcardScreen> {
 
   Future<void> _fetchData() async {
     setState(() => _isLoading = true);
+
+    // บันทึกเวลาเริ่มต้น
+    final startTime = DateTime.now();
+
+    // ดึงข้อมูล flashcards
     await _controller.fetchFlashcards();
-    setState(() => _isLoading = false);
+
+    // คำนวณเวลาที่ใช้ไปแล้ว
+    final elapsedTime = DateTime.now().difference(startTime).inMilliseconds;
+    final minimumLoadingTime = 4000; // 4 วินาที (4000 มิลลิวินาที)
+
+    // ถ้าใช้เวลาน้อยกว่า 4 วินาที ให้รอจนครบ
+    if (elapsedTime < minimumLoadingTime) {
+      await Future.delayed(
+        Duration(milliseconds: minimumLoadingTime - elapsedTime),
+      );
+    }
+
+    // อัพเดทสถานะเมื่อเสร็จสิ้นการโหลด
+    if (mounted) {
+      setState(() => _isLoading = false);
+    }
   }
 
-  void _toggleShowMeaning() {
-    setState(() {
-      _isShowingMeaning = !_isShowingMeaning;
-    });
+  // ลบฟังก์ชัน _toggleShowMeaning ที่ไม่ได้ใช้งาน
+
+  // เพิ่มฟังก์ชันใหม่สำหรับสลับภาษา
+  void _toggleThaiTranslation() async {
+    if (_matchEngine.currentItem == null) return;
+
+    final flashcard = _matchEngine.currentItem!.content as Flashcard;
+
+    if (_isShowingThaiTranslation) {
+      // สลับกลับไปเป็นภาษาอังกฤษ
+      setState(() {
+        _isShowingThaiTranslation = false;
+      });
+    } else {
+      // สลับไปเป็นภาษาไทย
+      setState(() {
+        _isTranslating = true;
+      });
+
+      try {
+        final translation = await _translator.translate(
+          flashcard.mainWord,
+          from: 'en',
+          to: 'th',
+        );
+
+        if (mounted) {
+          setState(() {
+            _currentTranslation = translation.text;
+            _isShowingThaiTranslation = true;
+            _isTranslating = false;
+          });
+        }
+      } catch (e) {
+        if (mounted) {
+          setState(() {
+            _currentTranslation = 'ไม่สามารถแปลได้';
+            _isShowingThaiTranslation = true;
+            _isTranslating = false;
+          });
+        }
+      }
+    }
   }
 
   Future<void> _navigateToSummary() async {
@@ -94,6 +162,7 @@ class FlashcardScreenState extends State<FlashcardScreen> {
     setState(() {
       _currentIndex++;
       _isShowingMeaning = false;
+      _isShowingThaiTranslation = false;
     });
   }
 
@@ -105,6 +174,8 @@ class FlashcardScreenState extends State<FlashcardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Scaffold(
       appBar: FlashcardHeader(topic: widget.topic),
       body: Container(
@@ -114,113 +185,134 @@ class FlashcardScreenState extends State<FlashcardScreen> {
             fit: BoxFit.cover,
           ),
         ),
-        child: _buildContent(),
+        child: _buildContent(colorScheme),
       ),
     );
   }
 
-  Widget _buildContent() {
+  Widget _buildContent(ColorScheme colorScheme) {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return const FlashcardLoading();
     }
 
     if (_swipeItems.isEmpty) {
-      return const Center(child: Text('ไม่มีคำศัพท์ให้เรียน'));
+      return const FlashcardEmptyState();
     }
 
     return Column(
       children: [
-        // Counter is positioned here, above the card
-        _buildCounter(),
-        Expanded(
-          child: SwipeCards(
-            matchEngine: _matchEngine,
-            itemBuilder: (context, index) {
-              final flashcard = _swipeItems[index].content as Flashcard;
-              final isNextCard = index == _currentIndex + 1;
+        // Counter
+        BootstrapContainer(
+          fluid: true,
+          children: [
+            BootstrapRow(
+              children: [
+                BootstrapCol(
+                  sizes: 'col-xs-10 col-sm-10 col-md-8 col-lg-4',
+                  offsets: 'offset-xs-1 offset-sm-1 offset-md-2 offset-lg-4',
+                  child: FlashcardCounter(
+                    currentIndex: _currentIndex + 1,
+                    totalCount: _swipeItems.length,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
 
-              return FlashcardItem(
-                flashcard: flashcard,
-                currentIndex: index + 1,
-                totalItems: _swipeItems.length,
-                showMeaning: _isShowingMeaning && !isNextCard,
-                onDetailPressed: () => _showFlashcardDetail(flashcard),
-              );
-            },
-            onStackFinished: _navigateToSummary,
-            itemChanged: (_, int index) => setState(() {
-              _currentIndex = index;
-              _isShowingMeaning = false;
-            }),
-            upSwipeAllowed: true,
+        Expanded(
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SizedBox(
+                width: 380,
+                child: SwipeCards(
+                  matchEngine: _matchEngine,
+                  itemBuilder: (context, index) {
+                    final flashcard = _swipeItems[index].content as Flashcard;
+                    final isNextCard = index == _currentIndex + 1;
+
+                    final bool showThai = !isNextCard &&
+                        _isShowingThaiTranslation &&
+                        index == _currentIndex;
+
+                    return FlashcardItem(
+                      flashcard: flashcard,
+                      currentIndex: index + 1,
+                      totalItems: _swipeItems.length,
+                      showMeaning: _isShowingMeaning && !isNextCard,
+                      showThaiTranslation: showThai,
+                      thaiTranslation: _currentTranslation,
+                      isTranslating: _isTranslating,
+                      onDetailPressed: () => _showFlashcardDetail(flashcard),
+                    );
+                  },
+                  onStackFinished: _navigateToSummary,
+                  itemChanged: (_, int index) => setState(() {
+                    _currentIndex = index;
+                    _isShowingMeaning = false;
+                    _isShowingThaiTranslation = false;
+                  }),
+                  upSwipeAllowed: true,
+                ),
+              ),
+            ],
           ),
         ),
-        FlashcardActionBar(
-          onNopePressed: () {
-            if (_matchEngine.currentItem != null) {
-              final flashcard = _matchEngine.currentItem!.content as Flashcard;
-              _controller.handleSwipe(flashcard, SwipeDirection.left);
-              _matchEngine.currentItem?.nope();
-              _incrementCurrentIndex();
-            }
-          },
-          onSpeakPressed: () {
-            if (_matchEngine.currentItem != null) {
-              final flashcard = _matchEngine.currentItem!.content as Flashcard;
-              _controller.speakWord(flashcard.mainWord);
-            }
-          },
-          onSuperlikePressed: () {
-            if (_matchEngine.currentItem != null) {
-              final flashcard = _matchEngine.currentItem!.content as Flashcard;
-              _controller.handleSwipe(flashcard, SwipeDirection.up);
-              _matchEngine.currentItem?.superLike();
-              _incrementCurrentIndex();
-            }
-          },
-          onToggleMeaningPressed: _toggleShowMeaning,
-          onLikePressed: () {
-            if (_matchEngine.currentItem != null) {
-              final flashcard = _matchEngine.currentItem!.content as Flashcard;
-              _controller.handleSwipe(flashcard, SwipeDirection.right);
-              _matchEngine.currentItem?.like();
-              _incrementCurrentIndex();
-            }
-          },
+
+        // Action Bar
+        BootstrapContainer(
+          fluid: true,
+          children: [
+            BootstrapRow(
+              children: [
+                BootstrapCol(
+                  sizes: 'col-xs-12 col-sm-12 col-md-8 col-lg-4',
+                  offsets: 'offset-xs-0 offset-sm-0 offset-md-2 offset-lg-4',
+                  child: FlashcardActionBar(
+                    onNopePressed: () {
+                      if (_matchEngine.currentItem != null) {
+                        final flashcard =
+                            _matchEngine.currentItem!.content as Flashcard;
+                        _controller.handleSwipe(flashcard, SwipeDirection.left);
+                        _matchEngine.currentItem?.nope();
+                        _incrementCurrentIndex();
+                      }
+                    },
+                    onSpeakPressed: () {
+                      if (_matchEngine.currentItem != null) {
+                        final flashcard =
+                            _matchEngine.currentItem!.content as Flashcard;
+                        _controller.speakWord(flashcard.mainWord);
+                      }
+                    },
+                    onSuperlikePressed: () {
+                      if (_matchEngine.currentItem != null) {
+                        final flashcard =
+                            _matchEngine.currentItem!.content as Flashcard;
+                        _controller.handleSwipe(flashcard, SwipeDirection.up);
+                        _matchEngine.currentItem?.superLike();
+                        _incrementCurrentIndex();
+                      }
+                    },
+                    onToggleMeaningPressed: _toggleThaiTranslation,
+                    onLikePressed: () {
+                      if (_matchEngine.currentItem != null) {
+                        final flashcard =
+                            _matchEngine.currentItem!.content as Flashcard;
+                        _controller.handleSwipe(
+                            flashcard, SwipeDirection.right);
+                        _matchEngine.currentItem?.like();
+                        _incrementCurrentIndex();
+                      }
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
       ],
-    );
-  }
-
-  Widget _buildCounter() {
-    if (_swipeItems.isEmpty) return const SizedBox.shrink();
-
-    return Container(
-      width: MediaQuery.of(context).size.width,
-      padding: const EdgeInsets.only(top: 16, bottom: 8),
-      child: Align(
-        alignment: Alignment.centerRight,
-        child: Padding(
-          padding: EdgeInsets.only(
-            right: MediaQuery.of(context).size.width * 0.075,
-          ),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.grey.withOpacity(0.8),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              '${_currentIndex + 1} of ${_swipeItems.length}',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ),
-      ),
     );
   }
 }

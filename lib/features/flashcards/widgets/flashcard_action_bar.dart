@@ -20,11 +20,13 @@ class FlashcardActionBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.3),
+        color: colorScheme.surface.withOpacity(0.3),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(

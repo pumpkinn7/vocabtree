@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:translator/translator.dart';
 
+import '../../../core/theme/text_styles.dart';
 import '../model/flashcard_topic_model.dart';
 
 class FlashcardDetailDialog extends StatefulWidget {
@@ -25,7 +26,6 @@ class _FlashcardDetailDialogState extends State<FlashcardDetailDialog> {
     _loadData();
   }
 
-  // โหลดข้อมูลและจัดการกรณีต่างๆ แบบกระชับ
   Future<void> _loadData() async {
     try {
       final doc = await FirebaseFirestore.instance
@@ -33,27 +33,27 @@ class _FlashcardDetailDialogState extends State<FlashcardDetailDialog> {
           .doc(widget.flashcard.id)
           .get();
 
-      final List<Map<String, dynamic>> loadedSenses = [];
+      List<Map<String, dynamic>> loadedSenses = [];
 
-      // กรณีมีข้อมูล senses
-      if (doc.exists && doc.data() != null && doc.data()!['senses'] is List) {
-        final sensesData = doc.data()!['senses'] as List;
-        final data = doc.data()!;
-
-        for (var sense in sensesData) {
-          if (sense is Map<String, dynamic>) {
-            loadedSenses.add({
-              'title': sense['title']?.toString().isNotEmpty == true
-                  ? sense['title']
-                  : 'General',
-              'usage': sense['usage']?.toString().isNotEmpty == true
-                  ? sense['usage']
-                  : 'N/A',
-              'partOfSpeech': sense['partOfSpeech'] ?? data['mainPos'] ?? '',
-              'cefr': sense['cefr'] ?? widget.flashcard.cefrLevel,
-              'definition': sense['definition'] ?? '',
-              'examples': sense['examples'] ?? [],
-            });
+      if (doc.exists) {
+        final data = doc.data();
+        if (data != null) {
+          // ดึงข้อมูล Senses
+          if (data['senses'] is List && (data['senses'] as List).isNotEmpty) {
+            for (var sense in data['senses']) {
+              if (sense is Map<String, dynamic>) {
+                loadedSenses.add({
+                  'title': sense['title'] ?? 'General',
+                  'usage': sense['usage'] ?? 'N/A',
+                  'partOfSpeech':
+                      sense['partOfSpeech'] ?? widget.flashcard.partOfSpeech,
+                  'cefr': sense['cefr'] ?? widget.flashcard.cefrLevel,
+                  'definition':
+                      sense['definition'] ?? widget.flashcard.definition,
+                  'examples': sense['examples'] ?? [],
+                });
+              }
+            }
           }
         }
       }
@@ -95,7 +95,6 @@ class _FlashcardDetailDialogState extends State<FlashcardDetailDialog> {
     }
   }
 
-  // แปลภาษาแบบกระชับ
   Future<void> _toggleTranslation() async {
     if (isTranslated) {
       setState(() => isTranslated = false);
@@ -136,7 +135,10 @@ class _FlashcardDetailDialogState extends State<FlashcardDetailDialog> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('ไม่สามารถแปลภาษาได้: $e')),
+          SnackBar(
+            content: Text('ไม่สามารถแปลภาษาได้: $e'),
+            duration: const Duration(seconds: 3),
+          ),
         );
       }
     }
@@ -144,38 +146,36 @@ class _FlashcardDetailDialogState extends State<FlashcardDetailDialog> {
 
   @override
   Widget build(BuildContext context) {
-    // แสดง loading
+    final colorScheme = Theme.of(context).colorScheme;
+
     if (isLoading) {
-      return const AlertDialog(
-        content: SizedBox(
+      return AlertDialog(
+        backgroundColor: colorScheme.surface,
+        content: const SizedBox(
           height: 100,
           child: Center(child: CircularProgressIndicator()),
         ),
       );
     }
 
-    // แสดงข้อความว่างถ้าไม่มีข้อมูล
-    if (senses.isEmpty) {
-      return AlertDialog(
-        title: const Text('ข้อผิดพลาด'),
-        content: const Text('ไม่พบข้อมูลคำศัพท์'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('ปิด'),
-          ),
-        ],
-      );
-    }
-
     return AlertDialog(
+      backgroundColor: colorScheme.surface,
+      elevation: 8, // เพิ่มค่า elevation
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
       title: Row(
         children: [
-          const Expanded(child: Text("All Meanings")),
+          Expanded(
+            child: Text(
+              "ความหมายของ ${widget.flashcard.mainWord}",
+              style: AppTextStyles.subtitle,
+            ),
+          ),
           IconButton(
             icon: Icon(
               isTranslated ? Icons.g_translate_outlined : Icons.translate,
-              color: Colors.blue,
+              color: colorScheme.primary,
             ),
             onPressed: _toggleTranslation,
             tooltip: isTranslated ? 'แสดงภาษาอังกฤษ' : 'แปลเป็นภาษาไทย',
@@ -185,28 +185,38 @@ class _FlashcardDetailDialogState extends State<FlashcardDetailDialog> {
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: senses
               .asMap()
               .entries
-              .map((entry) => _buildSenseCard(entry.key, entry.value))
+              .map((entry) =>
+                  _buildSenseCard(entry.key, entry.value, colorScheme))
               .toList(),
         ),
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('ปิด'),
+          child: Text(
+            'ปิด',
+            style: AppTextStyles.buttonText.copyWith(
+              color: colorScheme.primary,
+            ),
+          ),
         ),
       ],
     );
   }
 
   // สร้างการ์ดแสดงความหมายแบบกระชับ
-  Widget _buildSenseCard(int index, Map<String, dynamic> sense) {
+  Widget _buildSenseCard(
+      int index, Map<String, dynamic> sense, ColorScheme colorScheme) {
     // กำหนดค่าที่ใช้แสดงผล
-    final String title = sense['title'] ?? 'General';
-    final String usage = sense['usage'] ?? 'N/A';
+    final String title = sense['title']?.toString().isNotEmpty == true
+        ? sense['title'].toString()
+        : 'General';
+    final String usage = sense['usage']?.toString().isNotEmpty == true
+        ? sense['usage'].toString()
+        : 'N/A';
     final String partOfSpeech = sense['partOfSpeech'] ?? '';
     final String cefr = sense['cefr']?.toString().contains('›') == true
         ? 'N/A'
@@ -217,6 +227,16 @@ class _FlashcardDetailDialogState extends State<FlashcardDetailDialog> {
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
+      color: colorScheme.surface,
+      elevation: 2, // เพิ่มค่า elevation
+      shadowColor: Colors.black.withOpacity(0.1),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(
+          color: colorScheme.outline.withOpacity(0.3),
+          width: 1,
+        ),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -228,20 +248,19 @@ class _FlashcardDetailDialogState extends State<FlashcardDetailDialog> {
                 Expanded(
                   child: Text(
                     title,
-                    style: const TextStyle(
-                      fontSize: 18,
+                    style: AppTextStyles.subtitle.copyWith(
+                      fontSize: 16,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
                 Text(
                   usage,
-                  style: TextStyle(
-                    fontSize: 14,
+                  style: AppTextStyles.caption.copyWith(
                     fontStyle: FontStyle.italic,
                     color: usage == 'N/A'
-                        ? Colors.grey.withOpacity(0.6)
-                        : Colors.grey,
+                        ? colorScheme.outline.withOpacity(0.6)
+                        : colorScheme.outline,
                   ),
                 ),
               ],
@@ -254,43 +273,41 @@ class _FlashcardDetailDialogState extends State<FlashcardDetailDialog> {
                 Expanded(
                   child: Text(
                     partOfSpeech,
-                    style: const TextStyle(
+                    style: AppTextStyles.body.copyWith(
                       fontWeight: FontWeight.w500,
-                      color: Colors.blue,
+                      color: colorScheme.primary,
                     ),
                   ),
                 ),
                 Text(
                   'CEFR: $cefr',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey,
+                  style: AppTextStyles.caption.copyWith(
+                    color: colorScheme.outline,
                   ),
                 ),
               ],
             ),
 
             // คำจำกัดความ
-            const SizedBox(height: 8),
-            Text(
-              isTranslated
-                  ? (translations['def_$index'] ?? definition)
-                  : definition,
-              style: TextStyle(
-                fontSize: 16,
-                fontStyle: isTranslated ? FontStyle.italic : FontStyle.normal,
+            if (definition.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(
+                isTranslated
+                    ? (translations['def_$index'] ?? definition)
+                    : definition,
+                style: AppTextStyles.body.copyWith(
+                  fontStyle: isTranslated ? FontStyle.italic : FontStyle.normal,
+                ),
               ),
-            ),
+            ],
 
             // ตัวอย่างประโยค (แสดงเฉพาะเมื่อมีข้อมูล)
             if (examples.isNotEmpty) ...[
               const SizedBox(height: 8),
-              const Text(
+              Text(
                 'Examples:',
-                style: TextStyle(
-                  fontSize: 14,
+                style: AppTextStyles.caption.copyWith(
                   fontWeight: FontWeight.w500,
-                  color: Colors.grey,
                 ),
               ),
               const SizedBox(height: 4),
@@ -301,10 +318,9 @@ class _FlashcardDetailDialogState extends State<FlashcardDetailDialog> {
                   padding: const EdgeInsets.only(left: 8, bottom: 4),
                   child: Text(
                     '• ${isTranslated ? translatedExample : e.value}',
-                    style: const TextStyle(
+                    style: AppTextStyles.body.copyWith(
                       fontSize: 14,
                       fontStyle: FontStyle.italic,
-                      color: Colors.black87,
                     ),
                   ),
                 );

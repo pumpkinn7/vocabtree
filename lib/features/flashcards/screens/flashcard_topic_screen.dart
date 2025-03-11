@@ -9,7 +9,6 @@ import '../model/swipe_direction.dart';
 import '../widgets/flashcard_action_bar.dart';
 import '../widgets/flashcard_counter.dart';
 import '../widgets/flashcard_detail_dialog.dart';
-import '../widgets/flashcard_empty_state.dart';
 import '../widgets/flashcard_header.dart';
 import '../widgets/flashcard_item.dart';
 import '../widgets/flashcard_loading.dart';
@@ -143,9 +142,11 @@ class FlashcardScreenState extends State<FlashcardScreen> {
           userId: widget.userId,
           topic: widget.topic,
           knownCount: summaryData['knownCount'] ?? 0,
-          reviewCount: summaryData['reviewCount'] ?? 0,
           unknownCount: summaryData['unknownCount'] ?? 0,
+          reviewCount: summaryData['reviewCount'] ?? 0,
           totalCount: summaryData['totalCount'] ?? 0,
+          sessionUnknownWords:
+              List<String>.from(summaryData['sessionUnknownWords'] ?? []),
         ),
       ),
     );
@@ -156,14 +157,6 @@ class FlashcardScreenState extends State<FlashcardScreen> {
       context: context,
       builder: (context) => FlashcardDetailDialog(flashcard: flashcard),
     );
-  }
-
-  void _incrementCurrentIndex() {
-    setState(() {
-      _currentIndex++;
-      _isShowingMeaning = false;
-      _isShowingThaiTranslation = false;
-    });
   }
 
   @override
@@ -195,8 +188,17 @@ class FlashcardScreenState extends State<FlashcardScreen> {
       return const FlashcardLoading();
     }
 
+    // ลบส่วนที่ตรวจสอบ swipeItems ว่าง และแสดง FlashcardEmptyState
+    // แทนที่ด้วยการนำทางไปยังหน้าสรุปทันทีถ้าไม่มีการ์ด
     if (_swipeItems.isEmpty) {
-      return const FlashcardEmptyState();
+      // นำทางไปยังหน้าสรุปโดยตรงเมื่อไม่มีการ์ด
+      // เราคงไว้เพียงการแสดง loading เพื่อไม่ให้หน้าจอว่างขณะรอการนำทาง
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _navigateToSummary();
+      });
+      return const Center(
+        child: CircularProgressIndicator(),
+      );
     }
 
     return Column(
@@ -276,7 +278,6 @@ class FlashcardScreenState extends State<FlashcardScreen> {
                             _matchEngine.currentItem!.content as Flashcard;
                         _controller.handleSwipe(flashcard, SwipeDirection.left);
                         _matchEngine.currentItem?.nope();
-                        _incrementCurrentIndex();
                       }
                     },
                     onSpeakPressed: () {
@@ -292,7 +293,6 @@ class FlashcardScreenState extends State<FlashcardScreen> {
                             _matchEngine.currentItem!.content as Flashcard;
                         _controller.handleSwipe(flashcard, SwipeDirection.up);
                         _matchEngine.currentItem?.superLike();
-                        _incrementCurrentIndex();
                       }
                     },
                     onToggleMeaningPressed: _toggleThaiTranslation,
@@ -303,7 +303,6 @@ class FlashcardScreenState extends State<FlashcardScreen> {
                         _controller.handleSwipe(
                             flashcard, SwipeDirection.right);
                         _matchEngine.currentItem?.like();
-                        _incrementCurrentIndex();
                       }
                     },
                   ),

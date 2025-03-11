@@ -32,54 +32,53 @@ class FlashcardActionBar extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          _buildActionButton(
-            'assets/images/Flashcard-1.png',
-            40,
-            40,
-            onNopePressed,
+          // ปุ่มต่างๆ ที่มีการแก้ไขตรงฟังก์ชัน onTap เพื่อให้การอัพเดตค่าเป็นไปตามลำดับที่ถูกต้อง
+          GestureDetector(
+            onTap: onNopePressed,
+            child: Image.asset(
+              'assets/images/Flashcard-1.png',
+              width: 40,
+              height: 40,
+              fit: BoxFit.contain,
+            ),
           ),
-          _buildActionButton(
-            'assets/images/Flashcard-2.png',
-            50,
-            50,
-            onSpeakPressed,
+          GestureDetector(
+            onTap: onSpeakPressed,
+            child: Image.asset(
+              'assets/images/Flashcard-2.png',
+              width: 50,
+              height: 50,
+              fit: BoxFit.contain,
+            ),
           ),
-          _buildActionButton(
-            'assets/images/Flashcard-3.png',
-            60,
-            60,
-            onSuperlikePressed,
+          GestureDetector(
+            onTap: onSuperlikePressed,
+            child: Image.asset(
+              'assets/images/Flashcard-3.png',
+              width: 60,
+              height: 60,
+              fit: BoxFit.contain,
+            ),
           ),
-          _buildActionButton(
-            'assets/images/Flashcard-4.png',
-            50,
-            50,
-            onToggleMeaningPressed,
+          GestureDetector(
+            onTap: onToggleMeaningPressed,
+            child: Image.asset(
+              'assets/images/Flashcard-4.png',
+              width: 50,
+              height: 50,
+              fit: BoxFit.contain,
+            ),
           ),
-          _buildActionButton(
-            'assets/images/Flashcard-5.png',
-            40,
-            40,
-            onLikePressed,
+          GestureDetector(
+            onTap: onLikePressed,
+            child: Image.asset(
+              'assets/images/Flashcard-5.png',
+              width: 40,
+              height: 40,
+              fit: BoxFit.contain,
+            ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildActionButton(
-    String imagePath,
-    double width,
-    double height,
-    VoidCallback onPressed,
-  ) {
-    return GestureDetector(
-      onTap: onPressed,
-      child: Image.asset(
-        imagePath,
-        width: width,
-        height: height,
-        fit: BoxFit.contain,
       ),
     );
   }

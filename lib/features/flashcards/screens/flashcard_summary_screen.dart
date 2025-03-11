@@ -1,7 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bootstrap/flutter_bootstrap.dart';
 
-import '../model/swipe_direction.dart'; // Add SwipeDirection import
+import '../../../core/theme/text_styles.dart';
+import '../model/swipe_direction.dart';
 import '../services/flashcard_service.dart';
+import '../widgets/summary_statistics_widget.dart';
+import '../widgets/unknown_words_section.dart';
+import '../widgets/summary_action_buttons.dart';
+import '../widgets/reset_confirmation_dialog.dart';
 
 class FlashcardSummaryScreen extends StatefulWidget {
   final String userId;
@@ -10,6 +16,7 @@ class FlashcardSummaryScreen extends StatefulWidget {
   final int unknownCount;
   final int reviewCount;
   final int totalCount;
+  final List<String> sessionUnknownWords;
 
   const FlashcardSummaryScreen({
     super.key,
@@ -19,6 +26,7 @@ class FlashcardSummaryScreen extends StatefulWidget {
     required this.unknownCount,
     required this.reviewCount,
     required this.totalCount,
+    required this.sessionUnknownWords,
   });
 
   @override
@@ -35,22 +43,47 @@ class _FlashcardSummaryScreenState extends State<FlashcardSummaryScreen> {
   @override
   void initState() {
     super.initState();
-    _fetchUnknownWords();
+    _loadUnknownWords();
   }
 
-  Future<void> _fetchUnknownWords() async {
+  // แก้ไขวิธีการโหลดคำศัพท์ที่ไม่รู้
+  Future<void> _loadUnknownWords() async {
     try {
-      final statuses = await _service.getWordStatuses(
-        widget.userId,
-        widget.topic,
-      );
+      // ใช้ Set เพื่อป้องกันคำซ้ำ
+      Set<String> wordTexts = {};
+
+      // แปลง ID เป็นคำศัพท์
+      for (final wordId in widget.sessionUnknownWords) {
+        try {
+          final wordDetail = await _service.getWordDetail(wordId);
+          if (wordDetail != null) {
+            // เพิ่มคำลงใน Set ซึ่งจะเก็บเฉพาะคำที่ไม่ซ้ำกัน
+            wordTexts.add(wordDetail.mainWord);
+          } else {
+            wordTexts.add(wordId); // ถ้าดึงข้อมูลไม่ได้ ให้ใช้ ID แทน
+          }
+        } catch (e) {
+          wordTexts.add(wordId);
+        }
+      }
 
       setState(() {
-        _unknownWords = statuses['unknown_words'] ?? [];
+        // แปลง Set เป็น List เพื่อใช้ในการแสดงผล
+        _unknownWords = wordTexts.toList();
       });
     } catch (e) {
-      debugPrint('Error fetching unknown words: $e');
+      debugPrint('Error loading unknown words: $e');
     }
+  }
+
+  void _toggleWordSelection(String word) {
+    setState(() {
+      if (_selectedWords.contains(word)) {
+        _selectedWords.remove(word);
+      } else {
+        _selectedWords.add(word);
+      }
+    });
   }
 
   Future<void> _addSelectedWordsToBank() async {
@@ -82,31 +115,10 @@ class _FlashcardSummaryScreenState extends State<FlashcardSummaryScreen> {
   }
 
   Future<void> _confirmReset() async {
-    final shouldReset = await showDialog<bool>(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('ยืนยันการรีเซ็ต'),
-          content: const Text(
-            'คุณแน่ใจหรือไม่ว่าต้องการรีเซ็ตคำศัพท์ทั้งหมด?\n'
-            'สถานะของคำศัพท์ทั้งหมดจะถูกล้างและเริ่มต้นใหม่อีกครั้ง.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('ยกเลิก'),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('ยืนยัน'),
-            ),
-          ],
-        );
-      },
-    );
+    final shouldReset = await ResetConfirmationDialog.show(context);
 
     if (shouldReset == true) {
-      _resetAllWords();
+      await _resetAllWords();
     }
   }
 
@@ -117,7 +129,6 @@ class _FlashcardSummaryScreenState extends State<FlashcardSummaryScreen> {
 
     try {
       await _service.resetTopic(widget.userId, widget.topic);
-
       if (!mounted) return;
       Navigator.pop(context);
     } catch (e) {
@@ -131,102 +142,133 @@ class _FlashcardSummaryScreenState extends State<FlashcardSummaryScreen> {
     }
   }
 
+  void _restartFlashcards() {
+    Navigator.pop(context);
+  }
+
+  String _formatTopicName(String topic) {
+    return topic
+        .split('_')
+        .map(
+            (w) => w.isNotEmpty ? '${w[0].toUpperCase()}${w.substring(1)}' : '')
+        .join(' ');
+  }
+
   @override
   Widget build(BuildContext context) {
-    final bool canAddToBank = _selectedWords.isNotEmpty && !_isAddingToBank;
+    final colorScheme = Theme.of(context).colorScheme;
+    bootstrapGridParameters(gutterSize: 16);
+
+    if (_isResetting) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Text('สรุปผลการเรียนรู้', style: AppTextStyles.headline),
+          elevation: 0,
+        ),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(color: colorScheme.primary),
+              const SizedBox(height: 16),
+              Text('กำลังรีเซ็ตข้อมูล...', style: AppTextStyles.body),
+            ],
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('สรุปผล'),
+        title: Text('สรุปผลการเรียนรู้', style: AppTextStyles.headline),
+        elevation: 0,
       ),
-      body: _isResetting
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                children: [
-                  Text("จำนวนคำศัพท์ทั้งหมด: ${widget.totalCount}"),
-                  const SizedBox(height: 8),
-                  Text("คำศัพท์ที่รู้ (Known): ${widget.knownCount}"),
-                  const SizedBox(height: 8),
-                  Text("คำศัพท์ที่ไม่รู้ (Unknown): ${widget.unknownCount}"),
-                  const SizedBox(height: 8),
-                  Text("คำศัพท์ที่ต้องทบทวน (Review): ${widget.reviewCount}"),
-                  const SizedBox(height: 24),
-                  const Divider(),
-                  const Text(
-                    "รายการคำศัพท์ที่ยังไม่รู้",
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  if (_unknownWords.isEmpty)
-                    const Text("ไม่มีคำศัพท์ที่ไม่รู้แล้ว!")
-                  else
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: _unknownWords.map((word) {
-                        final bool isSelected = _selectedWords.contains(word);
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        child: BootstrapContainer(
+          fluid: true,
+          children: [
+            // หัวข้อและการแสดงผล
+            const SizedBox(height: 20),
 
-                        return OutlinedButton(
-                          onPressed: () {
-                            setState(() {
-                              if (isSelected) {
-                                _selectedWords.remove(word);
-                              } else {
-                                _selectedWords.add(word);
-                              }
-                            });
-                          },
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor:
-                                isSelected ? Colors.white : Colors.blue,
-                            backgroundColor:
-                                isSelected ? Colors.blueAccent : Colors.white,
-                            side: BorderSide(
-                                color: isSelected ? Colors.blue : Colors.grey),
-                          ),
-                          child: Text(word),
-                        );
-                      }).toList(),
+            BootstrapRow(
+              children: [
+                BootstrapCol(
+                  sizes: 'col-xs-10 col-sm-10 col-md-8 col-lg-6',
+                  offsets: 'offset-xs-1 offset-sm-1 offset-md-2 offset-lg-3',
+                  child: Card(
+                    elevation: 2,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
                     ),
-                  const SizedBox(height: 24),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      ElevatedButton(
-                        onPressed:
-                            canAddToBank ? _addSelectedWordsToBank : null,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.teal,
-                          disabledBackgroundColor: Colors.grey.shade300,
-                        ),
-                        child: _isAddingToBank
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  color: Colors.white,
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : const Text("เพิ่มเข้าคลังคำศัพท์"),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Text(
+                        _formatTopicName(widget.topic),
+                        style: AppTextStyles.title,
+                        textAlign: TextAlign.center,
                       ),
-                      ElevatedButton(
-                        onPressed: _confirmReset,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red,
-                        ),
-                        child: const Text("Reset"),
-                      ),
-                    ],
+                    ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
+
+            const SizedBox(height: 70),
+
+            // สถิติคำศัพท์
+            BootstrapRow(
+              children: [
+                BootstrapCol(
+                  sizes: 'col-xs-10 col-sm-10 col-md-8 col-lg-6',
+                  offsets: 'offset-xs-1 offset-sm-1 offset-md-2 offset-lg-3',
+                  child: SummaryStatisticsWidget(
+                    totalCount: widget.totalCount,
+                    knownCount: widget.knownCount,
+                    unknownCount: widget.unknownCount,
+                    reviewCount: widget.reviewCount,
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 270),
+
+            // คำศัพท์ที่ยังไม่รู้
+            BootstrapRow(
+              children: [
+                BootstrapCol(
+                  sizes: 'col-xs-10 col-sm-10 col-md-8 col-lg-6',
+                  offsets: 'offset-xs-1 offset-sm-1 offset-md-2 offset-lg-3',
+                  child: UnknownWordsSection(
+                    unknownWords: _unknownWords,
+                    selectedWords: _selectedWords,
+                    onToggleWord: _toggleWordSelection,
+                    onAddToBank: _addSelectedWordsToBank,
+                    isAddingToBank: _isAddingToBank,
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 100),
+
+            // ปุ่มดำเนินการ
+            BootstrapRow(
+              children: [
+                BootstrapCol(
+                  sizes: 'col-xs-10 col-sm-10 col-md-8 col-lg-6',
+                  offsets: 'offset-xs-1 offset-sm-1 offset-md-2 offset-lg-3',
+                  child: SummaryActionButtons(
+                    onRestart: _restartFlashcards,
+                    onReset: _confirmReset,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

@@ -18,6 +18,15 @@ class FlashcardController {
   final Function() onNavigateToSummary;
   final Function() resetShowMeaning;
 
+  // ตัวแปรเก็บสถิติ
+  int _knownCount = 0;
+  int _unknownCount = 0;
+  int _reviewCount = 0;
+  int _totalCount = 0;
+
+  // เปลี่ยนจาก List เป็น Set เพื่อป้องกันการซ้ำ
+  final Set<String> _sessionUnknownWords = {};
+
   List<SwipeItem> swipeItems = [];
   late MatchEngine matchEngine;
 
@@ -33,6 +42,12 @@ class FlashcardController {
   /// ดึงข้อมูล flashcards
   Future<void> fetchFlashcards() async {
     try {
+      // รีเซ็ตตัวนับ
+      _knownCount = 0;
+      _unknownCount = 0;
+      _reviewCount = 0;
+      _sessionUnknownWords.clear(); // ล้างรายการคำศัพท์ที่ไม่รู้เมื่อเริ่มใหม่
+
       List<Flashcard> flashcards = await service.getFlashcardsForTopic(topic);
 
       Map<String, List<String>> statuses =
@@ -44,6 +59,8 @@ class FlashcardController {
           .toList();
 
       filteredFlashcards.shuffle();
+
+      _totalCount = filteredFlashcards.length;
 
       swipeItems = filteredFlashcards.map((flashcard) {
         return SwipeItem(
@@ -57,11 +74,14 @@ class FlashcardController {
       matchEngine = MatchEngine(swipeItems: swipeItems);
       updateSwipeItems(swipeItems, matchEngine);
 
+      // หากไม่มีการ์ด ให้นำทางไปหน้าสรุปทันที
       if (swipeItems.isEmpty) {
         onNavigateToSummary();
       }
     } catch (e) {
       AppLogger.e(_tag, 'เกิดข้อผิดพลาดในการดึงข้อมูล flashcards', e);
+      // กรณีเกิดข้อผิดพลาด ให้นำทางไปหน้าสรุปเช่นกัน
+      onNavigateToSummary();
     }
   }
 
@@ -69,12 +89,24 @@ class FlashcardController {
   Future<void> handleSwipe(
       Flashcard flashcard, SwipeDirection direction) async {
     try {
+      // อัพเดทตัวนับ
+      if (direction == SwipeDirection.right) {
+        _knownCount++;
+      } else if (direction == SwipeDirection.left) {
+        _unknownCount++;
+        // เพิ่มคำที่ไม่รู้ในรอบนี้ (เป็น Set จึงไม่เก็บคำซ้ำ)
+        _sessionUnknownWords.add(flashcard.id);
+      } else if (direction == SwipeDirection.up) {
+        _reviewCount++;
+      }
+
       await service.saveWordStatus(
         userId,
         topic,
         flashcard.id,
         direction,
       );
+
       resetShowMeaning();
     } catch (e) {
       AppLogger.e(_tag, 'เกิดข้อผิดพลาดในการบันทึกสถานะคำศัพท์', e);
@@ -88,8 +120,7 @@ class FlashcardController {
 
   /// หาภาพพื้นหลังตามระดับ
   String getBackgroundImageByLevel() {
-    String level = service.getLevelFromCategory(topic);
-    switch (level) {
+    switch (topic.substring(0, 2)) {
       case 'B2':
         return 'assets/images/summer.png';
       case 'C1':
@@ -102,16 +133,14 @@ class FlashcardController {
   }
 
   /// เตรียมข้อมูลสำหรับหน้าสรุป
-  Future<Map<String, int>> getSummaryData() async {
-    final statuses = await service.getWordStatuses(userId, topic);
-
+  Future<Map<String, dynamic>> getSummaryData() async {
+    // แปลง Set เป็น List ก่อนส่งออกไป
     return {
-      'knownCount': statuses['known_words']?.length ?? 0,
-      'unknownCount': statuses['unknown_words']?.length ?? 0,
-      'reviewCount': statuses['review_words']?.length ?? 0,
-      'totalCount': (statuses['known_words']?.length ?? 0) +
-          (statuses['unknown_words']?.length ?? 0) +
-          (statuses['review_words']?.length ?? 0),
+      'knownCount': _knownCount,
+      'unknownCount': _unknownCount,
+      'reviewCount': _reviewCount,
+      'totalCount': _totalCount,
+      'sessionUnknownWords': _sessionUnknownWords.toList(),
     };
   }
 

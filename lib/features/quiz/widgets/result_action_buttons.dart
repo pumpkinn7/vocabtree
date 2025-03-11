@@ -87,8 +87,8 @@ class ResultActionButtons extends StatelessWidget {
               Text(
                 'คะแนนอย่างน้อย 60% เพื่อปลดล็อกหัวข้อถัดไป',
                 style: AppTextStyles.caption.copyWith(
-                  color: colorScheme.error,
-                  fontStyle: FontStyle.italic,
+                  color: AppTextStyles.primaryColor,
+                  fontStyle: AppTextStyles.subtitle.fontStyle,
                 ),
                 textAlign: TextAlign.center,
               ),

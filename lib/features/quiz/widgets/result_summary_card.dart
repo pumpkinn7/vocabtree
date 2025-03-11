@@ -23,7 +23,7 @@ class ResultSummaryCard extends StatelessWidget {
     // กำหนดสีตามผลการทำแบบทดสอบ
     final bool isPassed = percentage >= 60.0;
     final Color resultColor =
-        isPassed ? colorScheme.primary : colorScheme.error;
+        isPassed ? AppTextStyles.primaryDarkColor : AppTextStyles.primaryColor;
 
     return Card(
       elevation: 0,
@@ -49,7 +49,7 @@ class ResultSummaryCard extends StatelessWidget {
               textAlign: TextAlign.center,
             ),
 
-            const SizedBox(height: 32),
+            const SizedBox(height: 10),
 
             // คะแนน
             Container(
@@ -86,23 +86,23 @@ class ResultSummaryCard extends StatelessWidget {
               ),
             ),
 
-            const SizedBox(height: 24),
+            const SizedBox(height: 10),
 
             // สถานะการผ่าน/ไม่ผ่าน
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
                 color: isPassed
-                    ? colorScheme.primaryContainer
-                    : colorScheme.errorContainer,
+                    ? AppTextStyles.primaryDarkColor.withOpacity(0.2)
+                    : AppTextStyles.primaryColor.withOpacity(0.2),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Text(
                 isPassed ? 'ผ่านการทดสอบ' : 'ไม่ผ่านการทดสอบ',
                 style: AppTextStyles.body.copyWith(
                   color: isPassed
-                      ? colorScheme.onPrimaryContainer
-                      : colorScheme.onErrorContainer,
+                      ? AppTextStyles.primaryDarkColor
+                      : AppTextStyles.primaryColor,
                   fontWeight: FontWeight.bold,
                 ),
               ),

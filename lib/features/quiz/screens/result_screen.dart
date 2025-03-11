@@ -1,14 +1,17 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bootstrap/flutter_bootstrap.dart';
+import 'package:vocabtree/core/theme/text_styles.dart';
 import 'package:vocabtree/features/quiz/services/firebase_service.dart';
-import 'package:vocabtree/features/quiz/widgets/top_wrong_words.dart';
+import 'package:vocabtree/features/quiz/widgets/all_wrong_words_dialog.dart';
+import 'package:vocabtree/features/quiz/widgets/result_summary_card.dart';
+import 'package:vocabtree/features/quiz/widgets/result_wrong_words.dart';
+import 'package:vocabtree/features/quiz/widgets/result_action_buttons.dart';
 
 import '../../quiz/screens/quiz_topic_screen.dart';
 import '../models/quiz_question_model.dart';
 import '../models/quiz_result.dart';
 import '../services/result_service.dart';
-import '../widgets/cefr_chart.dart';
-import '../widgets/score_progress.dart';
 
 class ResultScreen extends StatefulWidget {
   final String cefrLevel;
@@ -36,9 +39,8 @@ class ResultScreen extends StatefulWidget {
 
 class _ResultScreenState extends State<ResultScreen> {
   final User? user = FirebaseAuth.instance.currentUser;
-  List<Map<String, dynamic>> recentQuizzes = [];
   List<Map<String, dynamic>> topWrongWords = [];
-  double? previousAverage;
+  bool isLoading = true;
 
   @override
   void initState() {
@@ -67,117 +69,115 @@ class _ResultScreenState extends State<ResultScreen> {
       );
 
       if (mounted) {
-        setState(() => topWrongWords = wrongWords);
+        setState(() {
+          topWrongWords = wrongWords;
+          isLoading = false;
+        });
       }
     } catch (_) {
-      // Handle error silently
+      if (mounted) {
+        setState(() => isLoading = false);
+      }
     }
   }
 
   void _showAllWrongWords() {
     showDialog(
       context: context,
-      builder: (context) => Dialog.fullscreen(
-        child: Scaffold(
-          appBar: AppBar(
-            title: const Text('คำศัพท์ที่ตอบผิดทั้งหมด'),
-            leading: IconButton(
-              icon: const Icon(Icons.close),
-              onPressed: () => Navigator.pop(context),
-            ),
-          ),
-          body: FutureBuilder<List<Map<String, dynamic>>>(
-            future: ResultService.getTopWrongWords(
-              user?.uid ?? '',
-              limit: 100, // หรือจำนวนที่ต้องการ
-              topic: widget.topic, // เพิ่ม topic
-            ),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
-
-              final words = snapshot.data ?? [];
-              return ListView.builder(
-                itemCount: words.length,
-                itemBuilder: (context, index) {
-                  final word = words[index];
-                  return ListTile(
-                    title: Text(word['word']),
-                    trailing: Text('ตอบผิด ${word['wrongCount']} ครั้ง'),
-                  );
-                },
-              );
-            },
-          ),
-        ),
+      builder: (context) => AllWrongWordsDialog(
+        userId: user?.uid ?? '',
+        topic: widget.topic,
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        title: const Text('ผลการทำแบบทดสอบ'),
+        title: Text('ผลการทำแบบทดสอบ', style: AppTextStyles.headline),
+        backgroundColor: theme.colorScheme.surface,
+        elevation: 0,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'หมวดหมู่: ${_formatTopicName(widget.topic)}',
-              style: const TextStyle(fontSize: 18),
-            ),
-            const SizedBox(height: 16),
-
-            // 1. สัดส่วนระดับ CEFR
-            const Text(
-              'สัดส่วนระดับ CEFR',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            CefrChart(cefrDistribution: widget.cefrDistribution),
-            const SizedBox(height: 24),
-
-            // แก้ไขการแสดง TopWrongWords
-            if (topWrongWords.isNotEmpty)
-              TopWrongWords(
-                wrongWords: topWrongWords,
-                onViewAllPressed: _showAllWrongWords,
-              )
-            else
-              const Center(
-                child: Text('ไม่มีคำศัพท์ที่ตอบผิด'),
+      body: isLoading
+          ? Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(color: theme.colorScheme.primary),
+                  const SizedBox(height: 16),
+                  Text('กำลังประมวลผล...', style: AppTextStyles.body),
+                ],
               ),
-
-            // 3. Progress Bar สัดส่วนตอบถูก/ผิด
-            ScoreProgress(percentage: widget.percentage),
-            const SizedBox(height: 24),
-
-            // 4. ปุ่มดำเนินการต่อ
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                ElevatedButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
-                  child: const Text('ย้อนกลับ'),
+            )
+          : SingleChildScrollView(
+              child: BootstrapContainer(
+                fluid: true,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.background,
                 ),
-                ElevatedButton(
-                  onPressed: widget.percentage >= 60.0 ? _goToNextTopic : null,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor:
-                        widget.percentage >= 60.0 ? Colors.green : Colors.grey,
+                padding: const EdgeInsets.all(16.0),
+                children: [
+                  // สรุปผลการทำแบบทดสอบ
+                  BootstrapRow(
+                    children: [
+                      BootstrapCol(
+                        sizes: 'col-xs-10 col-sm-10 col-md-6 col-lg-6',
+                        offsets:
+                            'offset-xs-1 offset-sm-1 offset-md-3 offset-lg-3',
+                        child: ResultSummaryCard(
+                          topic: widget.topic,
+                          score: widget.score,
+                          totalQuestions: widget.totalQuestions,
+                          percentage: widget.percentage,
+                        ),
+                      ),
+                    ],
                   ),
-                  child: const Text('หัวข้อถัดไป'),
-                ),
-              ],
+
+                  const SizedBox(height: 24),
+
+                  // คำที่ตอบผิดบ่อย
+                  BootstrapRow(
+                    children: [
+                      BootstrapCol(
+                        sizes: 'col-xs-10 col-sm-10 col-md-6 col-lg-6',
+                        offsets:
+                            'offset-xs-1 offset-sm-1 offset-md-3 offset-lg-3',
+                        child: ResultWrongWords(
+                          wrongWords: topWrongWords,
+                          onViewAllPressed: _showAllWrongWords,
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // ปุ่มดำเนินการ
+                  BootstrapRow(
+                    children: [
+                      BootstrapCol(
+                        sizes: 'col-xs-10 col-sm-10 col-md-6 col-lg-6',
+                        offsets:
+                            'offset-xs-1 offset-sm-1 offset-md-3 offset-lg-3',
+                        child: ResultActionButtons(
+                          percentage: widget.percentage,
+                          onGoBack: () => Navigator.pop(context),
+                          onNextTopic:
+                              widget.percentage >= 60.0 ? _goToNextTopic : null,
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 40),
+                ],
+              ),
             ),
-          ],
-        ),
-      ),
     );
   }
 
@@ -203,12 +203,5 @@ class _ResultScreenState extends State<ResultScreen> {
       return topics[currentIndex + 1];
     }
     return null;
-  }
-
-  String _formatTopicName(String topicKey) {
-    return topicKey
-        .split('_')
-        .map((w) => w[0].toUpperCase() + w.substring(1))
-        .join(' ');
   }
 }

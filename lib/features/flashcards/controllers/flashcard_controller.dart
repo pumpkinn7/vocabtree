@@ -1,52 +1,53 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:swipe_cards/swipe_cards.dart';
 
 import '../../../utils/app_logger.dart';
-import '../model/flashcard_topic_model.dart';
 import '../model/swipe_direction.dart';
+import '../repositories/flashcard_repository.dart';
 import '../services/flashcard_service.dart';
+import '../model/flashcard_topic_model.dart';
 
-/// คลาสควบคุมการทำงานของ flashcards
 class FlashcardController {
   static const String _tag = 'FlashcardController';
+  final FlutterTts flutterTts = FlutterTts();
 
-  final String topic;
-  final String userId;
   final FlashcardService service;
-  final FlutterTts flutterTts;
+  final FlashcardRepository repository;
+  final String userId;
+  final String topic;
   final Function(List<SwipeItem>, MatchEngine) updateSwipeItems;
-  final Function() onNavigateToSummary;
-  final Function() resetShowMeaning;
-
-  // ตัวแปรเก็บสถิติ
-  int _knownCount = 0;
-  int _unknownCount = 0;
-  int _reviewCount = 0;
-  int _totalCount = 0;
-
-  // เปลี่ยนจาก List เป็น Set เพื่อป้องกันการซ้ำ
-  final Set<String> _sessionUnknownWords = {};
+  final VoidCallback onNavigateToSummary;
+  final VoidCallback resetShowMeaning;
 
   List<SwipeItem> swipeItems = [];
-  late MatchEngine matchEngine;
+  MatchEngine? matchEngine;
+
+  int _totalCount = 0;
+  int get totalCount => _totalCount;
+
+  // เก็บค่าสำหรับแสดงในหน้าสรุป
+  final Set<String> _sessionKnownWords = {};
+  final Set<String> _sessionUnknownWords = {};
+  final Set<String> _sessionReviewWords = {};
 
   FlashcardController({
-    required this.topic,
+    required this.service,
+    required this.repository,
     required this.userId,
+    required this.topic,
     required this.updateSwipeItems,
     required this.onNavigateToSummary,
     required this.resetShowMeaning,
-  })  : service = FlashcardService(),
-        flutterTts = FlutterTts();
+  });
 
   /// ดึงข้อมูล flashcards
   Future<void> fetchFlashcards() async {
     try {
       // รีเซ็ตตัวนับ
-      _knownCount = 0;
-      _unknownCount = 0;
-      _reviewCount = 0;
-      _sessionUnknownWords.clear(); // ล้างรายการคำศัพท์ที่ไม่รู้เมื่อเริ่มใหม่
+      _sessionKnownWords.clear();
+      _sessionUnknownWords.clear();
+      _sessionReviewWords.clear();
 
       List<Flashcard> flashcards = await service.getFlashcardsForTopic(topic);
 
@@ -71,8 +72,12 @@ class FlashcardController {
         );
       }).toList();
 
-      matchEngine = MatchEngine(swipeItems: swipeItems);
-      updateSwipeItems(swipeItems, matchEngine);
+      if (matchEngine != null) {
+        updateSwipeItems(swipeItems, matchEngine!);
+      } else {
+        matchEngine = MatchEngine(swipeItems: swipeItems);
+        updateSwipeItems(swipeItems, matchEngine!);
+      }
 
       // หากไม่มีการ์ด ให้นำทางไปหน้าสรุปทันที
       if (swipeItems.isEmpty) {
@@ -88,28 +93,30 @@ class FlashcardController {
   /// จัดการการปัดการ์ด
   Future<void> handleSwipe(
       Flashcard flashcard, SwipeDirection direction) async {
-    try {
-      // อัพเดทตัวนับ
-      if (direction == SwipeDirection.right) {
-        _knownCount++;
-      } else if (direction == SwipeDirection.left) {
-        _unknownCount++;
-        // เพิ่มคำที่ไม่รู้ในรอบนี้ (เป็น Set จึงไม่เก็บคำซ้ำ)
-        _sessionUnknownWords.add(flashcard.id);
-      } else if (direction == SwipeDirection.up) {
-        _reviewCount++;
-      }
+    final mainWord = flashcard.mainWord;
 
-      await service.saveWordStatus(
-        userId,
-        topic,
-        flashcard.id,
-        direction,
-      );
+    // ลบคำออกจาก set อื่นๆ ก่อน (กรณีผู้ใช้เคยปัดคำนี้แล้ว)
+    _sessionKnownWords.remove(mainWord);
+    _sessionUnknownWords.remove(mainWord);
+    _sessionReviewWords.remove(mainWord);
 
-      resetShowMeaning();
-    } catch (e) {
-      AppLogger.e(_tag, 'เกิดข้อผิดพลาดในการบันทึกสถานะคำศัพท์', e);
+    // เพิ่มลง set ตามทิศทางที่ปัด
+    switch (direction) {
+      case SwipeDirection.right: // รู้จักแล้ว
+        _sessionKnownWords.add(mainWord);
+        await repository.saveUserFlashcardStatus(
+            userId, topic, flashcard, true, false);
+        break;
+      case SwipeDirection.left: // ไม่รู้จัก
+        _sessionUnknownWords.add(mainWord);
+        await repository.saveUserFlashcardStatus(
+            userId, topic, flashcard, false, false);
+        break;
+      case SwipeDirection.up: // ต้องทบทวน
+        _sessionReviewWords.add(mainWord);
+        await repository.saveUserFlashcardStatus(
+            userId, topic, flashcard, false, true);
+        break;
     }
   }
 
@@ -133,18 +140,23 @@ class FlashcardController {
   }
 
   /// เตรียมข้อมูลสำหรับหน้าสรุป
-  Future<Map<String, dynamic>> getSummaryData() async {
-    // แปลง Set เป็น List ก่อนส่งออกไป
+  Map<String, dynamic> getSummaryData() {
     return {
-      'knownCount': _knownCount,
-      'unknownCount': _unknownCount,
-      'reviewCount': _reviewCount,
+      'knownCount': _sessionKnownWords.length,
+      'unknownCount': _sessionUnknownWords.length,
+      'reviewCount': _sessionReviewWords.length,
       'totalCount': _totalCount,
       'sessionUnknownWords': _sessionUnknownWords.toList(),
     };
   }
 
-  /// เคลียร์ทรัพยากร
+  /// เคลียร์ข้อมูลเซสชัน
+  void clearSession() {
+    _sessionKnownWords.clear();
+    _sessionUnknownWords.clear();
+    _sessionReviewWords.clear();
+  }
+
   void dispose() {
     flutterTts.stop();
   }

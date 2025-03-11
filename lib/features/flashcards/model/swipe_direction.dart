@@ -1,5 +1,5 @@
 enum SwipeDirection {
-  left,
   right,
+  left,
   up,
 }

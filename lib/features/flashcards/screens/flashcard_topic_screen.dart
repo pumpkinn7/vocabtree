@@ -6,6 +6,8 @@ import 'package:translator/translator.dart';
 import '../controllers/flashcard_controller.dart';
 import '../model/flashcard_topic_model.dart';
 import '../model/swipe_direction.dart';
+import '../services/flashcard_service.dart';
+import '../repositories/flashcard_repository.dart';
 import '../widgets/flashcard_action_bar.dart';
 import '../widgets/flashcard_counter.dart';
 import '../widgets/flashcard_detail_dialog.dart';
@@ -43,7 +45,13 @@ class FlashcardScreenState extends State<FlashcardScreen> {
   @override
   void initState() {
     super.initState();
+
+    final flashcardService = FlashcardService();
+    final flashcardRepository = FlashcardRepository();
+
     _controller = FlashcardController(
+      service: flashcardService,
+      repository: flashcardRepository,
       topic: widget.topic,
       userId: widget.userId,
       updateSwipeItems: (items, engine) => setState(() {
@@ -131,11 +139,11 @@ class FlashcardScreenState extends State<FlashcardScreen> {
     }
   }
 
-  Future<void> _navigateToSummary() async {
-    final summaryData = await _controller.getSummaryData();
-    if (!mounted) return;
+  Future<void> _navigateToSummary() {
+    final summaryData = _controller.getSummaryData();
+    if (!mounted) return Future.value();
 
-    Navigator.pushReplacement(
+    return Navigator.pushReplacement(
       context,
       MaterialPageRoute(
         builder: (_) => FlashcardSummaryScreen(
@@ -188,11 +196,8 @@ class FlashcardScreenState extends State<FlashcardScreen> {
       return const FlashcardLoading();
     }
 
-    // ลบส่วนที่ตรวจสอบ swipeItems ว่าง และแสดง FlashcardEmptyState
-    // แทนที่ด้วยการนำทางไปยังหน้าสรุปทันทีถ้าไม่มีการ์ด
     if (_swipeItems.isEmpty) {
-      // นำทางไปยังหน้าสรุปโดยตรงเมื่อไม่มีการ์ด
-      // เราคงไว้เพียงการแสดง loading เพื่อไม่ให้หน้าจอว่างขณะรอการนำทาง
+      //ไปยังหน้าสรุปโดยตรงเมื่อไม่มีการ์ด
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _navigateToSummary();
       });

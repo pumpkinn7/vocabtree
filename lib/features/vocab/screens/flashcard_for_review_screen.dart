@@ -7,7 +7,8 @@ import 'package:translator/translator.dart';
 import '../../../features/flashcards/model/flashcard_topic_model.dart';
 import '../../../features/flashcards/widgets/flashcard_detail_dialog.dart';
 import '../../../features/flashcards/widgets/flashcard_header.dart';
-import '../../../features/flashcards/widgets/flashcard_action_bar.dart'; // เพิ่ม import
+import '../../../features/flashcards/widgets/flashcard_action_bar.dart';
+import '../../../features/flashcards/widgets/flashcard_help_dialog.dart'; // เพิ่ม import
 
 class FlashcardForReviewScreen extends StatefulWidget {
   final String level;
@@ -240,7 +241,25 @@ class FlashcardForReviewScreenState extends State<FlashcardForReviewScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: FlashcardHeader(topic: widget.topic),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        title: FlashcardHeader(topic: widget.topic),
+        automaticallyImplyLeading: true,
+        actions: [
+          IconButton(
+            icon: Icon(
+              Icons.help_outline,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+            onPressed: () => showDialog(
+              context: context,
+              builder: (context) => const FlashcardHelpDialog(),
+            ),
+            tooltip: 'วิธีใช้งาน',
+          ),
+        ],
+      ),
       body: Container(
         decoration: BoxDecoration(
           image: DecorationImage(

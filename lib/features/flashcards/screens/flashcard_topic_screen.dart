@@ -12,6 +12,7 @@ import '../widgets/flashcard_action_bar.dart';
 import '../widgets/flashcard_counter.dart';
 import '../widgets/flashcard_detail_dialog.dart';
 import '../widgets/flashcard_header.dart';
+import '../widgets/flashcard_help_dialog.dart';
 import '../widgets/flashcard_item.dart';
 import '../widgets/flashcard_loading.dart';
 import 'flashcard_summary_screen.dart';
@@ -178,7 +179,22 @@ class FlashcardScreenState extends State<FlashcardScreen> {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      appBar: FlashcardHeader(topic: widget.topic),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        title: FlashcardHeader(topic: widget.topic),
+        automaticallyImplyLeading: true,
+        actions: [
+          IconButton(
+            icon: Icon(
+              Icons.help_outline,
+              color: colorScheme.primary,
+            ),
+            onPressed: _showHelpDialog,
+            tooltip: 'วิธีใช้งาน',
+          ),
+        ],
+      ),
       body: Container(
         decoration: BoxDecoration(
           image: DecorationImage(
@@ -188,6 +204,13 @@ class FlashcardScreenState extends State<FlashcardScreen> {
         ),
         child: _buildContent(colorScheme),
       ),
+    );
+  }
+
+  void _showHelpDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => const FlashcardHelpDialog(),
     );
   }
 

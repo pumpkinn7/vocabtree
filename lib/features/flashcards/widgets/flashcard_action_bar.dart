@@ -32,7 +32,6 @@ class FlashcardActionBar extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          // ปุ่มต่างๆ ที่มีการแก้ไขตรงฟังก์ชัน onTap เพื่อให้การอัพเดตค่าเป็นไปตามลำดับที่ถูกต้อง
           GestureDetector(
             onTap: onNopePressed,
             child: Image.asset(

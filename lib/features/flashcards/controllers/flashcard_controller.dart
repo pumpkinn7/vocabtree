@@ -39,7 +39,16 @@ class FlashcardController {
     required this.updateSwipeItems,
     required this.onNavigateToSummary,
     required this.resetShowMeaning,
-  });
+  }) {
+    _initTts();
+  }
+
+  Future<void> _initTts() async {
+    await flutterTts.setLanguage('en-US');
+    await flutterTts.setSpeechRate(0.5);
+    await flutterTts.setVolume(1.0);
+    await flutterTts.setPitch(1.0);
+  }
 
   /// ดึงข้อมูล flashcards
   Future<void> fetchFlashcards() async {
@@ -172,9 +181,5 @@ class FlashcardController {
     _sessionKnownWords.clear();
     _sessionUnknownWords.clear();
     _sessionReviewWords.clear();
-  }
-
-  void dispose() {
-    flutterTts.stop();
   }
 }

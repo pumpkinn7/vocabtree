@@ -170,7 +170,7 @@ class FlashcardScreenState extends State<FlashcardScreen> {
 
   @override
   void dispose() {
-    _controller.dispose();
+    _controller.flutterTts.stop();
     super.dispose();
   }
 

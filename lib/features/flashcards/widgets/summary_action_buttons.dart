@@ -29,7 +29,7 @@ class SummaryActionButtons extends StatelessWidget {
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12)),
               ),
-              child: Text('ทำอีกครั้ง', style: AppTextStyles.buttonText),
+              child: Text('ทบทวนต่อ', style: AppTextStyles.buttonText),
             ),
           ),
         ),

@@ -151,7 +151,6 @@ class FlashcardController {
     await flutterTts.speak(text);
   }
 
-  /// หาภาพพื้นหลังตามระดับ
   String getBackgroundImageByLevel() {
     switch (topic.substring(0, 2)) {
       case 'B2':

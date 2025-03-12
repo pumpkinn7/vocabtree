@@ -95,9 +95,6 @@ class FlashcardScreenState extends State<FlashcardScreen> {
     }
   }
 
-  // ลบฟังก์ชัน _toggleShowMeaning ที่ไม่ได้ใช้งาน
-
-  // เพิ่มฟังก์ชันใหม่สำหรับสลับภาษา
   void _toggleThaiTranslation() async {
     if (_matchEngine.currentItem == null) return;
 

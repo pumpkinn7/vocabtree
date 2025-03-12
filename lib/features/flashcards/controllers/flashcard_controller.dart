@@ -93,30 +93,47 @@ class FlashcardController {
   /// จัดการการปัดการ์ด
   Future<void> handleSwipe(
       Flashcard flashcard, SwipeDirection direction) async {
-    final mainWord = flashcard.mainWord;
+    try {
+      final mainWord = flashcard.mainWord;
 
-    // ลบคำออกจาก set อื่นๆ ก่อน (กรณีผู้ใช้เคยปัดคำนี้แล้ว)
-    _sessionKnownWords.remove(mainWord);
-    _sessionUnknownWords.remove(mainWord);
-    _sessionReviewWords.remove(mainWord);
+      // ลบคำออกจาก set อื่นๆ ก่อน
+      _sessionKnownWords.remove(mainWord);
+      _sessionUnknownWords.remove(mainWord);
+      _sessionReviewWords.remove(mainWord);
 
-    // เพิ่มลง set ตามทิศทางที่ปัด
-    switch (direction) {
-      case SwipeDirection.right: // รู้จักแล้ว
-        _sessionKnownWords.add(mainWord);
-        await repository.saveUserFlashcardStatus(
-            userId, topic, flashcard, true, false);
-        break;
-      case SwipeDirection.left: // ไม่รู้จัก
-        _sessionUnknownWords.add(mainWord);
-        await repository.saveUserFlashcardStatus(
-            userId, topic, flashcard, false, false);
-        break;
-      case SwipeDirection.up: // ต้องทบทวน
-        _sessionReviewWords.add(mainWord);
-        await repository.saveUserFlashcardStatus(
-            userId, topic, flashcard, false, true);
-        break;
+      // เพิ่มลง set ตามทิศทางที่ปัด
+      switch (direction) {
+        case SwipeDirection.right:
+          _sessionKnownWords.add(mainWord);
+          await Future.wait([
+            repository.saveUserFlashcardStatus(
+                userId, topic, flashcard, true, false),
+            service.saveWordStatus(userId, topic, flashcard.id, direction),
+          ]);
+          break;
+        case SwipeDirection.left:
+          _sessionUnknownWords.add(mainWord);
+          await Future.wait([
+            repository.saveUserFlashcardStatus(
+                userId, topic, flashcard, false, false),
+            service.saveWordStatus(userId, topic, flashcard.id, direction),
+          ]);
+          break;
+        case SwipeDirection.up:
+          _sessionReviewWords.add(mainWord);
+          await Future.wait([
+            repository.saveUserFlashcardStatus(
+                userId, topic, flashcard, false, true),
+            service.saveWordStatus(userId, topic, flashcard.id, direction),
+          ]);
+          break;
+      }
+
+      AppLogger.i(
+          _tag, 'บันทึกสถานะการ์ด ${flashcard.mainWord} สำเร็จ: $direction');
+    } catch (e) {
+      AppLogger.e(
+          _tag, 'เกิดข้อผิดพลาดในการบันทึกสถานะการ์ด ${flashcard.mainWord}', e);
     }
   }
 

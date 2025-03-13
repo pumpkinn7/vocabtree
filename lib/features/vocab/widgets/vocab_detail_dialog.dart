@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:translator/translator.dart';
+import 'package:vocabtree/core/theme/text_styles.dart';
 
 class VocabDetailDialog extends StatefulWidget {
   final String wordId;
@@ -157,15 +158,26 @@ class _VocabDetailDialogState extends State<VocabDetailDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return AlertDialog(
+      backgroundColor: colorScheme.surface,
+      elevation: 8,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
       title: Row(
         children: [
-          // เปลี่ยนจากชื่อคำศัพท์เป็น "All Meanings"
-          const Expanded(child: Text("All Meanings")),
+          Expanded(
+            child: Text(
+              "ความหมายทั้งหมด",
+              style: AppTextStyles.subtitle,
+            ),
+          ),
           IconButton(
             icon: Icon(
               isTranslated ? Icons.g_translate_outlined : Icons.translate,
-              color: Colors.blue,
+              color: colorScheme.primary,
             ),
             onPressed: _toggleTranslation,
             tooltip: isTranslated ? 'แสดงภาษาอังกฤษ' : 'แปลเป็นภาษาไทย',
@@ -180,11 +192,12 @@ class _VocabDetailDialogState extends State<VocabDetailDialog> {
           : SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  for (int i = 0; i < senses.length; i++)
-                    _buildSenseCard(i, senses[i]),
-                ],
+                children: senses
+                    .asMap()
+                    .entries
+                    .map((entry) =>
+                        _buildSenseCard(entry.key, entry.value, colorScheme))
+                    .toList(),
               ),
             ),
       actions: [
@@ -194,28 +207,52 @@ class _VocabDetailDialogState extends State<VocabDetailDialog> {
             Navigator.of(context).pop();
           },
           style: TextButton.styleFrom(foregroundColor: Colors.orange),
-          child: const Text('ลบคำศัพท์'),
+          child: Text(
+            'ลบคำศัพท์',
+            style: AppTextStyles.buttonText,
+          ),
         ),
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('ปิด'),
+          child: Text(
+            'ปิด',
+            style: AppTextStyles.buttonText.copyWith(
+              color: colorScheme.primary,
+            ),
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildSenseCard(int index, Map<String, dynamic> sense) {
-    // กำหนดค่าเริ่มต้นสำหรับ title และ usage เพื่อให้แน่ใจว่าการตรวจสอบทำงานถูกต้อง
-    final String title = sense['title'] ?? 'General';
-    final String usage = sense['usage'] ?? 'N/A';
+  Widget _buildSenseCard(
+      int index, Map<String, dynamic> sense, ColorScheme colorScheme) {
+    final String title = sense['title']?.toString().isNotEmpty == true
+        ? sense['title'].toString()
+        : 'General';
+    final String usage = sense['usage']?.toString().isNotEmpty == true
+        ? sense['usage'].toString()
+        : 'N/A';
     final String partOfSpeech = sense['partOfSpeech'] ?? '';
-    final String cefr = sense['cefr']?.toString() ?? 'N/A';
+    final String cefr = sense['cefr']?.toString().contains('›') == true
+        ? 'N/A'
+        : (sense['cefr']?.toString() ?? 'N/A');
     final String definition = sense['definition'] ?? '';
     final List<String> examples =
-        (sense['examples'] as List?)?.cast<String>() ?? [];
+        sense['examples'] is List ? List<String>.from(sense['examples']) : [];
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
+      color: colorScheme.surface,
+      elevation: 2,
+      shadowColor: Colors.black.withOpacity(0.1),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(
+          color: colorScheme.outline.withOpacity(0.3),
+          width: 1,
+        ),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -226,21 +263,19 @@ class _VocabDetailDialogState extends State<VocabDetailDialog> {
                 Expanded(
                   child: Text(
                     title,
-                    style: const TextStyle(
-                      fontSize: 18,
+                    style: AppTextStyles.subtitle.copyWith(
+                      fontSize: 16,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
                 Text(
                   usage,
-                  style: TextStyle(
-                    fontSize: 14,
+                  style: AppTextStyles.caption.copyWith(
                     fontStyle: FontStyle.italic,
-                    // แก้ไขการตรวจสอบให้ถูกต้อง
                     color: usage == 'N/A'
-                        ? Colors.grey.withOpacity(0.6)
-                        : Colors.grey,
+                        ? colorScheme.outline.withOpacity(0.6)
+                        : colorScheme.outline,
                   ),
                 ),
               ],
@@ -251,54 +286,54 @@ class _VocabDetailDialogState extends State<VocabDetailDialog> {
                 Expanded(
                   child: Text(
                     partOfSpeech,
-                    style: const TextStyle(
+                    style: AppTextStyles.body.copyWith(
                       fontWeight: FontWeight.w500,
-                      color: Colors.blue,
+                      color: colorScheme.primary,
                     ),
                   ),
                 ),
                 Text(
                   'CEFR: $cefr',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey,
+                  style: AppTextStyles.caption.copyWith(
+                    color: colorScheme.outline,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
-            Text(
-              isTranslated
-                  ? (translations['def_$index'] ?? definition)
-                  : definition,
-              style: TextStyle(
-                fontSize: 16,
-                fontStyle: isTranslated ? FontStyle.italic : FontStyle.normal,
+            if (definition.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(
+                isTranslated
+                    ? (translations['def_$index'] ?? definition)
+                    : definition,
+                style: AppTextStyles.body.copyWith(
+                  fontStyle: isTranslated ? FontStyle.italic : FontStyle.normal,
+                ),
               ),
-            ),
+            ],
             if (examples.isNotEmpty) ...[
               const SizedBox(height: 8),
-              const Text(
+              Text(
                 'Examples:',
-                style: TextStyle(
-                  fontSize: 14,
+                style: AppTextStyles.caption.copyWith(
                   fontWeight: FontWeight.w500,
-                  color: Colors.grey,
                 ),
               ),
               const SizedBox(height: 4),
-              for (int j = 0; j < examples.length; j++)
-                Padding(
+              ...examples.asMap().entries.map((e) {
+                final translatedExample =
+                    translations['example_${index}_${e.key}'] ?? e.value;
+                return Padding(
                   padding: const EdgeInsets.only(left: 8, bottom: 4),
                   child: Text(
-                    '• ${isTranslated ? (translations['example_${index}_$j'] ?? examples[j]) : examples[j]}',
-                    style: const TextStyle(
+                    '• ${isTranslated ? translatedExample : e.value}',
+                    style: AppTextStyles.body.copyWith(
                       fontSize: 14,
                       fontStyle: FontStyle.italic,
-                      color: Colors.black87,
                     ),
                   ),
-                ),
+                );
+              }),
             ],
           ],
         ),

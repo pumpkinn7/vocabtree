@@ -239,7 +239,6 @@ class _FlashcardForReviewScreenState extends State<FlashcardForReviewScreen> {
 
   // แสดงข้อความแจ้งเตือนและกลับไปหน้า VocabScreen
   void _showCompletionMessageAndNavigateBack() {
-    // แสดง SnackBar เรียบง่ายพร้อมข้อความ
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
@@ -252,7 +251,7 @@ class _FlashcardForReviewScreenState extends State<FlashcardForReviewScreen> {
     // กลับไปหน้า VocabScreen หลังจากแสดงข้อความเสร็จ
     Future.delayed(const Duration(seconds: 1), () {
       if (mounted) {
-        Navigator.pop(context, true);
+        Navigator.pop(context, false);
       }
     });
   }
@@ -305,26 +304,11 @@ class _FlashcardForReviewScreenState extends State<FlashcardForReviewScreen> {
     }
 
     if (_flashcards.isEmpty) {
-      return Center(
-        child: Card(
-          elevation: 4,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.search_off, size: 64, color: colorScheme.error),
-                const SizedBox(height: 16),
-                Text(
-                  'ไม่มีคำศัพท์ที่ต้องทบทวน',
-                  style: AppTextStyles.subtitle,
-                ),
-              ],
-            ),
-          ),
-        ),
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Navigator.of(context).pop();
+      });
+      return const Center(
+        child: CircularProgressIndicator(),
       );
     }
 

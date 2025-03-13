@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bootstrap/flutter_bootstrap.dart';
 import 'package:vocabtree/core/theme/text_styles.dart';
 
 class VocabularyGuideDialog extends StatelessWidget {
@@ -7,138 +8,141 @@ class VocabularyGuideDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final screenWidth = MediaQuery.of(context).size.width;
-
-    // กำหนดความกว้างของ dialog ตามขนาดหน้าจอ
-    double dialogWidth;
-    if (screenWidth < 400) {
-      dialogWidth = screenWidth * 0.9; // xs
-    } else if (screenWidth < 600) {
-      dialogWidth = screenWidth * 0.8; // sm
-    } else if (screenWidth < 900) {
-      dialogWidth = screenWidth * 0.7; // md
-    } else {
-      dialogWidth = screenWidth * 0.5; // lg
-    }
 
     return Dialog(
       surfaceTintColor: colorScheme.surface,
       elevation: 3,
-      insetPadding: EdgeInsets.symmetric(
-          horizontal: (screenWidth - dialogWidth) / 2, vertical: 24),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-      child: SizedBox(
-        width: dialogWidth, // กำหนดความกว้างของ dialog
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('คู่มือระดับคำศัพท์', style: AppTextStyles.title),
-              const SizedBox(height: 24),
-              Flexible(
-                child: SingleChildScrollView(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.8,
+          maxWidth: 800,
+        ),
+        child: Column(
+          children: [
+            // Fixed Header
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+              child: Text('คู่มือระดับคำศัพท์', style: AppTextStyles.title),
+            ),
+            const SizedBox(height: 24),
+
+            // Scrollable Content
+            Expanded(
+              child: SingleChildScrollView(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      // Spring (B1)
                       _buildSeasonCard(
                         context: context,
                         colorScheme: colorScheme,
-                        title: 'Spring (B1)',
+                        title: 'Spring',
                         description:
                             'ระดับพื้นฐานถึงปานกลาง เนื้อหาเกี่ยวกับชีวิตประจำวัน การศึกษา ความบันเทิง ธรรมชาติและสิ่งแวดล้อม',
                         imagePath: 'assets/images/oak_6977599.png',
                         level: 'B1',
                       ),
                       const SizedBox(height: 20),
-
-                      // Summer (B2)
                       _buildSeasonCard(
                         context: context,
                         colorScheme: colorScheme,
-                        title: 'Summer (B2)',
+                        title: 'Summer',
                         description:
                             'ระดับปานกลาง ครอบคลุมหัวข้อที่ซับซ้อนมากขึ้น เช่น การตกแต่งบ้าน กิจกรรมกลางแจ้ง ดนตรี การออกกำลังกาย',
                         imagePath: 'assets/images/tree_6977578.png',
                         level: 'B2',
                       ),
                       const SizedBox(height: 20),
-
-                      // Autumn (C1)
                       _buildSeasonCard(
                         context: context,
                         colorScheme: colorScheme,
-                        title: 'Autumn (C1)',
+                        title: 'Autumn',
                         description:
                             'ระดับกลางค่อนข้างสูง เนื้อหาเชิงวิชาการ วิทยาศาสตร์ เทคโนโลยี การเมือง และธุรกิจ',
                         imagePath: 'assets/images/tree_6977585.png',
                         level: 'C1',
                       ),
                       const SizedBox(height: 20),
-
-                      // Winter (C2)
                       _buildSeasonCard(
                         context: context,
                         colorScheme: colorScheme,
-                        title: 'Winter (C2)',
+                        title: 'Winter',
                         description:
                             'ระดับสูง ศัพท์ที่ใช้ในการสื่อสารระดับเชี่ยวชาญ ปรัชญา การแพทย์ขั้นสูง กฎหมาย และวรรณกรรม',
                         imagePath: 'assets/images/tree_6977597.png',
                         level: 'C2',
                       ),
                       const SizedBox(height: 24),
-
-                      // เปลี่ยนเป็นรูปแบบเดียวกันกับ Card ด้านบน
-                      Card(
-                        elevation: 0,
-                        margin: EdgeInsets.zero,
-                        shape: RoundedRectangleBorder(
-                          side: BorderSide(color: colorScheme.outlineVariant),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Icon(
-                                    Icons.lightbulb_outlined,
-                                    color: colorScheme.primary,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    'ทำไมแบ่งเป็นฤดู?',
-                                    style: AppTextStyles.subtitle,
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                'แอปพลิเคชันของเราออกแบบให้การเรียนรู้เป็นเหมือนวงจรธรรมชาติ เริ่มจากระดับง่าย (Spring) ไปสู่ระดับที่ซับซ้อนมากขึ้น (Winter) เป็นเหมือนการเติบโตทางภาษาไปตามฤดูกาล เพื่อให้ง่ายต่อการจดจำและสร้างกระบวนการเรียนรู้ที่เป็นธรรมชาติ',
-                                style: AppTextStyles.body,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
+                      _buildInformationCard(colorScheme),
+                      const SizedBox(height: 24),
                     ],
                   ),
                 ),
               ),
-              const SizedBox(height: 20),
-              Align(
-                alignment: Alignment.centerRight,
-                child: FilledButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: Text('เข้าใจแล้ว', style: AppTextStyles.buttonText),
-                ),
+            ),
+
+            // Fixed Footer
+            Container(
+              padding: const EdgeInsets.all(24),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  FilledButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: Text('เข้าใจแล้ว', style: AppTextStyles.buttonText),
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInformationCard(ColorScheme colorScheme) {
+    return Card(
+      elevation: 0,
+      margin: EdgeInsets.zero,
+      shape: RoundedRectangleBorder(
+        side: BorderSide(color: colorScheme.outlineVariant),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: BootstrapContainer(
+          fluid: true,
+          children: [
+            BootstrapRow(
+              children: [
+                BootstrapCol(
+                  sizes: 'col-12',
+                  child: Row(
+                    children: [
+                      Icon(Icons.lightbulb_outlined,
+                          color: colorScheme.primary),
+                      const SizedBox(width: 8),
+                      Text('ทำไมแบ่งเป็นฤดู?', style: AppTextStyles.subtitle),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            BootstrapRow(
+              children: [
+                BootstrapCol(
+                  sizes: 'col-12',
+                  child: Text(
+                    'แอปพลิเคชันของเราออกแบบให้การเรียนรู้เป็นเหมือนวงจรธรรมชาติ เริ่มจากระดับง่าย Spring ไปสู่ระดับที่ซับซ้อนมากขึ้น Winter เป็นเหมือนการเติบโตทางภาษาไปตามฤดูกาล เพื่อให้ง่ายต่อการจดจำและสร้างกระบวนการเรียนรู้ที่เป็นธรรมชาติ',
+                    style: AppTextStyles.body,
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );

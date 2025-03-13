@@ -27,7 +27,7 @@ if (flutterVersionName == null) {
 
 android {
     namespace "com.example.vocabtree"
-    compileSdkVersion 34
+    compileSdk 34
     ndkVersion flutter.ndkVersion
 
     compileOptions {
@@ -45,12 +45,31 @@ android {
         targetSdkVersion 34
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
+        multiDexEnabled true
     }
 
     buildTypes {
         release {
             signingConfig signingConfigs.debug
+            shrinkResources false
+            minifyEnabled false
         }
+        debug {
+            shrinkResources false
+            minifyEnabled false
+        }
+    }
+
+    lint {
+        checkReleaseBuilds false
+        abortOnError false
+    }
+
+    packagingOptions {
+        jniLibs {
+            useLegacyPackaging true
+        }
+        pickFirst '**/*.so'
     }
 }
 
@@ -66,4 +85,5 @@ configurations {
 
 dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib:2.0.20"
+    implementation 'androidx.multidex:multidex:2.0.1'
 }

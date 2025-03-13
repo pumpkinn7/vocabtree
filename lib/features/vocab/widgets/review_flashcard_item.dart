@@ -70,7 +70,6 @@ class ReviewFlashcardItem extends StatelessWidget {
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 16),
-
                     // แสดงชนิดคำตลอดเวลาโดยไม่ขึ้นกับสถานะการแปล
                     Text(
                       flashcard.partOfSpeech,

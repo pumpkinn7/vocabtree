@@ -168,7 +168,7 @@ class _FlashcardDetailDialogState extends State<FlashcardDetailDialog> {
         children: [
           Expanded(
             child: Text(
-              "ความหมายของ ${widget.flashcard.mainWord}",
+              "ความหมายทั้งหมด",
               style: AppTextStyles.subtitle,
             ),
           ),

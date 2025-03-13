@@ -63,7 +63,10 @@ class TopicCard extends StatelessWidget {
                     style: OutlinedButton.styleFrom(
                       side: BorderSide(color: colorScheme.outline),
                     ),
-                    child: Text('ดูทั้งหมด'),
+                    child: Text(
+                      'ดูทั้งหมด',
+                      style: AppTextStyles.buttonText,
+                    ),
                   ),
                 ),
                 BootstrapCol(
@@ -73,7 +76,10 @@ class TopicCard extends StatelessWidget {
                     style: OutlinedButton.styleFrom(
                       side: BorderSide(color: colorScheme.outline),
                     ),
-                    child: Text('Flashcard'),
+                    child: Text(
+                      'Flashcard',
+                      style: AppTextStyles.buttonText,
+                    ),
                   ),
                 ),
               ],

@@ -114,35 +114,21 @@ class FlashcardController {
       switch (direction) {
         case SwipeDirection.right:
           _sessionKnownWords.add(mainWord);
-          await Future.wait([
-            repository.saveUserFlashcardStatus(
-                userId, topic, flashcard, true, false),
-            service.saveWordStatus(userId, topic, flashcard.id, direction),
-          ]);
+          await service.saveWordStatus(userId, topic, flashcard.id, direction);
           break;
         case SwipeDirection.left:
           _sessionUnknownWords.add(mainWord);
-          await Future.wait([
-            repository.saveUserFlashcardStatus(
-                userId, topic, flashcard, false, false),
-            service.saveWordStatus(userId, topic, flashcard.id, direction),
-          ]);
+          await service.saveWordStatus(userId, topic, flashcard.id, direction);
           break;
         case SwipeDirection.up:
           _sessionReviewWords.add(mainWord);
-          await Future.wait([
-            repository.saveUserFlashcardStatus(
-                userId, topic, flashcard, false, true),
-            service.saveWordStatus(userId, topic, flashcard.id, direction),
-          ]);
+          await service.saveWordStatus(userId, topic, flashcard.id, direction);
           break;
       }
 
-      AppLogger.i(
-          _tag, 'บันทึกสถานะการ์ด ${flashcard.mainWord} สำเร็จ: $direction');
+      resetShowMeaning();
     } catch (e) {
-      AppLogger.e(
-          _tag, 'เกิดข้อผิดพลาดในการบันทึกสถานะการ์ด ${flashcard.mainWord}', e);
+      AppLogger.e(_tag, 'เกิดข้อผิดพลาดในการบันทึกสถานะ flashcard', e);
     }
   }
 

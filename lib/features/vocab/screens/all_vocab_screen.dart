@@ -14,6 +14,7 @@ class AllVocabScreen extends StatefulWidget {
 
 class _AllVocabScreenState extends State<AllVocabScreen> {
   final userId = FirebaseAuth.instance.currentUser?.uid;
+  final _firestore = FirebaseFirestore.instance;
   bool isLoading = true;
   Map<String, List<String>> topicWords = {};
   Map<String, Map<String, dynamic>> wordDetails = {};
@@ -36,8 +37,7 @@ class _AllVocabScreenState extends State<AllVocabScreen> {
     setState(() => isLoading = true);
 
     try {
-      // ดึงข้อมูลจาก word_categories collection
-      final categoriesQuery = await FirebaseFirestore.instance
+      final categoriesQuery = await _firestore
           .collection('word_categories')
           .where('cefrLevel', isEqualTo: widget.level)
           .get();
@@ -59,10 +59,7 @@ class _AllVocabScreenState extends State<AllVocabScreen> {
         return wordDetails[wordId];
       }
 
-      final wordDoc = await FirebaseFirestore.instance
-          .collection('words')
-          .doc(wordId)
-          .get();
+      final wordDoc = await _firestore.collection('words').doc(wordId).get();
 
       if (!wordDoc.exists) return null;
 
@@ -74,6 +71,20 @@ class _AllVocabScreenState extends State<AllVocabScreen> {
     }
   }
 
+  // เพิ่มเมธอดสำหรับจัดเรียงคำศัพท์
+  Map<String, List<String>> _getSortedWords(List<String> words) {
+    final Map<String, List<String>> sortedMap = {};
+    final sortedWords = List<String>.from(words)..sort();
+    for (var word in sortedWords) {
+      final firstLetter = word[0].toUpperCase();
+      if (!sortedMap.containsKey(firstLetter)) {
+        sortedMap[firstLetter] = [];
+      }
+      sortedMap[firstLetter]!.add(word);
+    }
+    return sortedMap;
+  }
+
   String _formatTopicName(String topic) {
     return topic
         .split('_')
@@ -83,9 +94,11 @@ class _AllVocabScreenState extends State<AllVocabScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
       appBar: AppBar(
-        title: Text('คำศัพท์ระดับ ${widget.level}'),
+        title: const Text('พจนานุกรมคำศัพท์'),
       ),
       body: Column(
         children: [
@@ -113,69 +126,113 @@ class _AllVocabScreenState extends State<AllVocabScreen> {
                 ? const Center(child: CircularProgressIndicator())
                 : ListView.builder(
                     itemCount: topicWords.length,
-                    itemBuilder: (context, index) {
-                      final topic = topicWords.keys.elementAt(index);
+                    itemBuilder: (context, topicIndex) {
+                      final topic = topicWords.keys.elementAt(topicIndex);
                       final words = topicWords[topic] ?? [];
-                      
-                      // กรองคำศัพท์ตาม search query
-                      final filteredWords = words.where((word) => 
-                        word.toLowerCase().contains(_searchQuery)).toList();
+
+                      // กรองคำตาม search query
+                      final filteredWords = _searchQuery.isEmpty
+                          ? words
+                          : words
+                              .where((word) =>
+                                  word.toLowerCase().contains(_searchQuery))
+                              .toList();
 
                       if (filteredWords.isEmpty) {
                         return const SizedBox.shrink();
                       }
 
-                      return ExpansionTile(
-                        title: Text(_formatTopicName(topic)),
+                      final sortedWords = _getSortedWords(filteredWords);
+
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            alignment: WrapAlignment.center,
-                            children: filteredWords.map((word) {
-                              return Padding(
-                                padding: const EdgeInsets.all(4.0),
-                                child: OutlinedButton(
-                                  onPressed: () async {
-                                    final wordData = await _fetchWordDetail(word);
-                                    if (!mounted) return;
-
-                                    if (wordData == null) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(content: Text('ไม่พบข้อมูลสำหรับคำว่า "$word"')),
-                                      );
-                                      return;
-                                    }
-
-                                    showDialog(
-                                      context: context,
-                                      builder: (context) => VocabDetailWithAddDialog(
-                                        wordId: word,
-                                        vocabData: wordData,
-                                        level: widget.level,
-                                        topic: topic,
-                                        userId: userId!,
-                                      ),
-                                    );
-                                  },
-                                  style: OutlinedButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 16.0,
-                                      vertical: 8.0,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12.0),
-                                    ),
-                                    side: BorderSide(
-                                      color: Theme.of(context).primaryColor,
-                                    ),
+                          Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Text(
+                              _formatTopicName(topic),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleLarge
+                                  ?.copyWith(
+                                    color: theme.primaryColor,
+                                    fontWeight: FontWeight.bold,
                                   ),
-                                  child: Text(word),
-                                ),
-                              );
-                            }).toList(),
+                            ),
                           ),
-                          const SizedBox(height: 16),
+                          ...sortedWords.entries.map((entry) {
+                            final letter = entry.key;
+                            final letterWords = entry.value;
+
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsets.all(8.0),
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 8, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: theme.primaryColor,
+                                          borderRadius:
+                                              BorderRadius.circular(4),
+                                        ),
+                                        child: Text(
+                                          letter,
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .titleMedium
+                                              ?.copyWith(
+                                                color:
+                                                    theme.colorScheme.onPrimary,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child:
+                                            Divider(color: theme.primaryColor),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                ...letterWords.map((word) => ListTile(
+                                      title: Text(word),
+                                      onTap: () async {
+                                        final wordData =
+                                            await _fetchWordDetail(word);
+                                        if (!mounted) return;
+
+                                        if (wordData == null) {
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(
+                                            SnackBar(
+                                              content: Text(
+                                                  'ไม่พบข้อมูลสำหรับคำว่า "$word"'),
+                                            ),
+                                          );
+                                          return;
+                                        }
+
+                                        showDialog(
+                                          context: context,
+                                          builder: (context) =>
+                                              VocabDetailWithAddDialog(
+                                            wordId: word,
+                                            vocabData: wordData,
+                                            level: widget.level,
+                                            topic: topic,
+                                            userId: userId!,
+                                          ),
+                                        );
+                                      },
+                                    )),
+                              ],
+                            );
+                          }),
                         ],
                       );
                     },

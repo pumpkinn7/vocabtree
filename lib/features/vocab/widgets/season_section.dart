@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bootstrap/flutter_bootstrap.dart';
 import 'package:vocabtree/features/vocab/widgets/season_header.dart';
 import 'package:vocabtree/features/vocab/widgets/topic_card.dart';
 
@@ -59,64 +58,31 @@ class SeasonSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = seasonTheme[level] ?? seasonTheme['B1']!;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        // หัวข้อฤดูกาล
-        _buildSeasonHeader(theme),
-
-        // แสดงเนื้อหาตาม topic
-        _buildTopicsGrid(context, theme),
-      ],
-    );
-  }
-
-  Widget _buildSeasonHeader(Map<String, dynamic> theme) {
-    return SeasonHeader(
-      icon: theme['icon'],
-      iconColor: theme['iconColor'],
-      seasonName: theme['name'],
-      description: theme['description'],
-      backgroundImage: theme['image'],
-    );
-  }
-
-  Widget _buildTopicsGrid(BuildContext context, Map<String, dynamic> theme) {
-    return BootstrapContainer(
-      fluid: true,
+    return Container(
       padding: EdgeInsets.zero,
-      children: [
-        BootstrapRow(
-          children: [
-            BootstrapCol(
-              sizes: 'col-xs-12 col-sm-12 col-md-10 col-lg-8',
-              offsets: 'offset-xs-0 offset-sm-0 offset-md-1 offset-lg-2',
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                child: Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
-                  alignment: WrapAlignment.center,
-                  children:
-                      topics.map((topic) => _buildTopicCard(topic)).toList(),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTopicCard(String topic) {
-    return TopicCard(
-      topic: topic,
-      wordsList: reviewWords[topic] ?? [],
-      level: level,
-      userId: userId,
-      onRemoveWord: onRemoveWord,
-      onShowCompletionMessage: onShowCompletionMessage,
-      onRefreshData: onRefreshData,
+      margin: const EdgeInsets.only(bottom: 24), // เพิ่มระยะห่างระหว่าง season
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SeasonHeader(
+            icon: theme['icon'],
+            iconColor: theme['iconColor'],
+            seasonName: theme['name'],
+            description: theme['description'],
+            backgroundImage: theme['image'],
+          ),
+          const SizedBox(height: 8),
+          ...topics.map((topic) => TopicCard(
+                topic: topic,
+                wordsList: reviewWords[topic] ?? [],
+                level: level,
+                userId: userId,
+                onRemoveWord: onRemoveWord,
+                onShowCompletionMessage: onShowCompletionMessage,
+                onRefreshData: onRefreshData,
+              )),
+        ],
+      ),
     );
   }
 }

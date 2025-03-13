@@ -32,85 +32,68 @@ class TopicCard extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Card(
-      margin: const EdgeInsets.symmetric(vertical: 4),
+      margin: const EdgeInsets.symmetric(vertical: 8),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: colorScheme.outlineVariant.withOpacity(0.2)),
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: colorScheme.outlineVariant.withOpacity(0.3),
+        ),
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildTopicHeader(formattedTopic),
-            const SizedBox(height: 16),
-            _buildActionButtons(context, colorScheme),
-            const SizedBox(height: 16),
-            _buildWordsList(context),
+            Text(
+              formattedTopic,
+              style: AppTextStyles.body.copyWith(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            BootstrapRow(
+              children: [
+                BootstrapCol(
+                  sizes: 'col-6',
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => AllVocabScreen(level: level),
+                      ),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      side: BorderSide(color: colorScheme.outline),
+                    ),
+                    child: Text('ดูทั้งหมด'),
+                  ),
+                ),
+                BootstrapCol(
+                  sizes: 'col-6',
+                  child: OutlinedButton(
+                    onPressed: () => _openFlashcardReview(context),
+                    style: OutlinedButton.styleFrom(
+                      side: BorderSide(color: colorScheme.outline),
+                    ),
+                    child: Text('Flashcard'),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8.0,
+              runSpacing: 8.0,
+              children: wordsList.map((word) {
+                return VocabWordButton(
+                  word: word,
+                  level: level,
+                  topic: topic,
+                  userId: userId,
+                  onRemoveWord: onRemoveWord,
+                );
+              }).toList(),
+            ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildTopicHeader(String formattedTopic) {
-    return Text(
-      formattedTopic,
-      style: AppTextStyles.subtitle,
-    );
-  }
-
-  Widget _buildActionButtons(BuildContext context, ColorScheme colorScheme) {
-    return BootstrapRow(
-      children: [
-        // ปุ่ม "ดูทั้งหมด"
-        BootstrapCol(
-          sizes: 'col-xs-6 col-sm-6 col-md-6 col-lg-6',
-          child: OutlinedButton(
-            onPressed: () => _navigateToAllVocab(context),
-            style: OutlinedButton.styleFrom(
-              side: BorderSide(color: colorScheme.outline),
-            ),
-            child: Text('ดูทั้งหมด', style: AppTextStyles.buttonText),
-          ),
-        ),
-
-        // ปุ่ม "Flashcard"
-        BootstrapCol(
-          sizes: 'col-xs-6 col-sm-6 col-md-6 col-lg-6',
-          child: OutlinedButton(
-            onPressed: () => _openFlashcardReview(context),
-            style: OutlinedButton.styleFrom(
-              side: BorderSide(color: colorScheme.outline),
-            ),
-            child: Text('Flashcard', style: AppTextStyles.buttonText),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildWordsList(BuildContext context) {
-    return Wrap(
-      spacing: 8.0,
-      runSpacing: 8.0,
-      children: wordsList.map((word) {
-        return VocabWordButton(
-          word: word,
-          level: level,
-          topic: topic,
-          userId: userId,
-          onRemoveWord: onRemoveWord,
-        );
-      }).toList(),
-    );
-  }
-
-  void _navigateToAllVocab(BuildContext context) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => AllVocabScreen(level: level),
       ),
     );
   }
@@ -144,7 +127,6 @@ class TopicCard extends StatelessWidget {
       ),
     );
 
-    // หากคืนค่า result เป็น true แสดงว่าเสร็จสมบูรณ์
     if (result == true) {
       onShowCompletionMessage(topic);
     }

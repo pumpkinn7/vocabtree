@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/text_styles.dart';
 import '../widgets/vocab_detail_dialog.dart';
 import 'all_vocab_screen.dart';
 import 'flashcard_for_review_screen.dart';
@@ -197,6 +198,20 @@ class VocabScreenState extends State<VocabScreen> {
     }
   }
 
+  // แสดงข้อความแจ้งเตือนว่าทบทวนคำศัพท์ในหมวดหมู่นี้ครบแล้ว
+  void _showCompletionMessage(String topic) {
+    final formattedTopic = _formatTopicName(topic);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'ไม่มีคำศัพท์ที่ต้องทบทวนในหมวด "$formattedTopic" แล้ว',
+          style: AppTextStyles.body.copyWith(fontWeight: FontWeight.bold),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -263,7 +278,7 @@ class VocabScreenState extends State<VocabScreen> {
                                         return;
                                       }
 
-                                      await Navigator.push(
+                                      final result = await Navigator.push(
                                         context,
                                         MaterialPageRoute(
                                           builder: (context) =>
@@ -275,6 +290,12 @@ class VocabScreenState extends State<VocabScreen> {
                                           ),
                                         ),
                                       );
+
+                                      // หากคืนค่า result เป็น true แสดงว่าเสร็จสมบูรณ์
+                                      if (result == true) {
+                                        _showCompletionMessage(topic);
+                                      }
+
                                       _fetchAllReviewWords();
                                     },
                                     child: const Text('Flashcard'),

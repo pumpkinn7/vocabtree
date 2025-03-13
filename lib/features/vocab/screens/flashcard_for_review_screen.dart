@@ -1,14 +1,18 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_tts/flutter_tts.dart';
+import 'package:flutter_bootstrap/flutter_bootstrap.dart';
 import 'package:swipe_cards/swipe_cards.dart';
 import 'package:translator/translator.dart';
 
+import '../../../core/theme/text_styles.dart';
 import '../../../features/flashcards/model/flashcard_topic_model.dart';
 import '../../../features/flashcards/widgets/flashcard_detail_dialog.dart';
 import '../../../features/flashcards/widgets/flashcard_header.dart';
-import '../../../features/flashcards/widgets/flashcard_action_bar.dart';
-import '../../../features/flashcards/widgets/flashcard_help_dialog.dart'; // เพิ่ม import
+import '../../../features/flashcards/widgets/flashcard_help_dialog.dart';
+import '../../../features/flashcards/widgets/flashcard_counter.dart';
+import '../../../features/flashcards/widgets/flashcard_loading.dart';
+import '../services/review_flashcard_service.dart';
+import '../widgets/review_flashcard_item.dart';
 
 class FlashcardForReviewScreen extends StatefulWidget {
   final String level;
@@ -25,31 +29,39 @@ class FlashcardForReviewScreen extends StatefulWidget {
   });
 
   @override
-  FlashcardForReviewScreenState createState() =>
-      FlashcardForReviewScreenState();
+  State<FlashcardForReviewScreen> createState() =>
+      _FlashcardForReviewScreenState();
 }
 
-class FlashcardForReviewScreenState extends State<FlashcardForReviewScreen> {
-  final FlutterTts flutterTts = FlutterTts();
-  final translator = GoogleTranslator();
+class _FlashcardForReviewScreenState extends State<FlashcardForReviewScreen> {
+  final ReviewFlashcardService _service = ReviewFlashcardService();
+  final GoogleTranslator _translator = GoogleTranslator();
 
   late List<SwipeItem> _swipeItems = [];
   late MatchEngine _matchEngine;
+
   bool _isLoading = true;
-  bool _isTranslated = false;
+  bool _isShowingMeaning = false;
+  bool _isShowingThaiTranslation = false;
+  bool _isTranslating = false;
   int _currentIndex = 0;
+
   List<Flashcard> _flashcards = [];
-  final Map<String, String> _translations = {};
+  String _currentTranslation = '';
 
   @override
   void initState() {
     super.initState();
+    // เริ่มดึงข้อมูล
     _prepareFlashcards();
   }
 
   Future<void> _prepareFlashcards() async {
     setState(() => _isLoading = true);
     _flashcards = [];
+
+    // บันทึกเวลาเริ่มต้น
+    final startTime = DateTime.now();
 
     // แปลง DocumentSnapshot เป็น Flashcard
     for (var doc in widget.vocabDocs) {
@@ -78,23 +90,35 @@ class FlashcardForReviewScreenState extends State<FlashcardForReviewScreen> {
       await _fetchFlashcardsFromWordsCollection();
     }
 
-    // สร้าง SwipeItems
+    // สร้าง SwipeItems แต่ไม่รวม superlikeAction เพราะเราไม่ใช้การปัดขึ้นในหน้านี้
     if (_flashcards.isNotEmpty) {
       _swipeItems = _flashcards.map((flashcard) {
         return SwipeItem(
           content: flashcard,
           nopeAction: () {
-            // ไม่ต้องเรียกเพิ่ม index ที่นี่
-            // _currentIndex จะถูกอัพเดทผ่าน itemChanged callback แล้ว
+            // itemChanged callback จะจัดการเอง
           },
           likeAction: () async {
-            await _removeFromReview(flashcard.mainWord);
-            // ไม่ต้องเรียกเพิ่ม index ที่นี่
+            await _service.removeFromReview(
+                widget.userId, widget.topic, flashcard.mainWord);
+            // itemChanged callback จะจัดการเอง
           },
+          // ไม่ต้องมี superlikeAction เพราะเราไม่ใช้การปัดขึ้น
         );
       }).toList();
 
       _matchEngine = MatchEngine(swipeItems: _swipeItems);
+    }
+
+    // คำนวณเวลาที่ใช้ไปแล้ว
+    final elapsedTime = DateTime.now().difference(startTime).inMilliseconds;
+    final minimumLoadingTime = 3000; // 3 วินาที (3000 มิลลิวินาที)
+
+    // ถ้าใช้เวลาน้อยกว่า 3 วินาที ให้รอจนครบ
+    if (elapsedTime < minimumLoadingTime) {
+      await Future.delayed(
+        Duration(milliseconds: minimumLoadingTime - elapsedTime),
+      );
     }
 
     if (mounted) {
@@ -157,63 +181,45 @@ class FlashcardForReviewScreenState extends State<FlashcardForReviewScreen> {
     return 'No definition';
   }
 
-  /// ลบคำออกจาก review_words array
-  Future<void> _removeFromReview(String word) async {
-    try {
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(widget.userId)
-          .collection('vocabulary_progress')
-          .doc(widget.topic)
-          .update({
-        'review_words': FieldValue.arrayRemove([word])
-      });
-    } catch (_) {
-      // ไม่ต้องแสดง error
-    }
-  }
+  void _toggleThaiTranslation() async {
+    if (_matchEngine.currentItem == null) return;
 
-  /// สั่ง TTS อ่านคำศัพท์
-  Future<void> _speak(String text) async {
-    await flutterTts.speak(text);
-  }
+    final flashcard = _matchEngine.currentItem!.content as Flashcard;
 
-  /// แปลภาษา
-  Future<void> _translateText() async {
-    if (_isTranslated) {
+    if (_isShowingThaiTranslation) {
+      // สลับกลับไปเป็นภาษาอังกฤษ
       setState(() {
-        _isTranslated = false;
+        _isShowingThaiTranslation = false;
       });
-      return;
-    }
+    } else {
+      // สลับไปเป็นภาษาไทย
+      setState(() {
+        _isTranslating = true;
+      });
 
-    try {
-      if (_flashcards.isEmpty || _currentIndex >= _flashcards.length) return;
-
-      final currentFlashcard = _flashcards[_currentIndex];
-      String textToTranslate = currentFlashcard.mainWord;
-
-      if (textToTranslate.isNotEmpty &&
-          !_translations.containsKey(textToTranslate)) {
-        final translation = await translator.translate(
-          textToTranslate,
+      try {
+        final translation = await _translator.translate(
+          flashcard.mainWord,
           from: 'en',
           to: 'th',
         );
 
-        setState(() {
-          _translations[textToTranslate] = translation.text;
-          _isTranslated = true;
-        });
-      } else {
-        setState(() {
-          _isTranslated = true;
-        });
+        if (mounted) {
+          setState(() {
+            _currentTranslation = translation.text;
+            _isShowingThaiTranslation = true;
+            _isTranslating = false;
+          });
+        }
+      } catch (e) {
+        if (mounted) {
+          setState(() {
+            _currentTranslation = 'ไม่สามารถแปลได้';
+            _isShowingThaiTranslation = true;
+            _isTranslating = false;
+          });
+        }
       }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('ไม่สามารถแปลภาษาได้: $e')),
-      );
     }
   }
 
@@ -224,22 +230,47 @@ class FlashcardForReviewScreenState extends State<FlashcardForReviewScreen> {
     );
   }
 
-  // ตรวจสอบให้แน่ใจว่าชื่อไฟล์ถูกต้อง (และไม่มี path issues)
-  String _getBackgroundImageByLevel() {
-    switch (widget.level) {
-      case 'B2':
-        return 'assets/images/summer.png';
-      case 'C1':
-        return 'assets/images/autumn.png';
-      case 'C2':
-        return 'assets/images/winter.png';
-      default:
-        return 'assets/images/spring.png';
-    }
+  void _showHelpDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => const FlashcardHelpDialog(),
+    );
+  }
+
+  // แสดงข้อความแจ้งเตือนและกลับไปหน้า VocabScreen
+  void _showCompletionMessageAndNavigateBack() {
+    // แสดง SnackBar เรียบง่ายพร้อมข้อความ
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'คุณได้ทบทวนคำศัพท์ครบทุกคำแล้ว!',
+          style: AppTextStyles.body.copyWith(fontWeight: FontWeight.bold),
+        ),
+      ),
+    );
+
+    // กลับไปหน้า VocabScreen หลังจากแสดงข้อความเสร็จ
+    Future.delayed(const Duration(seconds: 1), () {
+      if (mounted) {
+        Navigator.pop(
+            context, true); // ส่งค่า true เพื่อบอกว่าทำงานเสร็จสมบูรณ์
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _service.flutterTts.stop();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    // สำคัญ: เหมือนกับใน FlashcardScreen
+    bootstrapGridParameters(gutterSize: 16);
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.transparent,
@@ -250,12 +281,9 @@ class FlashcardForReviewScreenState extends State<FlashcardForReviewScreen> {
           IconButton(
             icon: Icon(
               Icons.help_outline,
-              color: Theme.of(context).colorScheme.primary,
+              color: colorScheme.primary,
             ),
-            onPressed: () => showDialog(
-              context: context,
-              builder: (context) => const FlashcardHelpDialog(),
-            ),
+            onPressed: _showHelpDialog,
             tooltip: 'วิธีใช้งาน',
           ),
         ],
@@ -263,192 +291,203 @@ class FlashcardForReviewScreenState extends State<FlashcardForReviewScreen> {
       body: Container(
         decoration: BoxDecoration(
           image: DecorationImage(
-            image: AssetImage(_getBackgroundImageByLevel()),
+            image: AssetImage(_service.getBackgroundImageByLevel(widget.level)),
             fit: BoxFit.cover,
           ),
         ),
-        child: _isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : _flashcards.isEmpty
-                ? const Center(
-                    child: Text(
-                    'ไม่มีคำศัพท์ใน Topic นี้',
-                    style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white),
-                  ))
-                : Column(
-                    children: [
-                      // ส่วนแสดงจำนวน Flashcard
-                      _buildCounter(),
-
-                      // ส่วนแสดง Flashcard
-                      Expanded(
-                        child: SwipeCards(
-                          matchEngine: _matchEngine,
-                          itemBuilder: (BuildContext context, int index) {
-                            final flashcard = _flashcards[index];
-                            return Center(
-                              child: SizedBox(
-                                width: MediaQuery.of(context).size.width * 0.85,
-                                height:
-                                    MediaQuery.of(context).size.height * 0.65,
-                                child: _buildFlashcardItem(flashcard),
-                              ),
-                            );
-                          },
-                          onStackFinished: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content:
-                                    Text('คุณได้ทบทวนคำศัพท์ครบทุกคำแล้ว!'),
-                              ),
-                            );
-                          },
-                          itemChanged: (SwipeItem item, int index) {
-                            // แก้ไขตรงนี้ ใช้ตัวแปร index โดยตรงจาก callback
-                            setState(() {
-                              _currentIndex = index;
-                              _isTranslated =
-                                  false; // Reset translation state on card change
-                            });
-                          },
-                        ),
-                      ),
-
-                      // แทนที่ส่วน Row ด้านล่างด้วย FlashcardActionBar
-                      FlashcardActionBar(
-                        onNopePressed: () {
-                          _matchEngine.currentItem?.nope();
-                        },
-                        onSpeakPressed: () {
-                          final currentItem = _matchEngine.currentItem;
-                          if (currentItem != null) {
-                            final flashcard = currentItem.content as Flashcard;
-                            _speak(flashcard.mainWord);
-                          }
-                        },
-                        onSuperlikePressed: () {}, // ไม่ใช้ในหน้านี้
-                        onToggleMeaningPressed: _translateText,
-                        onLikePressed: () {
-                          _matchEngine.currentItem?.like();
-                        },
-                      ),
-
-                      // เพิ่มช่องว่างด้านล่าง
-                      const SizedBox(height: 20),
-                    ],
-                  ),
+        child: _buildContent(colorScheme),
       ),
     );
   }
 
-  Widget _buildCounter() {
-    if (_flashcards.isEmpty) return const SizedBox.shrink();
+  Widget _buildContent(ColorScheme colorScheme) {
+    if (_isLoading) {
+      return const FlashcardLoading();
+    }
 
-    // ใช้ currentIndex โดยตรง ไม่ต้องป้องกันเกินขอบเขต
-    // เพราะ SwipeCards จะจัดการให้เราอยู่แล้ว
-    final currentCount = _currentIndex + 1;
-    final totalCount = _flashcards.length;
-
-    // ถ้า currentCount เกิน totalCount ให้แสดงค่าสุดท้าย
-    final displayCount = currentCount > totalCount ? totalCount : currentCount;
-
-    return Container(
-      width: MediaQuery.of(context).size.width,
-      padding: const EdgeInsets.only(top: 16, bottom: 8),
-      child: Align(
-        alignment: Alignment.centerRight,
-        child: Padding(
-          padding: EdgeInsets.only(
-            right: MediaQuery.of(context).size.width * 0.075,
-          ),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.grey.withOpacity(0.8),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              '$displayCount of $totalCount',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
+    if (_flashcards.isEmpty) {
+      return Center(
+        child: Card(
+          elevation: 4,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.search_off, size: 64, color: colorScheme.error),
+                const SizedBox(height: 16),
+                Text(
+                  'ไม่มีคำศัพท์ที่ต้องทบทวน',
+                  style: AppTextStyles.subtitle,
+                ),
+              ],
             ),
           ),
         ),
-      ),
+      );
+    }
+
+    return Column(
+      children: [
+        // Counter
+        BootstrapContainer(
+          fluid: true,
+          children: [
+            BootstrapRow(
+              children: [
+                BootstrapCol(
+                  sizes: 'col-xs-10 col-sm-10 col-md-8 col-lg-4',
+                  offsets: 'offset-xs-1 offset-sm-1 offset-md-2 offset-lg-4',
+                  child: FlashcardCounter(
+                    currentIndex: _currentIndex + 1,
+                    totalCount: _flashcards.length,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+
+        Expanded(
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SizedBox(
+                width: 380,
+                child: SwipeCards(
+                  matchEngine: _matchEngine,
+                  itemBuilder: (BuildContext context, int index) {
+                    final flashcard = _flashcards[index];
+                    final isNextCard = index == _currentIndex + 1;
+
+                    final bool showThai = !isNextCard &&
+                        _isShowingThaiTranslation &&
+                        index == _currentIndex;
+
+                    return ReviewFlashcardItem(
+                      flashcard: flashcard,
+                      currentIndex: index + 1,
+                      totalItems: _flashcards.length,
+                      showMeaning: _isShowingMeaning && !isNextCard,
+                      showThaiTranslation: showThai,
+                      thaiTranslation: _currentTranslation,
+                      isTranslating: _isTranslating,
+                      onDetailPressed: () => _showWordDetail(flashcard),
+                    );
+                  },
+                  onStackFinished: _showCompletionMessageAndNavigateBack,
+                  itemChanged: (SwipeItem item, int index) {
+                    setState(() {
+                      _currentIndex = index;
+                      _isShowingMeaning = false;
+                      _isShowingThaiTranslation = false;
+                    });
+                  },
+                  upSwipeAllowed: false, // ปิดการปัดขึ้น
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // Action Bar
+        BootstrapContainer(
+          fluid: true,
+          children: [
+            BootstrapRow(
+              children: [
+                BootstrapCol(
+                  sizes: 'col-xs-12 col-sm-12 col-md-8 col-lg-4',
+                  offsets: 'offset-xs-0 offset-sm-0 offset-md-2 offset-lg-4',
+                  child: CustomFlashcardActionBar(
+                    // ใช้ Custom ActionBar ที่ไม่มีปุ่ม superlike
+                    onNopePressed: () => _matchEngine.currentItem?.nope(),
+                    onSpeakPressed: () {
+                      if (_matchEngine.currentItem != null) {
+                        final flashcard =
+                            _matchEngine.currentItem!.content as Flashcard;
+                        _service.speakWord(flashcard.mainWord);
+                      }
+                    },
+                    onToggleMeaningPressed: _toggleThaiTranslation,
+                    onLikePressed: () => _matchEngine.currentItem?.like(),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ],
     );
   }
+}
 
-  Widget _buildFlashcardItem(Flashcard flashcard) {
-    // คำที่จะแสดงหลักๆ (คำศัพท์)
-    final String textToShow = flashcard.mainWord;
+/// Action Bar แบบกำหนดเองสำหรับหน้า Review ที่ไม่มีปุ่ม SuperLike
+class CustomFlashcardActionBar extends StatelessWidget {
+  final VoidCallback onNopePressed;
+  final VoidCallback onSpeakPressed;
+  final VoidCallback onToggleMeaningPressed;
+  final VoidCallback onLikePressed;
 
-    // ตรวจสอบว่ามีคำแปลหรือไม่
-    final String displayText =
-        _isTranslated && _translations.containsKey(textToShow)
-            ? _translations[textToShow]!
-            : textToShow;
+  const CustomFlashcardActionBar({
+    super.key,
+    required this.onNopePressed,
+    required this.onSpeakPressed,
+    required this.onToggleMeaningPressed,
+    required this.onLikePressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
 
     return Container(
-      padding: const EdgeInsets.all(16.0),
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.2),
-            blurRadius: 12,
-            spreadRadius: 2,
-          ),
-        ],
+        color: colorScheme.surface.withOpacity(0.3),
+        borderRadius: BorderRadius.circular(16),
       ),
-      child: Stack(
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          // ปุ่มดูรายละเอียดย้ายไปทางขวา
-          Positioned(
-            top: 8,
-            right: 8,
-            child: IconButton(
-              icon: const Icon(Icons.info_outline, color: Colors.blue),
-              onPressed: () => _showWordDetail(flashcard),
+          GestureDetector(
+            onTap: onNopePressed,
+            child: Image.asset(
+              'assets/images/Flashcard-1.png',
+              width: 40,
+              height: 40,
+              fit: BoxFit.contain,
             ),
           ),
-
-          // เนื้อหาหลัก
-          Center(
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  // แสดงคำศัพท์ หรือคำแปล
-                  Text(
-                    displayText,
-                    style: TextStyle(
-                      fontSize: 35,
-                      fontWeight: FontWeight.bold,
-                      fontStyle:
-                          _isTranslated ? FontStyle.italic : FontStyle.normal,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 8),
-
-                  // ประเภทคำศัพท์ (แสดงเสมอถ้ามีข้อมูล)
-                  if (flashcard.partOfSpeech.isNotEmpty)
-                    Text(
-                      flashcard.partOfSpeech,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontStyle: FontStyle.italic,
-                      ),
-                    ),
-                ],
-              ),
+          GestureDetector(
+            onTap: onSpeakPressed,
+            child: Image.asset(
+              'assets/images/Flashcard-2.png',
+              width: 50,
+              height: 50,
+              fit: BoxFit.contain,
+            ),
+          ),
+          // ไม่มีปุ่ม SuperLike (Flashcard-3.png)
+          GestureDetector(
+            onTap: onToggleMeaningPressed,
+            child: Image.asset(
+              'assets/images/Flashcard-4.png',
+              width: 50,
+              height: 50,
+              fit: BoxFit.contain,
+            ),
+          ),
+          GestureDetector(
+            onTap: onLikePressed,
+            child: Image.asset(
+              'assets/images/Flashcard-5.png',
+              width: 40,
+              height: 40,
+              fit: BoxFit.contain,
             ),
           ),
         ],

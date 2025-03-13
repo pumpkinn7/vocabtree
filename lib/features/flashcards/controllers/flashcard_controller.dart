@@ -151,17 +151,37 @@ class FlashcardController {
     await flutterTts.speak(text);
   }
 
+  /// ดึงภาพพื้นหลังตามระดับ CEFR
   String getBackgroundImageByLevel() {
-    switch (topic.substring(0, 2)) {
-      case 'B2':
-        return 'assets/images/summer.png';
-      case 'C1':
-        return 'assets/images/autumn.png';
-      case 'C2':
-        return 'assets/images/winter.png';
-      default:
-        return 'assets/images/spring.png';
+    // ตรวจสอบหัวข้อที่ขึ้นต้นด้วย CEFR level
+    if (topic.startsWith('B1_')) {
+      return 'assets/images/spring.png';
+    } else if (topic.startsWith('B2_')) {
+      return 'assets/images/summer.png';
+    } else if (topic.startsWith('C1_')) {
+      return 'assets/images/autumn.png';
+    } else if (topic.startsWith('C2_')) {
+      return 'assets/images/winter.png';
     }
+
+    // ถ้าไม่ได้เริ่มต้นด้วย CEFR prefix ให้ดูจาก 2 ตัวแรก
+    if (topic.length >= 2) {
+      String prefix = topic.substring(0, 2).toUpperCase();
+
+      switch (prefix) {
+        case 'B1':
+          return 'assets/images/spring.png';
+        case 'B2':
+          return 'assets/images/summer.png';
+        case 'C1':
+          return 'assets/images/autumn.png';
+        case 'C2':
+          return 'assets/images/winter.png';
+      }
+    }
+
+    // กรณีไม่พบรูปแบบใดๆ
+    return 'assets/images/spring.png';
   }
 
   /// เตรียมข้อมูลสำหรับหน้าสรุป

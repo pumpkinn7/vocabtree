@@ -171,9 +171,96 @@ class FlashcardScreenState extends State<FlashcardScreen> {
     super.dispose();
   }
 
+  /// เลือกภาพพื้นหลังตามระดับ CEFR
+  String _getBackgroundImage() {
+    String topic = widget.topic;
+    String cefrLevel = _getCefrLevelFromTopic(topic);
+
+    switch (cefrLevel) {
+      case 'B1':
+        return 'assets/images/spring.png';
+      case 'B2':
+        return 'assets/images/summer.png';
+      case 'C1':
+        return 'assets/images/autumn.png';
+      case 'C2':
+        return 'assets/images/winter.png';
+      default:
+        return 'assets/images/spring.png';
+    }
+  }
+
+  /// ตรวจสอบระดับ CEFR จากชื่อ topic
+  String _getCefrLevelFromTopic(String topic) {
+    // 1. ตรวจสอบถ้า topic เริ่มต้นด้วย B1_, B2_, C1_, C2_
+    if (topic.startsWith('B1_')) return 'B1';
+    if (topic.startsWith('B2_')) return 'B2';
+    if (topic.startsWith('C1_')) return 'C1';
+    if (topic.startsWith('C2_')) return 'C2';
+
+    // 2. ตรวจสอบจากฐานข้อมูลของ topics ที่รู้จัก
+    final Map<String, List<String>> knownTopics = {
+      'B1': [
+        'daily_life',
+        'education',
+        'entertainment',
+        'environment_and_nature',
+        'health_and_fitness',
+        'travel_and_tourism',
+      ],
+      'B2': [
+        'home_renovation_and_decor',
+        'outdoor_activities_and_adventures',
+        'music_and_performing_arts',
+        'fitness_and_exercise',
+        'cooking_and_culinary_skills',
+        'pet_care_and_animal_welfare',
+        'gardening_and_landscaping',
+        'hobbies_and_crafts',
+      ],
+      'C1': [
+        'urban_living',
+        'digital_well_being',
+        'cultural_festivals',
+        'creative_writing',
+        'nutrition_and_wellness',
+        'interior_decorating',
+        'fashion_trends',
+        'event_planning',
+      ],
+      'C2': [
+        'immersive_technologies',
+        'cosmic_discoveries',
+        'digital_finance',
+        'adrenaline_activities',
+        'smart_automation',
+        'legends_and_lore',
+        'criminal_investigation',
+      ],
+    };
+
+    // ตรวจสอบว่า topic อยู่ในระดับใด
+    for (var entry in knownTopics.entries) {
+      if (entry.value.contains(topic)) {
+        return entry.key;
+      }
+    }
+
+    // 3. ถ้าไม่พบในรายการที่รู้จัก ตรวจสอบจาก 2 ตัวอักษรแรก
+    if (topic.length >= 2) {
+      String prefix = topic.substring(0, 2).toUpperCase();
+      if (['B1', 'B2', 'C1', 'C2'].contains(prefix)) {
+        return prefix;
+      }
+    }
+
+    return 'B1'; // ค่าเริ่มต้น
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    bootstrapGridParameters(gutterSize: 16);
 
     return Scaffold(
       appBar: AppBar(
@@ -195,7 +282,7 @@ class FlashcardScreenState extends State<FlashcardScreen> {
       body: Container(
         decoration: BoxDecoration(
           image: DecorationImage(
-            image: AssetImage(_controller.getBackgroundImageByLevel()),
+            image: AssetImage(_getBackgroundImage()),
             fit: BoxFit.cover,
           ),
         ),

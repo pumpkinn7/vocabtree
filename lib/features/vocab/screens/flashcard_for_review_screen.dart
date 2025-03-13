@@ -252,8 +252,7 @@ class _FlashcardForReviewScreenState extends State<FlashcardForReviewScreen> {
     // กลับไปหน้า VocabScreen หลังจากแสดงข้อความเสร็จ
     Future.delayed(const Duration(seconds: 1), () {
       if (mounted) {
-        Navigator.pop(
-            context, true); // ส่งค่า true เพื่อบอกว่าทำงานเสร็จสมบูรณ์
+        Navigator.pop(context, true);
       }
     });
   }

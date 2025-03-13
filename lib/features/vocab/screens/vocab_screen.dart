@@ -4,6 +4,7 @@ import 'package:flutter_bootstrap/flutter_bootstrap.dart';
 import 'package:vocabtree/core/theme/text_styles.dart';
 import 'package:vocabtree/features/vocab/models/vocab_level_model.dart';
 import 'package:vocabtree/features/vocab/services/vocab_service.dart';
+import 'package:vocabtree/features/vocab/widgets/empty_vocab_state.dart';
 import 'package:vocabtree/features/vocab/widgets/season_section.dart';
 
 class VocabScreen extends StatefulWidget {
@@ -119,6 +120,8 @@ class VocabScreenState extends State<VocabScreen> {
                     ),
                   ],
                 )
+              else if (_hasNoReviewWords())
+                const EmptyVocabState()
               else
                 ...VocabLevelModel.getAllLevels().map((level) {
                   final levelTopics = reviewWords[level.level] ?? {};
@@ -153,5 +156,17 @@ class VocabScreenState extends State<VocabScreen> {
         ),
       ),
     );
+  }
+
+  bool _hasNoReviewWords() {
+    if (reviewWords.isEmpty) return true;
+
+    for (var levelTopics in reviewWords.values) {
+      for (var words in levelTopics.values) {
+        if (words.isNotEmpty) return false;
+      }
+    }
+
+    return true;
   }
 }

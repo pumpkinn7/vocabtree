@@ -9,7 +9,7 @@ class ReceivedRequestsTab extends StatelessWidget {
   final FriendService friendService;
 
   const ReceivedRequestsTab({
-    super.key, // แก้ไขเป็น super parameter
+    super.key,
     required this.currentUserId,
     required this.friendService,
   });
@@ -27,8 +27,7 @@ class ReceivedRequestsTab extends StatelessWidget {
         if (requests.isEmpty) {
           return Center(
             child: Text(
-              'ไม่มีคำขอที่ได้รับ',
-              // แก้ไขการใช้ AppTextStyles
+              'ไม่มีคำขอเป็นเพื่อน',
               style: AppTextStyles.body,
             ),
           );
@@ -41,103 +40,89 @@ class ReceivedRequestsTab extends StatelessWidget {
             BootstrapRow(
               children: [
                 BootstrapCol(
-                  sizes: 'col-12',
-                  child: Expanded(
-                    child: ListView.separated(
-                      shrinkWrap: true,
-                      itemCount: requests.length,
-                      separatorBuilder: (context, index) => const Divider(),
-                      itemBuilder: (context, index) {
-                        final doc = requests[index];
-                        final data = doc.data() as Map<String, dynamic>?;
-                        if (data == null) {
-                          return ListTile(
-                            title: Text(
-                              'ไม่พบข้อมูลคำขอ',
-                              // แก้ไขการใช้ AppTextStyles
-                              style: AppTextStyles.body,
-                            ),
-                          );
-                        }
+                  sizes: 'col-xs-12 col-sm-12 col-md-10 col-lg-8',
+                  offsets: "offset-md-1 offset-lg-2",
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    itemCount: requests.length,
+                    separatorBuilder: (context, index) => const Divider(),
+                    itemBuilder: (context, index) {
+                      final doc = requests[index];
+                      final requestId = doc.id;
+                      final senderId = doc['sender_id'] as String;
+                      final receiverId = doc['receiver_id'] as String;
 
-                        final requestId = doc.id;
-                        final senderId = data['sender_id'];
-                        final receiverId = data['receiver_id'];
-
-                        return FutureBuilder<DocumentSnapshot>(
-                          future: friendService.getUserData(senderId),
-                          builder: (context, userSnapshot) {
-                            if (!userSnapshot.hasData) {
-                              return ListTile(
-                                title: Text(
-                                  'กำลังโหลด...',
-                                  // แก้ไขการใช้ AppTextStyles
-                                  style: AppTextStyles.body,
-                                ),
-                              );
-                            }
-
-                            final userData = userSnapshot.data?.data()
-                                as Map<String, dynamic>?;
-                            if (userData == null) {
-                              return ListTile(
-                                title: Text(
-                                  'ไม่พบข้อมูลผู้ส่ง',
-                                  // แก้ไขการใช้ AppTextStyles
-                                  style: AppTextStyles.body,
-                                ),
-                              );
-                            }
-
-                            final senderName =
-                                userData['username'] ?? 'No Name';
-                            final senderProfile =
-                                userData['profileImageUrl'] ?? '';
-
+                      return FutureBuilder<DocumentSnapshot>(
+                        future: friendService.getUserData(senderId),
+                        builder: (context, senderSnapshot) {
+                          if (!senderSnapshot.hasData) {
                             return ListTile(
-                              leading: CircleAvatar(
-                                backgroundImage: senderProfile.isNotEmpty
-                                    ? NetworkImage(senderProfile)
-                                    : null,
-                                child: senderProfile.isEmpty
-                                    ? const Icon(Icons.person)
-                                    : null,
-                              ),
                               title: Text(
-                                senderName,
-                                // แก้ไขการใช้ AppTextStyles
-                                style: AppTextStyles.subtitle,
-                              ),
-                              trailing: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  TextButton(
-                                    onPressed: () =>
-                                        friendService.acceptFriendRequest(
-                                      requestId,
-                                      senderId,
-                                      receiverId,
-                                    ),
-                                    child: const Text(
-                                      'ยืนยัน',
-                                      style: TextStyle(color: Colors.green),
-                                    ),
-                                  ),
-                                  TextButton(
-                                    onPressed: () => friendService
-                                        .declineFriendRequest(requestId),
-                                    child: const Text(
-                                      'ปฏิเสธ',
-                                      style: TextStyle(color: Colors.red),
-                                    ),
-                                  ),
-                                ],
+                                'กำลังโหลด...',
+                                style: AppTextStyles.body,
                               ),
                             );
-                          },
-                        );
-                      },
-                    ),
+                          }
+
+                          final senderData = senderSnapshot.data?.data()
+                              as Map<String, dynamic>?;
+                          if (senderData == null) {
+                            return ListTile(
+                              title: Text(
+                                'ไม่พบข้อมูลผู้ใช้',
+                                style: AppTextStyles.body,
+                              ),
+                            );
+                          }
+
+                          final senderName =
+                              senderData['username'] ?? 'No Name';
+                          final senderProfile =
+                              senderData['profileImageUrl'] ?? '';
+
+                          return ListTile(
+                            leading: CircleAvatar(
+                              backgroundImage: senderProfile.isNotEmpty
+                                  ? NetworkImage(senderProfile)
+                                  : null,
+                              child: senderProfile.isEmpty
+                                  ? const Icon(Icons.person)
+                                  : null,
+                            ),
+                            title: Text(
+                              senderName,
+                              style: AppTextStyles.subtitle,
+                            ),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                TextButton(
+                                  onPressed: () =>
+                                      friendService.acceptFriendRequest(
+                                    requestId,
+                                    senderId,
+                                    receiverId,
+                                  ),
+                                  child: const Text(
+                                    'ยืนยัน',
+                                    style: TextStyle(color: Colors.green),
+                                  ),
+                                ),
+                                TextButton(
+                                  onPressed: () => friendService
+                                      .declineFriendRequest(requestId),
+                                  child: const Text(
+                                    'ปฏิเสธ',
+                                    style: TextStyle(color: Colors.red),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      );
+                    },
                   ),
                 ),
               ],

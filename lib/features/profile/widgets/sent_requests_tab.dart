@@ -28,7 +28,6 @@ class SentRequestsTab extends StatelessWidget {
           return Center(
             child: Text(
               'ไม่มีคำขอที่ส่งออก',
-              // แก้ไขการใช้ AppTextStyles
               style: AppTextStyles.body,
             ),
           );
@@ -41,92 +40,77 @@ class SentRequestsTab extends StatelessWidget {
             BootstrapRow(
               children: [
                 BootstrapCol(
-                  sizes: 'col-12',
-                  child: Expanded(
-                    child: ListView.separated(
-                      shrinkWrap: true,
-                      itemCount: requests.length,
-                      separatorBuilder: (context, index) => const Divider(),
-                      itemBuilder: (context, index) {
-                        final doc = requests[index];
-                        final data = doc.data() as Map<String, dynamic>?;
-                        if (data == null) {
-                          return ListTile(
-                            title: Text(
-                              'ไม่พบข้อมูลคำขอ',
-                              // แก้ไขการใช้ AppTextStyles
-                              style: AppTextStyles.body,
-                            ),
-                          );
-                        }
+                  sizes: 'col-xs-12 col-sm-12 col-md-10 col-lg-8',
+                  offsets: "offset-md-1 offset-lg-2",
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    itemCount: requests.length,
+                    separatorBuilder: (context, index) => const Divider(),
+                    itemBuilder: (context, index) {
+                      final doc = requests[index];
+                      final requestId = doc.id;
+                      final receiverId = doc['receiver_id'] as String;
 
-                        final requestId = doc.id;
-                        final receiverId = data['receiver_id'];
-
-                        return FutureBuilder<DocumentSnapshot>(
-                          future: friendService.getUserData(receiverId),
-                          builder: (context, userSnapshot) {
-                            if (!userSnapshot.hasData) {
-                              return ListTile(
-                                title: Text(
-                                  'กำลังโหลด...',
-                                  // แก้ไขการใช้ AppTextStyles
-                                  style: AppTextStyles.body,
-                                ),
-                              );
-                            }
-
-                            final receiverData = userSnapshot.data?.data()
-                                as Map<String, dynamic>?;
-                            if (receiverData == null) {
-                              return ListTile(
-                                title: Text(
-                                  'ไม่พบข้อมูลผู้รับ',
-                                  // แก้ไขการใช้ AppTextStyles
-                                  style: AppTextStyles.body,
-                                ),
-                              );
-                            }
-
-                            final receiverName =
-                                receiverData['username'] ?? 'No Name';
-                            final receiverProfile =
-                                receiverData['profileImageUrl'] ?? '';
-
+                      return FutureBuilder<DocumentSnapshot>(
+                        future: friendService.getUserData(receiverId),
+                        builder: (context, receiverSnapshot) {
+                          if (!receiverSnapshot.hasData) {
                             return ListTile(
-                              leading: CircleAvatar(
-                                backgroundImage: receiverProfile.isNotEmpty
-                                    ? NetworkImage(receiverProfile)
-                                    : null,
-                                child: receiverProfile.isEmpty
-                                    ? const Icon(Icons.person)
-                                    : null,
-                              ),
                               title: Text(
-                                receiverName,
-                                // แก้ไขการใช้ AppTextStyles
-                                style: AppTextStyles.subtitle,
-                              ),
-                              subtitle: Text(
-                                'คำขอรอดำเนินการ',
-                                // แก้ไขการใช้ AppTextStyles
-                                style: AppTextStyles.caption,
-                              ),
-                              trailing: TextButton(
-                                child: Text(
-                                  'ยกเลิก',
-                                  style: AppTextStyles.buttonText.copyWith(
-                                    color: Theme.of(context).colorScheme.error,
-                                  ),
-                                ),
-                                onPressed: () => friendService
-                                    .cancelFriendRequest(requestId),
+                                'กำลังโหลด...',
+                                style: AppTextStyles.body,
                               ),
                             );
-                          },
-                        );
-                      },
-                    ),
+                          }
+
+                          final receiverData = receiverSnapshot.data?.data()
+                              as Map<String, dynamic>?;
+                          if (receiverData == null) {
+                            return ListTile(
+                              title: Text(
+                                'ไม่พบข้อมูลผู้ใช้',
+                                style: AppTextStyles.body,
+                              ),
+                            );
+                          }
+
+                          final receiverName =
+                              receiverData['username'] ?? 'No Name';
+                          final receiverProfile =
+                              receiverData['profileImageUrl'] ?? '';
+
+                          return ListTile(
+                            leading: CircleAvatar(
+                              backgroundImage: receiverProfile.isNotEmpty
+                                  ? NetworkImage(receiverProfile)
+                                  : null,
+                              child: receiverProfile.isEmpty
+                                  ? const Icon(Icons.person)
+                                  : null,
+                            ),
+                            title: Text(
+                              receiverName,
+                              style: AppTextStyles.subtitle,
+                            ),
+                            subtitle: Text(
+                              'คำขอรอดำเนินการ',
+                              style: AppTextStyles.caption,
+                            ),
+                            trailing: TextButton(
+                              child: Text(
+                                'ยกเลิก',
+                                style: AppTextStyles.buttonText.copyWith(
+                                  color: Theme.of(context).colorScheme.error,
+                                ),
+                              ),
+                              onPressed: () =>
+                                  friendService.cancelFriendRequest(requestId),
+                            ),
+                          );
+                        },
+                      );
+                    },
                   ),
                 ),
               ],

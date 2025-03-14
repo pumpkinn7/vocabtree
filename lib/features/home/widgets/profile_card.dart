@@ -9,6 +9,7 @@ class ProfileCard extends StatelessWidget {
   final String profileImageUrl;
   final bool isUser;
   final Map<String, dynamic> unlockedTopics;
+  final String backgroundImage;
 
   const ProfileCard({
     super.key,
@@ -17,6 +18,7 @@ class ProfileCard extends StatelessWidget {
     required this.profileImageUrl,
     required this.isUser,
     required this.unlockedTopics,
+    required this.backgroundImage,
   });
 
   String _formatJoinDate(DateTime date) {
@@ -44,38 +46,48 @@ class ProfileCard extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: BootstrapRow(
-          children: [
-            BootstrapCol(
-              sizes: 'col-12',
-              child: Column(
-                children: [
-                  // ส่วนหัวของการ์ด (รูปโปรไฟล์และชื่อ)
-                  _buildProfileHeader(context),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          image: DecorationImage(
+            image: AssetImage(backgroundImage),
+            fit: BoxFit.cover,
+            opacity: 0.3,
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: BootstrapRow(
+            children: [
+              BootstrapCol(
+                sizes: 'col-12',
+                child: Column(
+                  children: [
+                    // ส่วนหัวของการ์ด (รูปโปรไฟล์และชื่อ)
+                    _buildProfileHeader(context),
 
-                  const SizedBox(height: 16),
+                    const SizedBox(height: 16),
 
-                  // ส่วนของข้อมูลเพิ่มเติม
-                  if (joinedAt != null)
-                    Text(
-                      'เข้าร่วมเมื่อ ${_formatJoinDate(joinedAt!)}',
-                      style: AppTextStyles.caption,
-                    ),
+                    // ส่วนของข้อมูลเพิ่มเติม
+                    if (joinedAt != null)
+                      Text(
+                        'เข้าร่วมเมื่อ ${_formatJoinDate(joinedAt!)}',
+                        style: AppTextStyles.caption,
+                      ),
 
-                  const SizedBox(height: 16),
+                    const SizedBox(height: 16),
 
-                  // ส่วนของไอคอนต้นไม้
-                  TreeRewardsRow(unlockedTopics: unlockedTopics),
+                    // ส่วนของไอคอนต้นไม้
+                    TreeRewardsRow(unlockedTopics: unlockedTopics),
 
-                  // ส่วนสถิติในการเล่น
-                  const SizedBox(height: 16),
-                  _buildStatistics(context),
-                ],
+                    // ส่วนสถิติในการเล่น
+                    const SizedBox(height: 16),
+                    _buildStatistics(context),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

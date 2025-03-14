@@ -41,6 +41,8 @@ class ProfileCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(
@@ -56,35 +58,73 @@ class ProfileCard extends StatelessWidget {
           ),
         ),
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: BootstrapRow(
+          padding: const EdgeInsets.all(16.0), // Add padding from card edges
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              BootstrapCol(
-                sizes: 'col-12',
-                child: Column(
+              // SECTION 1: User Profile Details
+              Container(
+                padding: const EdgeInsets.all(24.0), // เพิ่ม padding
+                decoration: BoxDecoration(
+                  color: colorScheme.surface.withOpacity(0.7),
+                  borderRadius:
+                      BorderRadius.circular(16), // Full rounded corners
+                ),
+                child: BootstrapRow(
                   children: [
-                    // ส่วนหัวของการ์ด (รูปโปรไฟล์และชื่อ)
-                    _buildProfileHeader(context),
-
-                    const SizedBox(height: 16),
-
-                    // ส่วนของข้อมูลเพิ่มเติม
-                    if (joinedAt != null)
-                      Text(
-                        'เข้าร่วมเมื่อ ${_formatJoinDate(joinedAt!)}',
-                        style: AppTextStyles.caption,
+                    BootstrapCol(
+                      sizes: 'col-12',
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildProfileHeader(context),
+                          if (joinedAt != null)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 8),
+                              child: Text(
+                                'เข้าร่วมเมื่อ ${_formatJoinDate(joinedAt!)}',
+                                style: AppTextStyles.caption,
+                              ),
+                            ),
+                        ],
                       ),
-
-                    const SizedBox(height: 16),
-
-                    // ส่วนของไอคอนต้นไม้
-                    TreeRewardsRow(unlockedTopics: unlockedTopics),
-
-                    // ส่วนสถิติในการเล่น
-                    const SizedBox(height: 16),
-                    _buildStatistics(context),
+                    ),
                   ],
                 ),
+              ),
+
+              const SizedBox(height: 16), // เพิ่มระยะห่าง
+
+              // SECTION 2: Tree Unlocking Display
+              Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 24.0, vertical: 32.0), // ปรับ padding
+                decoration: BoxDecoration(
+                  color: colorScheme.surfaceVariant.withOpacity(0.6),
+                  borderRadius:
+                      BorderRadius.circular(16), // Full rounded corners
+                ),
+                child: BootstrapRow(
+                  children: [
+                    BootstrapCol(
+                      sizes: 'col-12',
+                      child: TreeRewardsRow(unlockedTopics: unlockedTopics),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 16), // เพิ่มระยะห่าง
+
+              // SECTION 3: Progress Bars for Each Season
+              Container(
+                padding: const EdgeInsets.all(24.0), // เพิ่ม padding
+                decoration: BoxDecoration(
+                  color: colorScheme.surface.withOpacity(0.7),
+                  borderRadius:
+                      BorderRadius.circular(16), // Full rounded corners
+                ),
+                child: _buildProgressSection(context),
               ),
             ],
           ),
@@ -93,6 +133,7 @@ class ProfileCard extends StatelessWidget {
     );
   }
 
+  // Helper method to build profile header
   Widget _buildProfileHeader(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
@@ -129,7 +170,8 @@ class ProfileCard extends StatelessWidget {
     );
   }
 
-  Widget _buildStatistics(BuildContext context) {
+  // Build the progress section with colored progress bars
+  Widget _buildProgressSection(BuildContext context) {
     // นับจำนวนเรื่องที่ปลดล็อคในแต่ละระดับ
     int b1Count = _countUnlocked('B1');
     int b2Count = _countUnlocked('B2');
@@ -139,47 +181,66 @@ class ProfileCard extends StatelessWidget {
     return BootstrapRow(
       children: [
         BootstrapCol(
-          sizes: 'col-6',
-          child: _buildStatItem(context, 'Spring', b1Count, 7),
-        ),
-        BootstrapCol(
-          sizes: 'col-6',
-          child: _buildStatItem(context, 'Summer', b2Count, 8),
-        ),
-        BootstrapCol(
-          sizes: 'col-6',
-          child: _buildStatItem(context, 'Autumn', c1Count, 8),
-        ),
-        BootstrapCol(
-          sizes: 'col-6',
-          child: _buildStatItem(context, 'Winter', c2Count, 7),
+          sizes: 'col-12',
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildProgressBar(
+                  context, 'Spring', b1Count, 7, Colors.green[300]!),
+              const SizedBox(height: 12),
+              _buildProgressBar(
+                  context, 'Summer', b2Count, 8, Colors.yellow[700]!),
+              const SizedBox(height: 12),
+              _buildProgressBar(context, 'Autumn', c1Count, 8, Colors.orange),
+              const SizedBox(height: 12),
+              _buildProgressBar(
+                  context, 'Winter', c2Count, 7, Colors.blue[300]!),
+            ],
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildStatItem(
-      BuildContext context, String title, int count, int total) {
-    final colorScheme = Theme.of(context).colorScheme;
+  // New progress bar widget
+  Widget _buildProgressBar(
+      BuildContext context, String title, int count, int total, Color color) {
+    final progress = count / total;
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          Text(
-            '$title: ',
-            style: AppTextStyles.caption.copyWith(
-              color: colorScheme.onSurface.withOpacity(0.8),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Title and count
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              title,
+              style: AppTextStyles.body.copyWith(
+                fontWeight: FontWeight.w500,
+              ),
             ),
-          ),
-          Text(
-            '$count/$total',
-            style: AppTextStyles.caption.copyWith(
-              fontWeight: FontWeight.bold,
+            Text(
+              '$count/$total',
+              style: AppTextStyles.caption.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
             ),
+          ],
+        ),
+        const SizedBox(height: 4),
+
+        // Progress bar
+        ClipRRect(
+          borderRadius: BorderRadius.circular(10),
+          child: LinearProgressIndicator(
+            value: progress,
+            backgroundColor: color.withOpacity(0.2),
+            valueColor: AlwaysStoppedAnimation<Color>(color),
+            minHeight: 10,
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 

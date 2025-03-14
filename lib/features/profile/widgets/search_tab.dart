@@ -47,7 +47,8 @@ class _SearchTabState extends State<SearchTab> {
         BootstrapRow(
           children: [
             BootstrapCol(
-              sizes: 'col-12',
+              sizes: 'col-xs-12 col-sm-12 col-md-10 col-lg-8',
+              offsets: 'offset-md-1 offset-lg-2',
               child: TextField(
                 controller: _searchController,
                 decoration: const InputDecoration(

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_bootstrap/flutter_bootstrap.dart';
 import 'package:vocabtree/core/theme/text_styles.dart';
 
+import '../models/user_profile_model.dart';
+import '../services/home_service.dart';
 import '../widgets/profile_card.dart';
 import '../widgets/profile_page_indicator.dart';
 
@@ -15,24 +15,16 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final User? currentUser = FirebaseAuth.instance.currentUser;
-  late final PageController _pageController;
+  final HomeService _homeService = HomeService();
+  final PageController _pageController = PageController(viewportFraction: 0.85);
   int _currentPage = 0;
-
-  String username = '';
-  DateTime? createdAt;
-  String profileImageUrl = '';
-  Map<String, dynamic> userUnlockedTopics = {};
-  int userRewardCount = 0;
-
-  List<Map<String, dynamic>> friendList = [];
-  bool isLoading = true;
+  bool _isLoading = true;
+  List<UserProfileModel> _profiles = [];
 
   @override
   void initState() {
     super.initState();
-    _pageController = PageController(viewportFraction: 0.85);
-    _fetchData();
+    _loadProfiles();
   }
 
   @override
@@ -41,116 +33,20 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
-  Future<void> _fetchData() async {
-    if (currentUser == null) {
-      setState(() => isLoading = false);
-      return;
-    }
-
+  Future<void> _loadProfiles() async {
     try {
-      final userId = currentUser!.uid;
+      setState(() => _isLoading = true);
 
-      // ดึงข้อมูล user
-      final userDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(userId)
-          .get();
-      if (userDoc.exists) {
-        final data = userDoc.data() ?? {};
-        username = data['username'] ?? 'No Username';
-        profileImageUrl = data['profileImageUrl'] ?? '';
-      }
-
-      // ดึง profiles รับค่า createdAt
-      final profileDoc = await FirebaseFirestore.instance
-          .collection('profiles')
-          .doc(userId)
-          .get();
-      if (profileDoc.exists) {
-        final pData = profileDoc.data() ?? {};
-        final ts = pData['createdAt'] as Timestamp?;
-        if (ts != null) {
-          createdAt = ts.toDate();
-        }
-      }
-
-      // ดึง progress/unlockedTopics ของ user
-      final progressDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(userId)
-          .collection('progress')
-          .doc('unlockedTopics')
-          .get();
-      userUnlockedTopics = progressDoc.data() ?? {};
-
-      // ดึง reward ของ user
-      final rewardsSnap = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(userId)
-          .collection('rewards')
-          .get();
-      userRewardCount = rewardsSnap.size;
-
-      // ดึงเพื่อน
-      final friendsDoc = await FirebaseFirestore.instance
-          .collection('friends')
-          .doc(userId)
-          .get();
-      final friendIds = (friendsDoc.data()?['friends'] as List<dynamic>? ?? []);
-
-      // ดึงข้อมูลเพื่อน
-      List<Map<String, dynamic>> tempFriendList = [];
-      for (var fid in friendIds) {
-        // ข้อมูลพื้นฐานของเพื่อน
-        final friendUserDoc =
-            await FirebaseFirestore.instance.collection('users').doc(fid).get();
-        if (!friendUserDoc.exists) continue;
-        final fData = friendUserDoc.data() ?? {};
-
-        // createdAt เพื่อน
-        DateTime? friendCreatedAt;
-        final friendProfileDoc = await FirebaseFirestore.instance
-            .collection('profiles')
-            .doc(fid)
-            .get();
-        if (friendProfileDoc.exists) {
-          final ts = friendProfileDoc.data()?['createdAt'] as Timestamp?;
-          if (ts != null) friendCreatedAt = ts.toDate();
-        }
-
-        // unlockedTopics เพื่อน
-        final friendProgressDoc = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(fid)
-            .collection('progress')
-            .doc('unlockedTopics')
-            .get();
-
-        // reward เพื่อน
-        final friendRewardsSnap = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(fid)
-            .collection('rewards')
-            .get();
-
-        tempFriendList.add({
-          'userId': fid,
-          'username': fData['username'] ?? 'No Name',
-          'createdAt': friendCreatedAt,
-          'profileImageUrl': fData['profileImageUrl'] ?? '',
-          'unlockedTopics': friendProgressDoc.data() ?? {},
-          'rewardCount': friendRewardsSnap.size,
-        });
-      }
+      // ดึงข้อมูลผู้ใช้ปัจจุบันและเพื่อน
+      final currentUser = await _homeService.fetchCurrentUser();
+      final friends = await _homeService.fetchFriends();
 
       setState(() {
-        friendList = tempFriendList;
-        isLoading = false;
+        _profiles = [currentUser, ...friends];
+        _isLoading = false;
       });
     } catch (e) {
-      setState(() {
-        isLoading = false;
-      });
+      setState(() => _isLoading = false);
     }
   }
 
@@ -171,82 +67,70 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     bootstrapGridParameters(gutterSize: 16);
 
-    if (isLoading) {
-      return Scaffold(
-        appBar: AppBar(
-          title: Text('หน้าหลัก', style: AppTextStyles.headline),
-        ),
-        body: const Center(child: CircularProgressIndicator()),
-      );
-    }
-
-    final List<Map<String, dynamic>> pagesData = [
-      {
-        'username': username,
-        'createdAt': createdAt,
-        'profileImageUrl': profileImageUrl,
-        'unlockedTopics': userUnlockedTopics,
-        'isUser': true,
-        'rewardCount': userRewardCount,
-      },
-      ...friendList.map((f) => {
-            'username': f['username'],
-            'createdAt': f['createdAt'],
-            'profileImageUrl': f['profileImageUrl'],
-            'unlockedTopics': f['unlockedTopics'] ?? {},
-            'isUser': false,
-            'rewardCount': f['rewardCount'] ?? 0,
-          }),
-    ];
-
     return Scaffold(
       appBar: AppBar(
         title: Text('หน้าหลัก', style: AppTextStyles.headline),
       ),
-      body: Column(
-        children: [
-          const SizedBox(height: 16),
-          Expanded(
-            child: PageView.builder(
-              controller: _pageController,
-              onPageChanged: (int page) {
-                setState(() {
-                  _currentPage = page;
-                });
-              },
-              itemCount: pagesData.length,
-              itemBuilder: (context, index) {
-                final data = pagesData[index];
-                final isCurrentPage = index == _currentPage;
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : BootstrapContainer(
+              fluid: true,
+              children: [
+                BootstrapRow(
+                  children: [
+                    BootstrapCol(
+                      sizes: 'col-xs-12 col-sm-12 col-md-8 col-lg-6',
+                      offsets:
+                          "offset-xs-0 offset-sm-0 offset-md-2 offset-lg-3",
+                      child: SizedBox(
+                        height: MediaQuery.of(context).size.height * 0.8,
+                        child: Column(
+                          children: [
+                            const SizedBox(height: 10),
+                            Expanded(
+                              child: PageView.builder(
+                                controller: _pageController,
+                                onPageChanged: (page) =>
+                                    setState(() => _currentPage = page),
+                                itemCount: _profiles.length,
+                                itemBuilder: (context, index) {
+                                  final profile = _profiles[index];
+                                  final isCurrentPage = index == _currentPage;
 
-                return AnimatedContainer(
-                  duration: const Duration(milliseconds: 300),
-                  curve: Curves.easeInOut,
-                  margin: EdgeInsets.symmetric(
-                    vertical: isCurrentPage ? 10 : 20,
-                    horizontal: 8,
-                  ),
-                  child: ProfileCard(
-                    username: data['username'],
-                    joinedAt: data['createdAt'],
-                    profileImageUrl: data['profileImageUrl'],
-                    isUser: data['isUser'],
-                    unlockedTopics: data['unlockedTopics'],
-                    backgroundImage:
-                        _getBackgroundImage(data['unlockedTopics']),
-                  ),
-                );
-              },
+                                  return AnimatedContainer(
+                                    duration: const Duration(milliseconds: 300),
+                                    curve: Curves.easeInOut,
+                                    margin: EdgeInsets.symmetric(
+                                      vertical: isCurrentPage ? 10 : 20,
+                                      horizontal: 8,
+                                    ),
+                                    child: ProfileCard(
+                                      username: profile.username,
+                                      joinedAt: profile.createdAt,
+                                      profileImageUrl: profile.profileImageUrl,
+                                      isUser: profile.isUser,
+                                      unlockedTopics: profile.unlockedTopics,
+                                      backgroundImage: _getBackgroundImage(
+                                          profile.unlockedTopics),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            ProfilePageIndicator(
+                              currentPage: _currentPage,
+                              totalPages: _profiles.length,
+                            ),
+                            const SizedBox(height: 35),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
-          ),
-          const SizedBox(height: 16),
-          ProfilePageIndicator(
-            currentPage: _currentPage,
-            totalPages: pagesData.length,
-          ),
-          const SizedBox(height: 24),
-        ],
-      ),
     );
   }
 }

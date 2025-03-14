@@ -49,13 +49,13 @@ class MyFriendsTab extends StatelessWidget {
 
         return BootstrapContainer(
           fluid: true,
-          decoration: const BoxDecoration(color: Colors.white),
           padding: const EdgeInsets.all(16.0),
           children: [
             BootstrapRow(
               children: [
                 BootstrapCol(
-                  sizes: 'col-12',
+                  sizes: 'col-xs-12 col-sm-12 col-md-10 col-lg-8',
+                  offsets: "offset-md-1 offset-lg-2",
                   child: Expanded(
                     child: ListView.separated(
                       shrinkWrap: true,
@@ -104,12 +104,15 @@ class MyFriendsTab extends StatelessWidget {
                               ),
                               title: Text(
                                 friendName,
-                                // แก้ไขการใช้ AppTextStyles
                                 style: AppTextStyles.subtitle,
                               ),
-                              trailing: IconButton(
-                                icon: const Icon(Icons.remove_circle,
-                                    color: Colors.red),
+                              trailing: TextButton(
+                                child: Text(
+                                  'ลบเพื่อน',
+                                  style: AppTextStyles.buttonText.copyWith(
+                                    color: Theme.of(context).colorScheme.error,
+                                  ),
+                                ),
                                 onPressed: () => friendService.removeFriend(
                                     currentUserId, friendId),
                               ),

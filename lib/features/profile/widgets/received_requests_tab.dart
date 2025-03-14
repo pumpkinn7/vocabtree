@@ -36,7 +36,6 @@ class ReceivedRequestsTab extends StatelessWidget {
 
         return BootstrapContainer(
           fluid: true,
-          decoration: const BoxDecoration(color: Colors.white),
           padding: const EdgeInsets.all(16.0),
           children: [
             BootstrapRow(
@@ -108,11 +107,6 @@ class ReceivedRequestsTab extends StatelessWidget {
                                 senderName,
                                 // แก้ไขการใช้ AppTextStyles
                                 style: AppTextStyles.subtitle,
-                              ),
-                              subtitle: Text(
-                                'ส่งคำขอเป็นเพื่อนถึงคุณ',
-                                // แก้ไขการใช้ AppTextStyles
-                                style: AppTextStyles.caption,
                               ),
                               trailing: Row(
                                 mainAxisSize: MainAxisSize.min,

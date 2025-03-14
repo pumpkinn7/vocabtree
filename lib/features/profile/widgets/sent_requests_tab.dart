@@ -9,7 +9,7 @@ class SentRequestsTab extends StatelessWidget {
   final FriendService friendService;
 
   const SentRequestsTab({
-    super.key, // แก้ไขเป็น super parameter
+    super.key,
     required this.currentUserId,
     required this.friendService,
   });
@@ -36,7 +36,6 @@ class SentRequestsTab extends StatelessWidget {
 
         return BootstrapContainer(
           fluid: true,
-          decoration: const BoxDecoration(color: Colors.white),
           padding: const EdgeInsets.all(16.0),
           children: [
             BootstrapRow(
@@ -113,9 +112,13 @@ class SentRequestsTab extends StatelessWidget {
                                 // แก้ไขการใช้ AppTextStyles
                                 style: AppTextStyles.caption,
                               ),
-                              trailing: IconButton(
-                                icon:
-                                    const Icon(Icons.cancel, color: Colors.red),
+                              trailing: TextButton(
+                                child: Text(
+                                  'ยกเลิก',
+                                  style: AppTextStyles.buttonText.copyWith(
+                                    color: Theme.of(context).colorScheme.error,
+                                  ),
+                                ),
                                 onPressed: () => friendService
                                     .cancelFriendRequest(requestId),
                               ),

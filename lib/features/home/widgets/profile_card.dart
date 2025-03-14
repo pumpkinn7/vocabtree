@@ -21,24 +21,6 @@ class ProfileCard extends StatelessWidget {
     required this.backgroundImage,
   });
 
-  String _formatJoinDate(DateTime date) {
-    final months = [
-      'มกราคม',
-      'กุมภาพันธ์',
-      'มีนาคม',
-      'เมษายน',
-      'พฤษภาคม',
-      'มิถุนายน',
-      'กรกฎาคม',
-      'สิงหาคม',
-      'กันยายน',
-      'ตุลาคม',
-      'พฤศจิกายน',
-      'ธันวาคม'
-    ];
-    return '${months[date.month - 1]} ${date.year + 543}';
-  }
-
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -58,73 +40,65 @@ class ProfileCard extends StatelessWidget {
           ),
         ),
         child: Padding(
-          padding: const EdgeInsets.all(16.0), // Add padding from card edges
+          padding: const EdgeInsets.all(12.0),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // SECTION 1: User Profile Details
               Container(
-                padding: const EdgeInsets.all(24.0), // เพิ่ม padding
+                padding: const EdgeInsets.all(16.0),
                 decoration: BoxDecoration(
                   color: colorScheme.surface.withOpacity(0.7),
-                  borderRadius:
-                      BorderRadius.circular(16), // Full rounded corners
+                  borderRadius: BorderRadius.circular(16),
                 ),
-                child: BootstrapRow(
-                  children: [
-                    BootstrapCol(
-                      sizes: 'col-12',
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildProfileHeader(context),
-                          if (joinedAt != null)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 8),
-                              child: Text(
-                                'เข้าร่วมเมื่อ ${_formatJoinDate(joinedAt!)}',
-                                style: AppTextStyles.caption,
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+                child: _buildProfileHeader(context),
               ),
-
-              const SizedBox(height: 16), // เพิ่มระยะห่าง
-
-              // SECTION 2: Tree Unlocking Display
+              const SizedBox(height: 12),
               Container(
+                width: double.infinity,
                 padding: const EdgeInsets.symmetric(
-                    horizontal: 24.0, vertical: 32.0), // ปรับ padding
+                  horizontal: 12.0,
+                  vertical: 12.0,
+                ),
                 decoration: BoxDecoration(
                   color: colorScheme.surfaceVariant.withOpacity(0.6),
-                  borderRadius:
-                      BorderRadius.circular(16), // Full rounded corners
+                  borderRadius: BorderRadius.circular(16),
                 ),
-                child: BootstrapRow(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    BootstrapCol(
-                      sizes: 'col-12',
-                      child: TreeRewardsRow(unlockedTopics: unlockedTopics),
+                    Text(
+                      'การปลดล็อค',
+                      style: AppTextStyles.subtitle.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
+                    const SizedBox(height: 2),
+                    TreeRewardsRow(unlockedTopics: unlockedTopics),
                   ],
                 ),
               ),
-
-              const SizedBox(height: 16), // เพิ่มระยะห่าง
-
-              // SECTION 3: Progress Bars for Each Season
+              const SizedBox(height: 12),
               Container(
-                padding: const EdgeInsets.all(24.0), // เพิ่ม padding
+                padding: const EdgeInsets.all(16.0),
                 decoration: BoxDecoration(
                   color: colorScheme.surface.withOpacity(0.7),
-                  borderRadius:
-                      BorderRadius.circular(16), // Full rounded corners
+                  borderRadius: BorderRadius.circular(16),
                 ),
-                child: _buildProgressSection(context),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'ความคืบหน้า',
+                      style: AppTextStyles.subtitle.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    _buildProgressSection(context),
+                  ],
+                ),
               ),
             ],
           ),
@@ -133,7 +107,6 @@ class ProfileCard extends StatelessWidget {
     );
   }
 
-  // Helper method to build profile header
   Widget _buildProfileHeader(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
@@ -154,12 +127,12 @@ class ProfileCard extends StatelessWidget {
             children: [
               Text(
                 username,
-                style: AppTextStyles.subtitle,
+                style: AppTextStyles.headline,
                 overflow: TextOverflow.ellipsis,
               ),
               Text(
-                isUser ? 'คุณ' : 'เพื่อน',
-                style: AppTextStyles.caption.copyWith(
+                isUser ? 'ฉัน' : 'เพื่อน',
+                style: AppTextStyles.label.copyWith(
                   color: isUser ? colorScheme.primary : colorScheme.secondary,
                 ),
               ),
@@ -170,9 +143,7 @@ class ProfileCard extends StatelessWidget {
     );
   }
 
-  // Build the progress section with colored progress bars
   Widget _buildProgressSection(BuildContext context) {
-    // นับจำนวนเรื่องที่ปลดล็อคในแต่ละระดับ
     int b1Count = _countUnlocked('B1');
     int b2Count = _countUnlocked('B2');
     int c1Count = _countUnlocked('C1');
@@ -184,15 +155,16 @@ class ProfileCard extends StatelessWidget {
           sizes: 'col-12',
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min, // Use minimum space needed
             children: [
               _buildProgressBar(
                   context, 'Spring', b1Count, 7, Colors.green[300]!),
-              const SizedBox(height: 12),
+              const SizedBox(height: 8), // Reduce spacing between bars
               _buildProgressBar(
                   context, 'Summer', b2Count, 8, Colors.yellow[700]!),
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
               _buildProgressBar(context, 'Autumn', c1Count, 8, Colors.orange),
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
               _buildProgressBar(
                   context, 'Winter', c2Count, 7, Colors.blue[300]!),
             ],
@@ -202,7 +174,6 @@ class ProfileCard extends StatelessWidget {
     );
   }
 
-  // New progress bar widget
   Widget _buildProgressBar(
       BuildContext context, String title, int count, int total, Color color) {
     final progress = count / total;
@@ -210,7 +181,6 @@ class ProfileCard extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Title and count
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -229,15 +199,13 @@ class ProfileCard extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 4),
-
-        // Progress bar
         ClipRRect(
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(8),
           child: LinearProgressIndicator(
             value: progress,
             backgroundColor: color.withOpacity(0.2),
             valueColor: AlwaysStoppedAnimation<Color>(color),
-            minHeight: 10,
+            minHeight: 8,
           ),
         ),
       ],

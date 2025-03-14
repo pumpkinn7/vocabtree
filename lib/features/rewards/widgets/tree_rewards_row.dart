@@ -1,17 +1,44 @@
 import 'package:flutter/material.dart';
+import 'package:vocabtree/core/theme/text_styles.dart';
 
-class TreeRewardsRow extends StatelessWidget {
+class TreeRewardsRow extends StatefulWidget {
   final Map<String, dynamic> unlockedTopics;
 
   const TreeRewardsRow({super.key, required this.unlockedTopics});
 
+  @override
+  State<TreeRewardsRow> createState() => _TreeRewardsRowState();
+}
+
+class _TreeRewardsRowState extends State<TreeRewardsRow> {
+  final PageController _pageController = PageController(viewportFraction: 0.4);
+  int _currentPage = 0;
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
   bool _isUnlocked(String topic, String level) {
-    final levelTopics = unlockedTopics[level] as Map<String, dynamic>?;
+    final levelTopics = widget.unlockedTopics[level] as Map<String, dynamic>?;
     return levelTopics?[topic] == true;
+  }
+
+  String _formatTopicName(String topic) {
+    return topic
+        .replaceAll('_', ' ')
+        .split(' ')
+        .map((word) => word.isNotEmpty
+            ? '${word[0].toUpperCase()}${word.substring(1)}'
+            : '')
+        .join(' ');
   }
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     final treeRewards = [
       {'image': 'oak_6977599.png', 'topic': 'daily_life', 'level': 'B1'},
       {
@@ -33,24 +60,85 @@ class TreeRewardsRow extends StatelessWidget {
       {'image': 'tree_6977598.png', 'topic': 'smart_automation', 'level': 'C2'}
     ];
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: treeRewards
-            .map((reward) => Padding(
-                  padding: const EdgeInsets.all(4.0),
-                  child: Image.asset(
-                    'assets/images/${reward['image']}',
-                    width: 32,
-                    height: 32,
-                    opacity: AlwaysStoppedAnimation(
-                        _isUnlocked(reward['topic']!, reward['level']!)
-                            ? 1.0
-                            : 0.5),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          height: 80,
+          child: PageView.builder(
+            controller: _pageController,
+            onPageChanged: (index) {
+              setState(() {
+                _currentPage = index;
+              });
+            },
+            itemCount: treeRewards.length,
+            itemBuilder: (context, index) {
+              final reward = treeRewards[index];
+              final isUnlocked =
+                  _isUnlocked(reward['topic']!, reward['level']!);
+              final formattedTopic = _formatTopicName(reward['topic']!);
+
+              return AnimatedOpacity(
+                duration: const Duration(milliseconds: 300),
+                opacity: index == _currentPage ? 1.0 : 0.5,
+                child: Transform.scale(
+                  scale: index == _currentPage ? 1.0 : 0.8,
+                  child: Container(
+                    padding: const EdgeInsets.all(4.0),
+                    margin: const EdgeInsets.symmetric(horizontal: 2.0),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Image.asset(
+                          'assets/images/${reward['image']}',
+                          width: 45,
+                          height: 45,
+                          opacity:
+                              AlwaysStoppedAnimation(isUnlocked ? 1.0 : 0.3),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          formattedTopic,
+                          style: AppTextStyles.caption.copyWith(
+                            fontWeight: isUnlocked
+                                ? FontWeight.bold
+                                : FontWeight.normal,
+                            color: colorScheme.onSurface.withOpacity(0.7),
+                          ),
+                          textAlign: TextAlign.center,
+                          maxLines: 1, // ลดจาก 2 เหลือ 1 บรรทัด
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
                   ),
-                ))
-            .toList(),
-      ),
+                ),
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 4), // ลดระยะห่าง
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(
+            treeRewards.length,
+            (index) => AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              width: index == _currentPage ? 12 : 6, // ลดขนาดลง
+              height: 6, // ลดความสูงลง
+              margin: const EdgeInsets.symmetric(horizontal: 1),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(4),
+                color: index == _currentPage
+                    ? colorScheme.primary
+                    : colorScheme.primary.withOpacity(0.3),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

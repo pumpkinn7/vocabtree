@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:card_swiper/card_swiper.dart';
 
 import '../widgets/profile_card.dart';
 
@@ -14,6 +13,8 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final User? currentUser = FirebaseAuth.instance.currentUser;
+  late final PageController _pageController;
+  int _currentPage = 0;
 
   String username = '';
   DateTime? createdAt;
@@ -22,22 +23,24 @@ class _HomeScreenState extends State<HomeScreen> {
   int userRewardCount = 0;
 
   List<Map<String, dynamic>> friendList = [];
-
   bool isLoading = true;
-  String? errorMessage;
 
   @override
   void initState() {
     super.initState();
+    _pageController = PageController(viewportFraction: 0.85);
     _fetchData();
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
   }
 
   Future<void> _fetchData() async {
     if (currentUser == null) {
-      setState(() {
-        isLoading = false;
-        errorMessage = 'ยังมั่ยยได้เข้าสู่ระบบบ';
-      });
+      setState(() => isLoading = false);
       return;
     }
 
@@ -85,36 +88,31 @@ class _HomeScreenState extends State<HomeScreen> {
           .get();
       userRewardCount = rewardsSnap.size;
 
-      // ดึงเพื่อน /friends/{userId}
+      // ดึงเพื่อน
       final friendsDoc = await FirebaseFirestore.instance
           .collection('friends')
           .doc(userId)
           .get();
-      final friendIds =
-      (friendsDoc.data()?['friends'] as List<dynamic>? ?? []);
+      final friendIds = (friendsDoc.data()?['friends'] as List<dynamic>? ?? []);
 
+      // ดึงข้อมูลเพื่อน
       List<Map<String, dynamic>> tempFriendList = [];
       for (var fid in friendIds) {
         // ข้อมูลพื้นฐานของเพื่อน
-        final friendUserDoc = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(fid)
-            .get();
+        final friendUserDoc =
+            await FirebaseFirestore.instance.collection('users').doc(fid).get();
         if (!friendUserDoc.exists) continue;
         final fData = friendUserDoc.data() ?? {};
 
         // createdAt เพื่อน
+        DateTime? friendCreatedAt;
         final friendProfileDoc = await FirebaseFirestore.instance
             .collection('profiles')
             .doc(fid)
             .get();
-        DateTime? friendCreatedAt;
         if (friendProfileDoc.exists) {
-          final fpData = friendProfileDoc.data() ?? {};
-          final ts = fpData['createdAt'] as Timestamp?;
-          if (ts != null) {
-            friendCreatedAt = ts.toDate();
-          }
+          final ts = friendProfileDoc.data()?['createdAt'] as Timestamp?;
+          if (ts != null) friendCreatedAt = ts.toDate();
         }
 
         // unlockedTopics เพื่อน
@@ -124,7 +122,6 @@ class _HomeScreenState extends State<HomeScreen> {
             .collection('progress')
             .doc('unlockedTopics')
             .get();
-        final friendUnlockedTopics = friendProgressDoc.data() ?? {};
 
         // reward เพื่อน
         final friendRewardsSnap = await FirebaseFirestore.instance
@@ -132,15 +129,14 @@ class _HomeScreenState extends State<HomeScreen> {
             .doc(fid)
             .collection('rewards')
             .get();
-        final friendRewardCount = friendRewardsSnap.size;
 
         tempFriendList.add({
           'userId': fid,
           'username': fData['username'] ?? 'No Name',
           'createdAt': friendCreatedAt,
           'profileImageUrl': fData['profileImageUrl'] ?? '',
-          'unlockedTopics': friendUnlockedTopics,
-          'rewardCount': friendRewardCount,
+          'unlockedTopics': friendProgressDoc.data() ?? {},
+          'rewardCount': friendRewardsSnap.size,
         });
       }
 
@@ -151,7 +147,6 @@ class _HomeScreenState extends State<HomeScreen> {
     } catch (e) {
       setState(() {
         isLoading = false;
-        errorMessage = e.toString();
       });
     }
   }
@@ -164,13 +159,6 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
 
-    if (errorMessage != null) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Home Screen')),
-        body: Center(child: Text(errorMessage!)),
-      );
-    }
-
     final List<Map<String, dynamic>> pagesData = [
       {
         'username': username,
@@ -178,18 +166,16 @@ class _HomeScreenState extends State<HomeScreen> {
         'profileImageUrl': profileImageUrl,
         'unlockedTopics': userUnlockedTopics,
         'isUser': true,
-        'rewardCount': userRewardCount, // user
+        'rewardCount': userRewardCount,
       },
-      ...friendList.map((f) {
-        return {
-          'username': f['username'],
-          'createdAt': f['createdAt'],
-          'profileImageUrl': f['profileImageUrl'],
-          'unlockedTopics': f['unlockedTopics'] ?? {},
-          'isUser': false,
-          'rewardCount': f['rewardCount'] ?? 0,
-        };
-      }),
+      ...friendList.map((f) => {
+            'username': f['username'],
+            'createdAt': f['createdAt'],
+            'profileImageUrl': f['profileImageUrl'],
+            'unlockedTopics': f['unlockedTopics'] ?? {},
+            'isUser': false,
+            'rewardCount': f['rewardCount'] ?? 0,
+          }),
     ];
 
     return Scaffold(
@@ -200,25 +186,57 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           const SizedBox(height: 16),
           Expanded(
-            child: Swiper(
+            child: PageView.builder(
+              controller: _pageController,
+              onPageChanged: (int page) {
+                setState(() {
+                  _currentPage = page;
+                });
+              },
               itemCount: pagesData.length,
-              itemBuilder: (BuildContext context, int index) {
+              itemBuilder: (context, index) {
                 final data = pagesData[index];
-                return ProfileCard(
-                  name: data['username'] ?? 'No Name',
-                  joinedAt: data['createdAt'] as DateTime?,
-                  imageUrl: data['profileImageUrl'] ?? '',
-                  unlockedTopics: data['unlockedTopics'] as Map<String, dynamic>? ?? {},
-                  isUser: data['isUser'] as bool? ?? false,
-                  // ส่ง rewardCount ให้ ProfileCard
-                  rewardCount: data['rewardCount'] as int? ?? 0,
+                final isCurrentPage = index == _currentPage;
+
+                return AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeInOut,
+                  margin: EdgeInsets.symmetric(
+                    vertical: isCurrentPage ? 10 : 20,
+                    horizontal: 8,
+                  ),
+                  child: ProfileCard(
+                    username: data['username'],
+                    joinedAt: data['createdAt'],
+                    profileImageUrl: data['profileImageUrl'],
+                    isUser: data['isUser'],
+                    unlockedTopics: data['unlockedTopics'],
+                  ),
                 );
               },
-              viewportFraction: 0.8,
-              scale: 0.9,
-              loop: true,
             ),
           ),
+          const SizedBox(height: 16),
+          // ตัวบ่งชี้หน้าปัจจุบัน
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(
+              pagesData.length,
+              (index) => AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                height: 8,
+                width: _currentPage == index ? 24 : 8,
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(4),
+                  color: _currentPage == index
+                      ? Theme.of(context).primaryColor
+                      : Colors.grey.withOpacity(0.5),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
         ],
       ),
     );

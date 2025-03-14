@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_bootstrap/flutter_bootstrap.dart';
+import 'package:vocabtree/core/theme/text_styles.dart';
 
 import '../widgets/profile_card.dart';
+import '../widgets/profile_page_indicator.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -153,9 +156,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    bootstrapGridParameters(gutterSize: 16);
+
     if (isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+      return Scaffold(
+        appBar: AppBar(
+          title: Text('หน้าหลัก', style: AppTextStyles.headline),
+        ),
+        body: const Center(child: CircularProgressIndicator()),
       );
     }
 
@@ -180,64 +188,64 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Home Screen'),
+        title: Text('Home Screen', style: AppTextStyles.headline),
+        centerTitle: true,
       ),
-      body: Column(
-        children: [
-          const SizedBox(height: 16),
-          Expanded(
-            child: PageView.builder(
-              controller: _pageController,
-              onPageChanged: (int page) {
-                setState(() {
-                  _currentPage = page;
-                });
-              },
-              itemCount: pagesData.length,
-              itemBuilder: (context, index) {
-                final data = pagesData[index];
-                final isCurrentPage = index == _currentPage;
-
-                return AnimatedContainer(
-                  duration: const Duration(milliseconds: 300),
-                  curve: Curves.easeInOut,
-                  margin: EdgeInsets.symmetric(
-                    vertical: isCurrentPage ? 10 : 20,
-                    horizontal: 8,
-                  ),
-                  child: ProfileCard(
-                    username: data['username'],
-                    joinedAt: data['createdAt'],
-                    profileImageUrl: data['profileImageUrl'],
-                    isUser: data['isUser'],
-                    unlockedTopics: data['unlockedTopics'],
-                  ),
-                );
-              },
-            ),
+      body: Container(
+        decoration: BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage('assets/images/background.png'),
+            fit: BoxFit.cover,
           ),
-          const SizedBox(height: 16),
-          // ตัวบ่งชี้หน้าปัจจุบัน
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(
-              pagesData.length,
-              (index) => AnimatedContainer(
-                duration: const Duration(milliseconds: 300),
-                height: 8,
-                width: _currentPage == index ? 24 : 8,
-                margin: const EdgeInsets.symmetric(horizontal: 4),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(4),
-                  color: _currentPage == index
-                      ? Theme.of(context).primaryColor
-                      : Colors.grey.withOpacity(0.5),
-                ),
+        ),
+        child: Column(
+          children: [
+            const SizedBox(height: 16),
+
+            // PageView คือส่วนหลักของหน้าจอ
+            Expanded(
+              child: PageView.builder(
+                controller: _pageController,
+                onPageChanged: (int page) {
+                  setState(() {
+                    _currentPage = page;
+                  });
+                },
+                itemCount: pagesData.length,
+                itemBuilder: (context, index) {
+                  final data = pagesData[index];
+                  final isCurrentPage = index == _currentPage;
+
+                  return AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeInOut,
+                    margin: EdgeInsets.symmetric(
+                      vertical: isCurrentPage ? 10 : 20,
+                      horizontal: 8,
+                    ),
+                    child: ProfileCard(
+                      username: data['username'],
+                      joinedAt: data['createdAt'],
+                      profileImageUrl: data['profileImageUrl'],
+                      isUser: data['isUser'],
+                      unlockedTopics: data['unlockedTopics'],
+                    ),
+                  );
+                },
               ),
             ),
-          ),
-          const SizedBox(height: 24),
-        ],
+
+            const SizedBox(height: 16),
+
+            // Page indicator
+            ProfilePageIndicator(
+              currentPage: _currentPage,
+              totalPages: pagesData.length,
+            ),
+
+            const SizedBox(height: 24),
+          ],
+        ),
       ),
     );
   }

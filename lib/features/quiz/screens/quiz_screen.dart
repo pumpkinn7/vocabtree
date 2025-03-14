@@ -7,11 +7,47 @@ import 'package:vocabtree/features/quiz/services/vocabulary_service.dart';
 import 'package:vocabtree/features/quiz/widgets/daily_vocabulary_card.dart';
 import 'package:vocabtree/features/quiz/widgets/vocabulary_guide_dialog.dart';
 import 'package:vocabtree/features/quiz/widgets/vocabulary_item_widget.dart';
+import '../widgets/quiz_loading.dart';
 
-class QuizScreen extends StatelessWidget {
+class QuizScreen extends StatefulWidget {
   const QuizScreen({super.key});
 
-  // แสดง dialog คู่มือระดับคำศัพท์
+  @override
+  State<QuizScreen> createState() => _QuizScreenState();
+}
+
+class _QuizScreenState extends State<QuizScreen> {
+  bool _isLoading = true;
+  final VocabularyService _vocabularyService = VocabularyService();
+  late final List<dynamic> _categories;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    setState(() => _isLoading = true);
+
+    final startTime = DateTime.now();
+
+    _categories = _vocabularyService.getVocabularyCategories();
+
+    final elapsedTime = DateTime.now().difference(startTime).inMilliseconds;
+    final minimumLoadingTime = 3500;
+
+    if (elapsedTime < minimumLoadingTime) {
+      await Future.delayed(
+        Duration(milliseconds: minimumLoadingTime - elapsedTime),
+      );
+    }
+
+    if (mounted) {
+      setState(() => _isLoading = false);
+    }
+  }
+
   void _showVocabGuide(BuildContext context) {
     showDialog(
       context: context,
@@ -21,7 +57,12 @@ class QuizScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final categories = VocabularyService().getVocabularyCategories();
+    if (_isLoading) {
+      return const Scaffold(
+        body: QuizLoading(),
+      );
+    }
+
     final userId = FirebaseAuth.instance.currentUser?.uid ?? '';
 
     return Scaffold(
@@ -72,7 +113,7 @@ class QuizScreen extends StatelessWidget {
             ),
 
             // Vocabulary Categories with simplified layout
-            ...categories.map((category) => BootstrapRow(
+            ..._categories.map((category) => BootstrapRow(
                   children: [
                     BootstrapCol(
                       sizes: 'col-xs-12 col-sm-12 col-md-8 col-lg-6',

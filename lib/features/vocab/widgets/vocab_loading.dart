@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 import '../../../core/theme/text_styles.dart';
 
-class QuizLoading extends StatelessWidget {
-  const QuizLoading({super.key});
+class VocabLoading extends StatelessWidget {
+  const VocabLoading({super.key});
 
   @override
   Widget build(BuildContext context) {

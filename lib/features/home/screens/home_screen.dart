@@ -6,6 +6,7 @@ import '../models/user_profile_model.dart';
 import '../services/home_service.dart';
 import '../widgets/profile_card.dart';
 import '../widgets/profile_page_indicator.dart';
+import '../widgets/home_screen_loading.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -24,13 +25,35 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _loadProfiles();
+    _loadData();
   }
 
   @override
   void dispose() {
     _pageController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadData() async {
+    setState(() => _isLoading = true);
+
+    // บันทึกเวลาเริ่มต้น
+    final startTime = DateTime.now();
+
+    await _loadProfiles();
+
+    final elapsedTime = DateTime.now().difference(startTime).inMilliseconds;
+    final minimumLoadingTime = 3500;
+
+    if (elapsedTime < minimumLoadingTime) {
+      await Future.delayed(
+        Duration(milliseconds: minimumLoadingTime - elapsedTime),
+      );
+    }
+
+    if (mounted) {
+      setState(() => _isLoading = false);
+    }
   }
 
   Future<void> _loadProfiles() async {
@@ -65,6 +88,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(
+        body: HomeScreenLoading(),
+      );
+    }
+
     bootstrapGridParameters(gutterSize: 16);
 
     return Scaffold(
@@ -101,7 +130,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                     duration: const Duration(milliseconds: 300),
                                     curve: Curves.easeInOut,
                                     margin: EdgeInsets.symmetric(
-                                      vertical: isCurrentPage ? 10 : 20,
+                                      vertical: isCurrentPage ? 5 : 10,
                                       horizontal: 8,
                                     ),
                                     child: ProfileCard(

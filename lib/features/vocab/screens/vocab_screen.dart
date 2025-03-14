@@ -6,6 +6,7 @@ import 'package:vocabtree/features/vocab/models/vocab_level_model.dart';
 import 'package:vocabtree/features/vocab/services/vocab_service.dart';
 import 'package:vocabtree/features/vocab/widgets/empty_vocab_state.dart';
 import 'package:vocabtree/features/vocab/widgets/season_section.dart';
+import '../widgets/vocab_loading.dart';
 
 class VocabScreen extends StatefulWidget {
   const VocabScreen({super.key});
@@ -29,6 +30,7 @@ class VocabScreenState extends State<VocabScreen> {
 
   Future<void> _fetchAllReviewWords() async {
     setState(() => isLoading = true);
+    final startTime = DateTime.now();
 
     try {
       if (userId != null) {
@@ -37,7 +39,18 @@ class VocabScreenState extends State<VocabScreen> {
       }
     } catch (e) {
       // Silent error handling
-    } finally {
+    }
+
+    final elapsedTime = DateTime.now().difference(startTime).inMilliseconds;
+    final minimumLoadingTime = 3500;
+
+    if (elapsedTime < minimumLoadingTime) {
+      await Future.delayed(
+        Duration(milliseconds: minimumLoadingTime - elapsedTime),
+      );
+    }
+
+    if (mounted) {
       setState(() => isLoading = false);
     }
   }
@@ -61,6 +74,12 @@ class VocabScreenState extends State<VocabScreen> {
   @override
   Widget build(BuildContext context) {
     bootstrapGridParameters(gutterSize: 16);
+
+    if (isLoading) {
+      return const Scaffold(
+        body: VocabLoading(),
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(

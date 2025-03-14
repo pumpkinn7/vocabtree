@@ -108,7 +108,7 @@ class _TreeRewardsRowState extends State<TreeRewardsRow> {
                             color: colorScheme.onSurface.withOpacity(0.7),
                           ),
                           textAlign: TextAlign.center,
-                          maxLines: 1, // ลดจาก 2 เหลือ 1 บรรทัด
+                          maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
                       ],
@@ -119,15 +119,15 @@ class _TreeRewardsRowState extends State<TreeRewardsRow> {
             },
           ),
         ),
-        const SizedBox(height: 4), // ลดระยะห่าง
+        const SizedBox(height: 4),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: List.generate(
             treeRewards.length,
             (index) => AnimatedContainer(
               duration: const Duration(milliseconds: 300),
-              width: index == _currentPage ? 12 : 6, // ลดขนาดลง
-              height: 6, // ลดความสูงลง
+              width: index == _currentPage ? 12 : 6,
+              height: 6,
               margin: const EdgeInsets.symmetric(horizontal: 1),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(4),

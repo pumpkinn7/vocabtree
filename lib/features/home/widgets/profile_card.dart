@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bootstrap/flutter_bootstrap.dart';
 import 'package:vocabtree/core/theme/text_styles.dart';
-import 'package:vocabtree/features/rewards/widgets/tree_rewards_row.dart';
+import 'package:vocabtree/features/home/widgets/tree_rewards_row.dart';
 
 class ProfileCard extends StatelessWidget {
   final String username;

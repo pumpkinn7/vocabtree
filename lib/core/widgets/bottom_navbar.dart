@@ -128,7 +128,7 @@ class _BottomNavBarState extends State<BottomNavBar> {
     return [
       GButton(
         icon: Icons.home,
-        text: 'Home',
+        text: 'หน้าหลัก',
         leading: Image.asset(
           'assets/icons/home_icon.png',
           width: iconSize,
@@ -137,7 +137,7 @@ class _BottomNavBarState extends State<BottomNavBar> {
       ),
       GButton(
         icon: Icons.quiz,
-        text: 'Quiz',
+        text: 'ทดสอบ',
         leading: Image.asset(
           'assets/icons/quiz_icon.png',
           width: iconSize,
@@ -146,7 +146,7 @@ class _BottomNavBarState extends State<BottomNavBar> {
       ),
       GButton(
         icon: Icons.book,
-        text: 'Vocab',
+        text: 'คลัง',
         leading: Image.asset(
           'assets/icons/vocab_icon.png',
           width: iconSize,
@@ -155,7 +155,7 @@ class _BottomNavBarState extends State<BottomNavBar> {
       ),
       GButton(
         icon: Icons.person,
-        text: 'Profile',
+        text: 'โปรไฟล์',
         leading: Image.asset(
           'assets/icons/profile_icon.png',
           width: iconSize,

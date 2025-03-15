@@ -3,6 +3,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:flutter_bootstrap/flutter_bootstrap.dart';
 import 'package:vocabtree/core/theme/text_styles.dart';
 import 'package:vocabtree/features/profile/models/profile_model.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class ProfileHeader extends StatelessWidget {
   final ProfileModel profile;
@@ -60,16 +61,46 @@ class ProfileHeader extends StatelessWidget {
       child: Stack(
         alignment: Alignment.center,
         children: [
-          CircleAvatar(
-            radius: 60,
-            backgroundColor: Colors.grey[300],
-            backgroundImage: profile.profileImageUrl != null
-                ? NetworkImage(profile.profileImageUrl!)
-                : null,
-            child: profile.profileImageUrl == null
-                ? const Icon(Icons.person, color: Colors.white, size: 40)
-                : null,
-          ),
+          if (profile.profileImageUrl != null &&
+              profile.profileImageUrl!.isNotEmpty)
+            Container(
+              width: 120,
+              height: 120,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.grey[300],
+              ),
+              child: ClipOval(
+                child: CachedNetworkImage(
+                  imageUrl: profile.profileImageUrl!,
+                  fit: BoxFit.cover,
+                  width: 120,
+                  height: 120,
+                  placeholder: (context, url) => const Center(
+                    child: CircularProgressIndicator(),
+                  ),
+                  errorWidget: (context, url, error) => const Icon(
+                    Icons.person,
+                    color: Colors.white,
+                    size: 40,
+                  ),
+                ),
+              ),
+            )
+          else
+            Container(
+              width: 120,
+              height: 120,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.grey[300],
+              ),
+              child: const Icon(
+                Icons.person,
+                color: Colors.white,
+                size: 40,
+              ),
+            ),
           Positioned(
             bottom: 0,
             right: 0,

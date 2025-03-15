@@ -85,10 +85,19 @@ class _SearchTabState extends State<SearchTab> {
                             user.userId == widget.currentUserId;
 
                         return ListTile(
-                          leading: CircleAvatar(
-                            backgroundImage: user.profileImage.isNotEmpty
-                                ? NetworkImage(user.profileImage)
-                                : null,
+                          leading: Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.grey[300],
+                              image: user.profileImage.isNotEmpty
+                                  ? DecorationImage(
+                                      image: NetworkImage(user.profileImage),
+                                      fit: BoxFit.cover,
+                                    )
+                                  : null,
+                            ),
                             child: user.profileImage.isEmpty
                                 ? const Icon(Icons.person)
                                 : null,

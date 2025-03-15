@@ -91,10 +91,19 @@ class MyFriendsTab extends StatelessWidget {
                                 friendData['profileImageUrl'] ?? '';
 
                             return ListTile(
-                              leading: CircleAvatar(
-                                backgroundImage: friendProfile.isNotEmpty
-                                    ? NetworkImage(friendProfile)
-                                    : null,
+                              leading: Container(
+                                width: 40,
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: Colors.grey[300],
+                                  image: friendProfile.isNotEmpty
+                                      ? DecorationImage(
+                                          image: NetworkImage(friendProfile),
+                                          fit: BoxFit.cover,
+                                        )
+                                      : null,
+                                ),
                                 child: friendProfile.isEmpty
                                     ? const Icon(Icons.person)
                                     : null,

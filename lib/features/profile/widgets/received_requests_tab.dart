@@ -82,10 +82,19 @@ class ReceivedRequestsTab extends StatelessWidget {
                               senderData['profileImageUrl'] ?? '';
 
                           return ListTile(
-                            leading: CircleAvatar(
-                              backgroundImage: senderProfile.isNotEmpty
-                                  ? NetworkImage(senderProfile)
-                                  : null,
+                            leading: Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.grey[300],
+                                image: senderProfile.isNotEmpty
+                                    ? DecorationImage(
+                                        image: NetworkImage(senderProfile),
+                                        fit: BoxFit.cover,
+                                      )
+                                    : null,
+                              ),
                               child: senderProfile.isEmpty
                                   ? const Icon(Icons.person)
                                   : null,

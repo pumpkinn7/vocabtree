@@ -54,15 +54,15 @@ Future<ThemeMode> _getInitialThemeMode() async {
     User? user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       DocumentSnapshot<Map<String, dynamic>> profileSnapshot =
-      await FirebaseFirestore.instance
-          .collection('profiles')
-          .doc(user.uid)
-          .get();
+          await FirebaseFirestore.instance
+              .collection('profiles')
+              .doc(user.uid)
+              .get();
 
       if (profileSnapshot.exists) {
         Map<String, dynamic>? data = profileSnapshot.data();
         Map<String, dynamic>? settings =
-        data?['settings'] as Map<String, dynamic>?;
+            data?['settings'] as Map<String, dynamic>?;
 
         if (settings != null) {
           String? displayMode = settings['displayMode'] as String?;
@@ -97,23 +97,60 @@ Future<void> _initializeUserProgress() async {
   final snapshot = await progressDoc.get();
   if (!snapshot.exists) {
     // สร้างสถานะปลดล็อกเริ่มต้น
-    await progressDoc.set(
-      FirebaseService.cefrTopics.map((level, topics) {
-        final initialUnlock = level == 'B1' ? {'daily_life': true} : {};
-        return MapEntry(level, {
-          for (var topic in topics) topic: initialUnlock[topic] ?? false,
-        });
-      }),
-    );
+    final Map<String, Map<String, bool>> progressData = {
+      'B1': {
+        'daily_life': true,
+        'education': false,
+        'entertainment': false,
+        'environment_and_nature': false,
+        'food_and_dining': false,
+        'health_and_medical': false,
+        'technology': false,
+        'travel_and_tourism': false,
+      },
+      'B2': {
+        'cooking_and_culinary_skills': false,
+        'fitness_and_exercise': false,
+        'gardening_and_landscaping': false,
+        'hobbies_and_crafts': false,
+        'home_renovation_and_decor': false,
+        'music_and_performing_arts': false,
+        'outdoor_activities_and_adventures': false,
+        'pet_care_and_animal_welfare': false,
+      },
+      'C1': {
+        'creative_writing': false,
+        'cultural_festivals': false,
+        'digital_well_being': false,
+        'event_planning': false,
+        'fashion_trends': false,
+        'interior_decorating': false,
+        'nutrition_and_wellness': false,
+        'urban_living': false,
+      },
+      'C2': {
+        'adrenaline_activities': false,
+        'cosmic_discoveries': false,
+        'criminal_investigation': false,
+        'digital_finance': false,
+        'immersive_technologies': false,
+        'legends_and_lore': false,
+        'smart_automation': false,
+      }
+    };
+
+    await progressDoc.set(progressData);
   }
 }
+
 class MyApp extends StatefulWidget {
   final ThemeMode initialThemeMode;
 
   const MyApp({super.key, required this.initialThemeMode});
 
   @override
-  MyAppState createState() => MyAppState(); // เปลี่ยนจาก _MyAppState เป็น MyAppState
+  MyAppState createState() =>
+      MyAppState(); // เปลี่ยนจาก _MyAppState เป็น MyAppState
 }
 
 class MyAppState extends State<MyApp> with WidgetsBindingObserver {
@@ -174,7 +211,6 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
     );
   }
 }
-
 
 class RootWidget extends StatelessWidget {
   const RootWidget({super.key});

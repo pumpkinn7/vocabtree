@@ -8,6 +8,7 @@ import 'package:vocabtree/features/quiz/widgets/daily_vocabulary_card.dart';
 import 'package:vocabtree/features/quiz/widgets/vocabulary_guide_dialog.dart';
 import 'package:vocabtree/features/quiz/widgets/vocabulary_item_widget.dart';
 import '../widgets/quiz_loading.dart';
+import '../models/daily_vocabulary.dart';
 
 class QuizScreen extends StatefulWidget {
   const QuizScreen({super.key});
@@ -19,7 +20,8 @@ class QuizScreen extends StatefulWidget {
 class _QuizScreenState extends State<QuizScreen> {
   bool _isLoading = true;
   final VocabularyService _vocabularyService = VocabularyService();
-  late final List<dynamic> _categories;
+  late List<dynamic> _categories;
+  DailyVocabulary? _dailyVocabulary;
 
   @override
   void initState() {
@@ -32,7 +34,16 @@ class _QuizScreenState extends State<QuizScreen> {
 
     final startTime = DateTime.now();
 
-    _categories = _vocabularyService.getVocabularyCategories();
+    // โหลดข้อมูลทั้งหมดพร้อมกัน
+    final results = await Future.wait([
+      _vocabularyService.getRandomVocabulary(),
+      Future.value(_vocabularyService.getVocabularyCategories()),
+    ]);
+
+    _dailyVocabulary =
+        results[0] as DailyVocabulary?; // ผลลัพธ์จาก getRandomVocabulary
+    _categories =
+        results[1] as List<dynamic>; // ผลลัพธ์จาก getVocabularyCategories
 
     final elapsedTime = DateTime.now().difference(startTime).inMilliseconds;
     final minimumLoadingTime = 3500;
@@ -81,7 +92,9 @@ class _QuizScreenState extends State<QuizScreen> {
                 BootstrapCol(
                   sizes: 'col-xs-12 col-sm-12 col-md-8 col-lg-6',
                   offsets: 'offset-xs-0 offset-sm-0 offset-md-2 offset-lg-3',
-                  child: const DailyVocabularyCard(),
+                  child: DailyVocabularyCardWithPreloadedData(
+                    vocabulary: _dailyVocabulary,
+                  ),
                 ),
               ],
             ),

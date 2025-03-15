@@ -83,6 +83,7 @@ class VocabScreenState extends State<VocabScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         backgroundColor: Colors.transparent,
         elevation: 0,
         title: Text('คลังคำศัพท์', style: AppTextStyles.headline),

@@ -9,7 +9,6 @@ class VocabularyService {
 
   Future<DailyVocabulary?> getRandomVocabulary() async {
     try {
-      // ดึงข้อมูลคำศัพท์จาก words collection โดยตรง
       final QuerySnapshot snapshot =
           await _firestore.collection('words').limit(100).get();
 
@@ -22,50 +21,40 @@ class VocabularyService {
       final int randomIndex =
           DateTime.now().millisecondsSinceEpoch % snapshot.docs.length;
       final DocumentSnapshot document = snapshot.docs[randomIndex];
-      final Map<String, dynamic> data = document.data() as Map<String, dynamic>;
 
-      _logger.info('พบข้อมูลคำศัพท์: ${data.toString()}');
-
-      String word = data['word'] ?? data['mainWord'] ?? '';
-      String partOfSpeech = '';
-      String definition = '';
-
-      // ตรวจสอบ field partOfSpeech หรือ mainPos
-      if (data['mainPos'] != null) {
-        partOfSpeech = data['mainPos'];
-      } else if (data['type'] != null) {
-        partOfSpeech = data['type'];
-      } else if (data['part_of_speech'] != null) {
-        partOfSpeech = data['part_of_speech'];
+      if (!document.exists) {
+        return null;
       }
 
-      // ตรวจสอบ field definition จาก senses ถ้ามี
-      if (data['definition'] != null) {
-        definition = data['definition'];
-      } else if (data['senses'] is List &&
-          (data['senses'] as List).isNotEmpty) {
-        final firstSense = (data['senses'] as List).first;
-        if (firstSense is Map<String, dynamic> &&
-            firstSense['definition'] != null) {
-          definition = firstSense['definition'];
+      final data = document.data() as Map<String, dynamic>;
+      final String word = data['mainWord'] ?? '';
+      String type = data['mainPos'] ?? '';
+      String cefrLevel = '';
+
+      // ตรวจสอบว่ามีข้อมูล part of speech หรือไม่
+      if (type.isEmpty) {
+        if (data['senses'] is List && (data['senses'] as List).isNotEmpty) {
+          final firstSense = (data['senses'] as List)[0];
+          if (firstSense is Map && firstSense.containsKey('partOfSpeech')) {
+            type = firstSense['partOfSpeech'] ?? '';
+          }
+          if (firstSense is Map && firstSense.containsKey('cefr')) {
+            cefrLevel = firstSense['cefr'] ?? '';
+          }
         }
       }
 
       return DailyVocabulary(
         word: word,
-        type: partOfSpeech,
-        cefrLevel: data['cefrLevel'] ?? data['level'] ?? '',
-        definition: definition,
-        translation: data['translation'],
-        example: data['example'],
+        type: type,
+        cefrLevel: cefrLevel,
       );
     } catch (e) {
-      _logger.severe('Error getting random vocabulary: $e');
+      _logger.severe('เกิดข้อผิดพลาดในการดึงคำศัพท์แบบสุ่ม', e);
       return null;
     }
   }
 
-  // ดึงรายการ vocabulary categories
   List<VocabularyItemModel> getVocabularyCategories() {
     return [
       VocabularyItemModel(

@@ -58,18 +58,17 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _loadProfiles() async {
     try {
-      setState(() => _isLoading = true);
-
       // ดึงข้อมูลผู้ใช้ปัจจุบันและเพื่อน
       final currentUser = await _homeService.fetchCurrentUser();
       final friends = await _homeService.fetchFriends();
 
-      setState(() {
-        _profiles = [currentUser, ...friends];
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _profiles = [currentUser, ...friends];
+        });
+      }
     } catch (e) {
-      setState(() => _isLoading = false);
+      debugPrint('Error loading profiles: $e');
     }
   }
 

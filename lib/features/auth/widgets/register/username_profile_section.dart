@@ -1,16 +1,15 @@
 import 'dart:io';
-
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:vocabtree/core/theme/text_styles.dart';
 import 'package:vocabtree/core/utils/responsive_helper.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 
 class UsernameProfileSection extends StatefulWidget {
   final TextEditingController usernameController;
-  final File? imageFile;
-  final Function({File? imageFile, String? profileImageUrl}) onImageUpdate;
+  final XFile? imageFile;
+  final Function({XFile? imageFile, String? profileImageUrl}) onImageUpdate;
 
   const UsernameProfileSection({
     super.key,
@@ -28,65 +27,64 @@ class _UsernameProfileSectionState extends State<UsernameProfileSection> {
     final pickedFile =
         await ImagePicker().pickImage(source: ImageSource.gallery);
     if (pickedFile != null) {
-      final imageFile = File(pickedFile.path);
-      await _uploadImage(imageFile);
+      await _uploadImage(pickedFile);
     }
   }
 
-  Future<void> _uploadImage(File imageFile) async {
+  Future<void> _uploadImage(XFile imageFile) async {
     try {
       final ref = FirebaseStorage.instance
           .ref()
           .child('profile_images')
           .child('${DateTime.now().toIso8601String()}.jpg');
-      await ref.putFile(imageFile);
-      final url = await ref.getDownloadURL();
 
+      if (kIsWeb) {
+        final bytes = await imageFile.readAsBytes();
+        await ref.putData(bytes);
+      } else {
+        await ref.putFile(File(imageFile.path));
+      }
+
+      final url = await ref.getDownloadURL();
       widget.onImageUpdate(imageFile: imageFile, profileImageUrl: url);
     } catch (e) {
       if (kDebugMode) {
         print('Error uploading image: $e');
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('เกิดข้อผิดพลาดในการอัปโหลดรูปภาพ')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('เกิดข้อผิดพลาดในการอัปโหลดรูปภาพ')),
+        );
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // ดึงขนาดของหน้าจอมาเพื่อปรับรูปแบบการแสดงผล
     final screenWidth = ResponsiveHelper.getScreenWidth(context);
+    final isDesktop = screenWidth >= 992;
 
-    // ถ้าหน้าจอแคบ (โทรศัพท์ในแนวตั้ง) ให้แสดง Column แทน Row
-    if (screenWidth < 500) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
+    return Padding(
+      padding: EdgeInsets.symmetric(
+        horizontal: isDesktop ? screenWidth * 0.1 : 16.0,
+      ),
+      child: Column(
         children: [
           _buildProfilePicture(),
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
           _buildUsernameField(),
         ],
-      );
-    }
-
-    // ถ้าหน้าจอกว้าง ให้แสดง Row ตามเดิม
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Expanded(child: _buildUsernameField()),
-        const SizedBox(width: 20),
-        _buildProfilePicture(),
-      ],
+      ),
     );
   }
 
   Widget _buildUsernameField() {
     return TextFormField(
       controller: widget.usernameController,
+      style: AppTextStyles.inputText,
       decoration: InputDecoration(
         labelText: 'ชื่อผู้ใช้งาน',
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+        border: const OutlineInputBorder(),
         labelStyle: AppTextStyles.inputText,
         contentPadding:
             const EdgeInsets.symmetric(vertical: 15, horizontal: 10),
@@ -101,7 +99,6 @@ class _UsernameProfileSectionState extends State<UsernameProfileSection> {
   }
 
   Widget _buildProfilePicture() {
-    // ปรับขนาดของรูปโปรไฟล์ให้เหมาะสมกับขนาดหน้าจอ
     final double radius =
         ResponsiveHelper.getScreenWidth(context) > 600 ? 60 : 50;
     final double iconButtonRadius = radius * 0.36;
@@ -112,8 +109,11 @@ class _UsernameProfileSectionState extends State<UsernameProfileSection> {
         CircleAvatar(
           radius: radius,
           backgroundColor: Colors.grey[300],
-          backgroundImage:
-              widget.imageFile != null ? FileImage(widget.imageFile!) : null,
+          backgroundImage: widget.imageFile != null
+              ? (kIsWeb
+                  ? NetworkImage(widget.imageFile!.path)
+                  : FileImage(File(widget.imageFile!.path)) as ImageProvider)
+              : null,
           child: widget.imageFile == null
               ? Icon(Icons.person, size: radius, color: Colors.white)
               : null,

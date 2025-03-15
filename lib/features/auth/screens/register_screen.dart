@@ -1,7 +1,6 @@
-import 'dart:io';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:vocabtree/features/auth/screens/login_screen.dart';
 import 'package:vocabtree/features/auth/screens/otp_verification_screen.dart';
 import 'package:vocabtree/features/auth/services/auth_service.dart';
@@ -30,7 +29,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     required String username,
     required String email,
     required String password,
-    required File? imageFile,
+    required XFile? imageFile,
     required String? profileImageUrl,
   }) async {
     if (_formKey.currentState!.validate()) {

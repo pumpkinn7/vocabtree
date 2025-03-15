@@ -1,8 +1,8 @@
 // ignore_for_file: library_private_types_in_public_api, use_build_context_synchronously
 
-import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:vocabtree/core/utils/responsive_helper.dart';
 import 'package:vocabtree/features/auth/services/email_verification_service.dart';
 import 'package:vocabtree/features/auth/widgets/otp/otp_header.dart';
@@ -14,7 +14,7 @@ class OTPVerificationScreen extends StatefulWidget {
   final String email;
   final String password;
   final String username;
-  final File? profileImageFile;
+  final XFile? profileImageFile;
   final User user;
   final String profileImageUrl;
 

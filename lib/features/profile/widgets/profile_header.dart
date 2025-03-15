@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_bootstrap/flutter_bootstrap.dart';
@@ -7,7 +6,7 @@ import 'package:vocabtree/features/profile/models/profile_model.dart';
 
 class ProfileHeader extends StatelessWidget {
   final ProfileModel profile;
-  final Function(File) onImageSelected;
+  final Function(XFile) onImageSelected;
 
   const ProfileHeader({
     super.key,
@@ -19,8 +18,7 @@ class ProfileHeader extends StatelessWidget {
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(source: ImageSource.gallery);
     if (pickedFile != null) {
-      final file = File(pickedFile.path);
-      onImageSelected(file);
+      onImageSelected(pickedFile);
     }
   }
 

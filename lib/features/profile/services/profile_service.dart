@@ -1,8 +1,9 @@
 import 'dart:io';
-
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:vocabtree/features/auth/services/auth_service.dart';
 import 'package:vocabtree/features/profile/models/profile_model.dart';
 
@@ -37,12 +38,22 @@ class ProfileService {
     }
   }
 
-  Future<String> uploadProfileImage(File imageFile) async {
+  Future<String> uploadProfileImage(XFile imageFile) async {
     final User? user = _auth.currentUser;
     if (user != null) {
       final fileName = '${user.uid}.jpg';
-      final uploadTask =
-          _storage.ref('profile_images/$fileName').putFile(imageFile);
+      final ref = _storage.ref('profile_images/$fileName');
+
+      UploadTask uploadTask;
+      if (kIsWeb) {
+        // สำหรับ Web ใช้ putData แทน putFile
+        final bytes = await imageFile.readAsBytes();
+        uploadTask = ref.putData(bytes);
+      } else {
+        // สำหรับ Mobile ใช้ putFile
+        uploadTask = ref.putFile(File(imageFile.path));
+      }
+
       final snapshot = await uploadTask;
       final downloadUrl = await snapshot.ref.getDownloadURL();
 

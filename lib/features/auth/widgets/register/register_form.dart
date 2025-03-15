@@ -1,6 +1,5 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:vocabtree/core/utils/responsive_helper.dart';
 import 'package:vocabtree/features/auth/widgets/register/username_profile_section.dart';
 import 'package:vocabtree/features/auth/widgets/register/email_field.dart';
@@ -14,7 +13,7 @@ class RegisterForm extends StatefulWidget {
     required String username,
     required String email,
     required String password,
-    required File? imageFile,
+    required XFile? imageFile,
     required String? profileImageUrl,
   }) onSubmit;
 
@@ -37,7 +36,7 @@ class _RegisterFormState extends State<RegisterForm> {
 
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
-  File? _imageFile;
+  XFile? _imageFile;
   String? _profileImageUrl;
 
   @override
@@ -61,7 +60,7 @@ class _RegisterFormState extends State<RegisterForm> {
     });
   }
 
-  void _updateImageData({File? imageFile, String? profileImageUrl}) {
+  void _updateImageData({XFile? imageFile, String? profileImageUrl}) {
     setState(() {
       _imageFile = imageFile;
       _profileImageUrl = profileImageUrl;

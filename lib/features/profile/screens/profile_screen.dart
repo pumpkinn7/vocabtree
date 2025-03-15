@@ -1,8 +1,8 @@
-import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bootstrap/flutter_bootstrap.dart';
 import 'package:provider/provider.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:vocabtree/core/theme/theme_provider.dart';
 import 'package:vocabtree/features/profile/models/profile_model.dart';
 import 'package:vocabtree/features/profile/services/profile_service.dart';
@@ -32,7 +32,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _profileFuture = _profileService.loadUserProfile();
   }
 
-  Future<void> _uploadProfileImage(File imageFile) async {
+  Future<void> _uploadProfileImage(XFile imageFile) async {
     try {
       setState(() => _isLoading = true);
       await _profileService.uploadProfileImage(imageFile);

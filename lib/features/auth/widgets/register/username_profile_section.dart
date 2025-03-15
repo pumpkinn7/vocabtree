@@ -33,27 +33,36 @@ class _UsernameProfileSectionState extends State<UsernameProfileSection> {
 
   Future<void> _uploadImage(XFile imageFile) async {
     try {
+      // สร้างชื่อไฟล์ที่ไม่ซ้ำกัน
+      final fileName = '${DateTime.now().millisecondsSinceEpoch}.jpg';
       final ref = FirebaseStorage.instance
           .ref()
           .child('profile_images')
-          .child('${DateTime.now().toIso8601String()}.jpg');
+          .child(fileName);
 
       if (kIsWeb) {
+        // สำหรับ Web ต้องกำหนด metadata ให้ชัดเจน
         final bytes = await imageFile.readAsBytes();
-        await ref.putData(bytes);
+        final metadata = SettableMetadata(
+            contentType: 'image/jpeg',
+            customMetadata: {'picked-file-path': fileName});
+        await ref.putData(bytes, metadata);
       } else {
-        await ref.putFile(File(imageFile.path));
+        // สำหรับ Mobile
+        final metadata = SettableMetadata(contentType: 'image/jpeg');
+        await ref.putFile(File(imageFile.path), metadata);
       }
 
       final url = await ref.getDownloadURL();
       widget.onImageUpdate(imageFile: imageFile, profileImageUrl: url);
     } catch (e) {
-      if (kDebugMode) {
-        print('Error uploading image: $e');
-      }
+      debugPrint('Error uploading image: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('เกิดข้อผิดพลาดในการอัปโหลดรูปภาพ')),
+          SnackBar(
+            content: Text('เกิดข้อผิดพลาดในการอัปโหลดรูปภาพ: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }

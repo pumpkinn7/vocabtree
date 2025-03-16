@@ -117,41 +117,73 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       if (confirmDelete == true) {
         bool isReauthenticated = await _promptForPassword();
-        if (!isReauthenticated) return;
+        if (!isReauthenticated) {
+          // เพิ่มแจ้งเตือนเมื่อยืนยันตัวตนไม่สำเร็จ (รหัสผ่านผิด)
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('รหัสผ่านไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง'),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return;
+        }
+
+        // แสดง loading indicator ขณะกำลังลบบัญชี
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('กำลังลบบัญชีผู้ใช้...'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
 
         bool success = await _profileService.deleteUserAccount(user.uid);
 
         if (success && mounted) {
+          // แสดงแจ้งเตือนเมื่อลบบัญชีสำเร็จ
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('ลบบัญชีสำเร็จแล้ว'),
+              backgroundColor: Colors.green,
+            ),
+          );
           Navigator.of(context)
               .pushNamedAndRemoveUntil('/login', (route) => false);
         } else if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-                content:
-                    Text('เกิดข้อผิดพลาดในการลบบัญชี กรุณาลองใหม่อีกครั้ง')),
+              content: Text('เกิดข้อผิดพลาดในการลบบัญชี กรุณาลองใหม่อีกครั้ง'),
+              backgroundColor: Colors.red,
+            ),
           );
         }
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('เกิดข้อผิดพลาดในการลบบัญชี กรุณาลองใหม่อีกครั้ง')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text('เกิดข้อผิดพลาด: ${e.toString()}'),
+              backgroundColor: Colors.red),
+        );
+      }
     }
   }
 
   Future<bool> _promptForPassword() async {
-    String? password;
-    await showDialog(
+    String? password = await showDialog<String>(
       context: context,
-      barrierDismissible: false,
-      builder: (context) => PasswordConfirmDialog(
-        onConfirm: (value) => password = value,
-      ),
+      builder: (BuildContext context) {
+        return PasswordConfirmDialog(
+          onConfirm: (String password) {
+            Navigator.of(context).pop(password);
+          },
+        );
+      },
     );
 
-    if (password != null && password!.isNotEmpty) {
-      return await _profileService.reauthenticateUser(password!);
+    if (password != null && password.isNotEmpty) {
+      return await _profileService.reauthenticateUser(password);
     }
     return false;
   }
@@ -245,45 +277,61 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
             final profile = snapshot.data!;
 
-            return SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: BootstrapContainer(
-                fluid: true,
-                children: [
-                  BootstrapRow(
-                    children: [
-                      BootstrapCol(
-                        sizes: 'col-xs-12 col-sm-12 col-md-8 col-lg-4 col-xl-4',
-                        offsets:
-                            'offset-xs-0 offset-sm-0 offset-md-2 offset-lg-4 offset-xl-4',
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+            return Center(
+              // เพิ่ม Center widget ที่นี่
+              child: SingleChildScrollView(
+                child: ConstrainedBox(
+                  // เพิ่ม ConstrainedBox เพื่อให้ content มีความสูงอย่างน้อยเท่ากับ viewport
+                  constraints: BoxConstraints(
+                    minHeight: MediaQuery.of(context).size.height -
+                        MediaQuery.of(context).padding.top -
+                        MediaQuery.of(context).padding.bottom,
+                  ),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    alignment: Alignment.center, // นื้อหาตรงกลางในแนวตั้ง
+                    child: BootstrapContainer(
+                      fluid: true,
+                      children: [
+                        BootstrapRow(
                           children: [
-                            const SizedBox(height: 15),
-                            ProfileHeader(
-                              profile: profile,
-                              onImageSelected: _uploadProfileImage,
-                            ),
-                            const SizedBox(height: 10),
-                            ProfileInfo(profile: profile),
-                            const SizedBox(height: 10),
-                            DisplayModeSwitch(
-                              isDarkMode:
-                                  themeProvider.themeMode == ThemeMode.dark,
-                              onToggle: _toggleDisplayMode,
-                            ),
-                            const SizedBox(height: 5),
-                            ProfileActions(
-                              onEditFriends: _navigateToEditFriend,
-                              onManageAccount: _showManageAccountDialog,
-                              onSignOut: _signOut,
+                            BootstrapCol(
+                              sizes:
+                                  'col-xs-12 col-sm-12 col-md-8 col-lg-4 col-xl-4',
+                              offsets:
+                                  'offset-xs-0 offset-sm-0 offset-md-2 offset-lg-4 offset-xl-4',
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment
+                                    .center, // จัดให้เนื้อหาอยู่ตรงกลางในแนวตั้ง
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  ProfileHeader(
+                                    profile: profile,
+                                    onImageSelected: _uploadProfileImage,
+                                  ),
+                                  const SizedBox(height: 15),
+                                  ProfileInfo(profile: profile),
+                                  const SizedBox(height: 15),
+                                  DisplayModeSwitch(
+                                    isDarkMode: themeProvider.themeMode ==
+                                        ThemeMode.dark,
+                                    onToggle: _toggleDisplayMode,
+                                  ),
+                                  const SizedBox(height: 15),
+                                  ProfileActions(
+                                    onEditFriends: _navigateToEditFriend,
+                                    onManageAccount: _showManageAccountDialog,
+                                    onSignOut: _signOut,
+                                  ),
+                                ],
+                              ),
                             ),
                           ],
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ],
+                ),
               ),
             );
           },

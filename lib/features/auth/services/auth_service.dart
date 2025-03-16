@@ -174,8 +174,15 @@ class AuthService {
       // 4. Delete vocabulary progress
       await _deleteVocabularyProgress(userId);
 
-      // 5. Delete profile image from storage
-      await _deleteProfileImage(userId);
+      try {
+        // 5. Delete profile image from storage
+        await _deleteProfileImage(userId);
+      } catch (e) {
+        // จัดการข้อผิดพลาดที่นี่เพื่อให้สามารถดำเนินการต่อได้
+        if (kDebugMode) {
+          print('Non-critical error when deleting profile image: $e');
+        }
+      }
 
       // 6. Delete profile document
       await _firestore.collection('profiles').doc(userId).delete();
@@ -247,10 +254,10 @@ class AuthService {
           .child('$userId.jpg');
       await storageRef.delete();
     } catch (e) {
-      // Ignore if file doesn't exist
-      if (e is FirebaseException && e.code != 'object-not-found') {
-        rethrow; // แก้ไขจาก throw e เป็น rethrow
+      if (kDebugMode) {
+        print('Error deleting profile image: $e');
       }
+      // ไม่ต้อง rethrow เพื่อให้ลบบัญชีต่อได้
     }
   }
 

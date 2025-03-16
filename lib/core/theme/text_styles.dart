@@ -67,11 +67,10 @@ class AppTextStyles {
       );
 
   static TextStyle get buttonText => _baseTextStyle.copyWith(
-        fontSize: 16,
+        fontSize: 18,
         fontWeight: FontWeight.w500,
         letterSpacing: 1.0,
-        overflow:
-            TextOverflow.ellipsis, // เพิ่มการตัดข้อความเมื่อล้นและแสดง ...
+        overflow: TextOverflow.ellipsis, // เตัดข้อความเมื่อล้นและแสดง ...
       );
 
   // กำหนดธีมสำหรับโหมดกลางวัน (Light Theme)

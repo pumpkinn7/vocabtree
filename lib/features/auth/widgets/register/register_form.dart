@@ -62,27 +62,25 @@ class _RegisterFormState extends State<RegisterForm> {
 
   void _updateImageData({XFile? imageFile, String? profileImageUrl}) {
     setState(() {
-      _imageFile = imageFile;
-      _profileImageUrl = profileImageUrl;
+      if (imageFile != null) {
+        _imageFile = imageFile;
+      }
+      if (profileImageUrl != null) {
+        _profileImageUrl = profileImageUrl;
+      }
     });
   }
 
   void _handleSubmit() {
-    // เพิ่มการตรวจสอบรหัสผ่านก่อนส่งฟอร์ม
-    if (_passwordController.text != _confirmPasswordController.text) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('รหัสผ่านและยืนยันรหัสผ่านไม่ตรงกัน')),
+    if (widget.formKey.currentState!.validate()) {
+      widget.onSubmit(
+        username: _usernameController.text,
+        email: _emailController.text,
+        password: _passwordController.text,
+        imageFile: _imageFile,
+        profileImageUrl: _profileImageUrl,
       );
-      return;
     }
-
-    widget.onSubmit(
-      username: _usernameController.text,
-      email: _emailController.text,
-      password: _passwordController.text,
-      imageFile: _imageFile,
-      profileImageUrl: _profileImageUrl,
-    );
   }
 
   @override

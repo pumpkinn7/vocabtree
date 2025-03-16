@@ -3,6 +3,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart'; // เพิ่ม import นี้
 import 'package:flutter/foundation.dart';
 import 'package:vocabtree/features/quiz/services/firebase_service.dart';
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
 
 class AuthResult {
   final bool success;
@@ -15,6 +17,7 @@ class AuthResult {
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseStorage _storage = FirebaseStorage.instance;
 
   Future<bool> isUsernameTaken(String username) async {
     final QuerySnapshot result = await _firestore
@@ -335,5 +338,30 @@ class AuthService {
       batch.delete(doc.reference);
     }
     await batch.commit();
+  }
+
+  /// อัปโหลดรูปโปรไฟล์และรับ URL
+  Future<String> uploadProfileImage(XFile imageFile) async {
+    try {
+      // สร้าง ID จาก timestamp
+      String tempId = DateTime.now().millisecondsSinceEpoch.toString();
+      final fileName = '$tempId.jpg';
+      final ref = _storage.ref('profile_images/$fileName');
+
+      UploadTask uploadTask;
+      if (kIsWeb) {
+        final bytes = await imageFile.readAsBytes();
+        uploadTask = ref.putData(bytes);
+      } else {
+        uploadTask = ref.putFile(File(imageFile.path));
+      }
+
+      final snapshot = await uploadTask;
+      final downloadUrl = await snapshot.ref.getDownloadURL();
+      return downloadUrl;
+    } catch (e) {
+      debugPrint('เกิดข้อผิดพลาดในการอัปโหลดรูปภาพ: $e');
+      throw Exception('ไม่สามารถอัปโหลดรูปภาพได้: ${e.toString()}');
+    }
   }
 }

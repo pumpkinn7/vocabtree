@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:vocabtree/features/auth/screens/login_screen.dart';
@@ -25,15 +24,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
         .showSnackBar(SnackBar(content: Text(message)));
   }
 
-  Future<void> _handleFormSubmit({
+  Future<void> _handleRegister({
     required String username,
     required String email,
     required String password,
     required XFile? imageFile,
-    required String? profileImageUrl,
+    String? profileImageUrl,
   }) async {
     if (_formKey.currentState!.validate()) {
-      if (profileImageUrl == null) {
+      if (imageFile == null) {
         _showErrorSnackBar('กรุณาอัปโหลดรูปภาพโปรไฟล์');
         return;
       }
@@ -43,11 +42,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
       });
 
       try {
+        // อัปโหลดรูปโปรไฟล์
+        String uploadedImageUrl = '';
+        try {
+          uploadedImageUrl = await _authService.uploadProfileImage(imageFile);
+        } catch (e) {
+          setState(() {
+            _isLoading = false;
+          });
+          _showErrorSnackBar('ไม่สามารถอัปโหลดรูปโปรไฟล์ได้: ${e.toString()}');
+          return;
+        }
+
         final result = await _authService.registerUser(
           username: username.trim(),
           email: email.trim(),
           password: password,
-          profileImageUrl: profileImageUrl,
+          profileImageUrl: uploadedImageUrl,
         );
 
         if (!mounted) return;
@@ -66,22 +77,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 username: username.trim(),
                 profileImageFile: imageFile,
                 user: result.user!,
-                profileImageUrl: profileImageUrl,
+                profileImageUrl: uploadedImageUrl,
               ),
             ),
           );
         } else {
-          _showErrorSnackBar(
-              result.errorMessage ?? 'เกิดข้อผิดพลาดในการลงทะเบียน');
+          _showErrorSnackBar(result.errorMessage ?? 'การลงทะเบียนล้มเหลว');
         }
       } catch (e) {
-        if (kDebugMode) {
-          print('Error in _register: $e');
-        }
+        if (!mounted) return;
         setState(() {
           _isLoading = false;
         });
-        _showErrorSnackBar('เกิดข้อผิดพลาดในการลงทะเบียน: $e');
+        _showErrorSnackBar('เกิดข้อผิดพลาด: ${e.toString()}');
       }
     }
   }
@@ -128,7 +136,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       child: RegisterForm(
                         formKey: _formKey,
                         isLoading: _isLoading,
-                        onSubmit: _handleFormSubmit,
+                        onSubmit: _handleRegister,
                       ),
                     ),
                   ),

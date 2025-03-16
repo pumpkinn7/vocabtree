@@ -20,12 +20,19 @@ class UsernameProfileSection extends StatelessWidget {
   Future<void> _pickImage(ImageSource source) async {
     final ImagePicker picker = ImagePicker();
     try {
-      final XFile? selectedImage = await picker.pickImage(source: source);
+      final XFile? selectedImage = await picker.pickImage(
+        source: source,
+        maxWidth: 800,
+        maxHeight: 800,
+        imageQuality: 85,
+      );
+
       if (selectedImage != null) {
-        onImageUpdate(imageFile: selectedImage, profileImageUrl: null);
+        // ส่งเฉพาะ imageFile
+        onImageUpdate(imageFile: selectedImage);
       }
     } catch (e) {
-      // กรณีเกิดข้อผิดพลาดในการเลือกรูป
+      debugPrint('เกิดข้อผิดพลาดในการเลือกรูป: $e');
     }
   }
 

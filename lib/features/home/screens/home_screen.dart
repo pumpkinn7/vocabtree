@@ -113,6 +113,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: SizedBox(
                         height: MediaQuery.of(context).size.height * 0.8,
                         child: Column(
+                          mainAxisAlignment:
+                              MainAxisAlignment.center, // ให้มันอยู่กลางตลอด
                           children: [
                             const SizedBox(height: 10),
                             Expanded(
@@ -125,21 +127,26 @@ class _HomeScreenState extends State<HomeScreen> {
                                   final profile = _profiles[index];
                                   final isCurrentPage = index == _currentPage;
 
-                                  return AnimatedContainer(
-                                    duration: const Duration(milliseconds: 300),
-                                    curve: Curves.easeInOut,
-                                    margin: EdgeInsets.symmetric(
-                                      vertical: isCurrentPage ? 5 : 10,
-                                      horizontal: 8,
-                                    ),
-                                    child: ProfileCard(
-                                      username: profile.username,
-                                      joinedAt: profile.createdAt,
-                                      profileImageUrl: profile.profileImageUrl,
-                                      isUser: profile.isUser,
-                                      unlockedTopics: profile.unlockedTopics,
-                                      backgroundImage: _getBackgroundImage(
-                                          profile.unlockedTopics),
+                                  return Center(
+                                    // เพิ่ม Center widget
+                                    child: AnimatedContainer(
+                                      duration:
+                                          const Duration(milliseconds: 300),
+                                      curve: Curves.easeInOut,
+                                      margin: EdgeInsets.symmetric(
+                                        vertical: isCurrentPage ? 5 : 10,
+                                        horizontal: 8,
+                                      ),
+                                      child: ProfileCard(
+                                        username: profile.username,
+                                        joinedAt: profile.createdAt,
+                                        profileImageUrl:
+                                            profile.profileImageUrl,
+                                        isUser: profile.isUser,
+                                        unlockedTopics: profile.unlockedTopics,
+                                        backgroundImage: _getBackgroundImage(
+                                            profile.unlockedTopics),
+                                      ),
                                     ),
                                   );
                                 },

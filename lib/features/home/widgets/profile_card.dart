@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bootstrap/flutter_bootstrap.dart';
 import 'package:vocabtree/core/theme/text_styles.dart';
 import 'package:vocabtree/features/home/widgets/tree_rewards_row.dart';
 
@@ -149,26 +148,36 @@ class ProfileCard extends StatelessWidget {
     int c1Count = _countUnlocked('C1');
     int c2Count = _countUnlocked('C2');
 
-    return BootstrapRow(
+    return Column(
       children: [
-        BootstrapCol(
-          sizes: 'col-12',
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min, // Use minimum space needed
-            children: [
-              _buildProgressBar(
+        // แถวที่ 1: Spring และ Summer
+        Row(
+          children: [
+            Expanded(
+              child: _buildProgressBar(
                   context, 'Spring', b1Count, 7, Colors.green[300]!),
-              const SizedBox(height: 8), // Reduce spacing between bars
-              _buildProgressBar(
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _buildProgressBar(
                   context, 'Summer', b2Count, 8, Colors.yellow[700]!),
-              const SizedBox(height: 8),
-              _buildProgressBar(context, 'Autumn', c1Count, 8, Colors.orange),
-              const SizedBox(height: 8),
-              _buildProgressBar(
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        // แถวที่ 2: Autumn และ Winter
+        Row(
+          children: [
+            Expanded(
+              child: _buildProgressBar(
+                  context, 'Autumn', c1Count, 8, Colors.orange),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _buildProgressBar(
                   context, 'Winter', c2Count, 7, Colors.blue[300]!),
-            ],
-          ),
+            ),
+          ],
         ),
       ],
     );
@@ -184,10 +193,13 @@ class ProfileCard extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              title,
-              style: AppTextStyles.body.copyWith(
-                fontWeight: FontWeight.w500,
+            Flexible(
+              child: Text(
+                title,
+                style: AppTextStyles.body.copyWith(
+                  fontWeight: FontWeight.w500,
+                ),
+                overflow: TextOverflow.ellipsis,
               ),
             ),
             Text(

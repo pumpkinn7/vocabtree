@@ -70,6 +70,8 @@ class AppTextStyles {
         fontSize: 16,
         fontWeight: FontWeight.w500,
         letterSpacing: 1.0,
+        overflow:
+            TextOverflow.ellipsis, // เพิ่มการตัดข้อความเมื่อล้นและแสดง ...
       );
 
   // กำหนดธีมสำหรับโหมดกลางวัน (Light Theme)

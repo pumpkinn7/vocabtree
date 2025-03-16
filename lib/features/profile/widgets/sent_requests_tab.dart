@@ -41,7 +41,7 @@ class SentRequestsTab extends StatelessWidget {
               children: [
                 BootstrapCol(
                   sizes: 'col-xs-12 col-sm-12 col-md-10 col-lg-8',
-                  offsets: "offset-md-1 offset-lg-2",
+                  offsets: "offset-xs-0 offset-sm-0 offset-md-1 offset-lg-2",
                   child: ListView.separated(
                     shrinkWrap: true,
                     physics: const AlwaysScrollableScrollPhysics(),
@@ -92,10 +92,6 @@ class SentRequestsTab extends StatelessWidget {
                             title: Text(
                               receiverName,
                               style: AppTextStyles.subtitle,
-                            ),
-                            subtitle: Text(
-                              'คำขอรอดำเนินการ',
-                              style: AppTextStyles.caption,
                             ),
                             trailing: TextButton(
                               child: Text(

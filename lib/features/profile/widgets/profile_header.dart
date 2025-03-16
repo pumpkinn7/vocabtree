@@ -64,8 +64,8 @@ class ProfileHeader extends StatelessWidget {
           if (profile.profileImageUrl != null &&
               profile.profileImageUrl!.isNotEmpty)
             Container(
-              width: 120,
-              height: 120,
+              width: 90,
+              height: 90,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: Colors.grey[300],
@@ -74,8 +74,8 @@ class ProfileHeader extends StatelessWidget {
                 child: CachedNetworkImage(
                   imageUrl: profile.profileImageUrl!,
                   fit: BoxFit.cover,
-                  width: 120,
-                  height: 120,
+                  width: 90,
+                  height: 90,
                   placeholder: (context, url) => const Center(
                     child: CircularProgressIndicator(),
                   ),
@@ -89,8 +89,8 @@ class ProfileHeader extends StatelessWidget {
             )
           else
             Container(
-              width: 120,
-              height: 120,
+              width: 90,
+              height: 90,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: Colors.grey[300],

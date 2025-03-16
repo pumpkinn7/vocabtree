@@ -259,20 +259,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const SizedBox(height: 50),
+                            const SizedBox(height: 15),
                             ProfileHeader(
                               profile: profile,
                               onImageSelected: _uploadProfileImage,
                             ),
-                            const SizedBox(height: 30),
+                            const SizedBox(height: 10),
                             ProfileInfo(profile: profile),
-                            const SizedBox(height: 30),
+                            const SizedBox(height: 10),
                             DisplayModeSwitch(
                               isDarkMode:
                                   themeProvider.themeMode == ThemeMode.dark,
                               onToggle: _toggleDisplayMode,
                             ),
-                            const SizedBox(height: 20),
+                            const SizedBox(height: 5),
                             ProfileActions(
                               onEditFriends: _navigateToEditFriend,
                               onManageAccount: _showManageAccountDialog,

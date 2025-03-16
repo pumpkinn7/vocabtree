@@ -4,9 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:vocabtree/core/theme/text_styles.dart';
 import 'package:vocabtree/core/utils/responsive_helper.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 
-class UsernameProfileSection extends StatefulWidget {
+class UsernameProfileSection extends StatelessWidget {
   final TextEditingController usernameController;
   final XFile? imageFile;
   final Function({XFile? imageFile, String? profileImageUrl}) onImageUpdate;
@@ -18,78 +17,40 @@ class UsernameProfileSection extends StatefulWidget {
     required this.onImageUpdate,
   });
 
-  @override
-  State<UsernameProfileSection> createState() => _UsernameProfileSectionState();
-}
-
-class _UsernameProfileSectionState extends State<UsernameProfileSection> {
-  Future<void> _pickImage() async {
-    final pickedFile =
-        await ImagePicker().pickImage(source: ImageSource.gallery);
-    if (pickedFile != null) {
-      await _uploadImage(pickedFile);
-    }
-  }
-
-  Future<void> _uploadImage(XFile imageFile) async {
+  Future<void> _pickImage(ImageSource source) async {
+    final ImagePicker picker = ImagePicker();
     try {
-      // สร้างชื่อไฟล์ที่ไม่ซ้ำกัน
-      final fileName = '${DateTime.now().millisecondsSinceEpoch}.jpg';
-      final ref = FirebaseStorage.instance
-          .ref()
-          .child('profile_images')
-          .child(fileName);
-
-      if (kIsWeb) {
-        // สำหรับ Web ต้องกำหนด metadata ให้ชัดเจน
-        final bytes = await imageFile.readAsBytes();
-        final metadata = SettableMetadata(
-            contentType: 'image/jpeg',
-            customMetadata: {'picked-file-path': fileName});
-        await ref.putData(bytes, metadata);
-      } else {
-        // สำหรับ Mobile
-        final metadata = SettableMetadata(contentType: 'image/jpeg');
-        await ref.putFile(File(imageFile.path), metadata);
+      final XFile? selectedImage = await picker.pickImage(source: source);
+      if (selectedImage != null) {
+        onImageUpdate(imageFile: selectedImage, profileImageUrl: null);
       }
-
-      final url = await ref.getDownloadURL();
-      widget.onImageUpdate(imageFile: imageFile, profileImageUrl: url);
     } catch (e) {
-      debugPrint('Error uploading image: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('เกิดข้อผิดพลาดในการอัปโหลดรูปภาพ: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      // กรณีเกิดข้อผิดพลาดในการเลือกรูป
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = ResponsiveHelper.getScreenWidth(context);
-    final isDesktop = screenWidth >= 992;
-
-    return Padding(
-      padding: EdgeInsets.symmetric(
-        horizontal: isDesktop ? screenWidth * 0.1 : 16.0,
-      ),
-      child: Column(
-        children: [
-          _buildProfilePicture(),
-          const SizedBox(height: 20),
-          _buildUsernameField(),
-        ],
-      ),
+    // สร้าง Row แทน และจัดให้อยู่ในแถวเดียวกัน
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        // ช่องกรอกชื่อผู้ใช้
+        Expanded(
+          child: _buildUsernameField(),
+        ),
+        // รูปโปรไฟล์
+        Padding(
+          padding: const EdgeInsets.only(left: 20),
+          child: _buildProfilePicture(context),
+        ),
+      ],
     );
   }
 
   Widget _buildUsernameField() {
     return TextFormField(
-      controller: widget.usernameController,
+      controller: usernameController,
       style: AppTextStyles.inputText,
       decoration: InputDecoration(
         labelText: 'ชื่อผู้ใช้งาน',
@@ -107,9 +68,9 @@ class _UsernameProfileSectionState extends State<UsernameProfileSection> {
     );
   }
 
-  Widget _buildProfilePicture() {
+  Widget _buildProfilePicture(BuildContext context) {
     final double radius =
-        ResponsiveHelper.getScreenWidth(context) > 600 ? 60 : 50;
+        ResponsiveHelper.getScreenWidth(context) > 600 ? 50 : 45;
     final double iconButtonRadius = radius * 0.36;
 
     return Stack(
@@ -118,26 +79,75 @@ class _UsernameProfileSectionState extends State<UsernameProfileSection> {
         CircleAvatar(
           radius: radius,
           backgroundColor: Colors.grey[300],
-          backgroundImage: widget.imageFile != null
+          backgroundImage: imageFile != null
               ? (kIsWeb
-                  ? NetworkImage(widget.imageFile!.path)
-                  : FileImage(File(widget.imageFile!.path)) as ImageProvider)
+                  ? NetworkImage(imageFile!.path)
+                  : FileImage(File(imageFile!.path))) as ImageProvider?
               : null,
-          child: widget.imageFile == null
-              ? Icon(Icons.person, size: radius, color: Colors.white)
+          child: imageFile == null
+              ? Icon(
+                  Icons.person,
+                  size: radius * 1.2,
+                  color: Colors.grey[600],
+                )
               : null,
         ),
-        CircleAvatar(
-          backgroundColor: Colors.grey[700],
-          radius: iconButtonRadius,
-          child: IconButton(
-            icon: Icon(Icons.camera_alt,
-                size: iconButtonRadius * 0.8, color: Colors.white),
-            onPressed: _pickImage,
-            padding: EdgeInsets.zero,
+        // ปุ่มเพิ่มรูปโปรไฟล์
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.2),
+                spreadRadius: 1,
+                blurRadius: 3,
+                offset: const Offset(0, 1),
+              ),
+            ],
+          ),
+          child: CircleAvatar(
+            radius: iconButtonRadius,
+            backgroundColor: Colors.grey[600],
+            child: IconButton(
+              iconSize: iconButtonRadius * 1.2,
+              padding: EdgeInsets.zero,
+              icon: const Icon(Icons.camera_alt, color: Colors.white),
+              onPressed: () => _showImageSourceDialog(context),
+            ),
           ),
         ),
       ],
+    );
+  }
+
+  void _showImageSourceDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('เลือกรูปโปรไฟล์'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_library),
+              title: const Text('เลือกจากแกลเลอรี'),
+              onTap: () {
+                Navigator.pop(context);
+                _pickImage(ImageSource.gallery);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.camera_alt),
+              title: const Text('ถ่ายรูป'),
+              onTap: () {
+                Navigator.pop(context);
+                _pickImage(ImageSource.camera);
+              },
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

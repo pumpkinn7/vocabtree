@@ -126,6 +126,30 @@ class _AllVocabScreenState extends State<AllVocabScreen> {
     });
   }
 
+  int _getTotalFilteredWords() {
+    int total = 0;
+    for (var entry in topicWords.entries) {
+      final topic = entry.key;
+      final words = entry.value;
+
+      if (_activeFilters != null) {
+        final selectedTopics = List<String>.from(_activeFilters!['topics']);
+        if (selectedTopics.isNotEmpty && !selectedTopics.contains(topic)) {
+          continue;
+        }
+      }
+
+      final filteredWords = _searchQuery.isEmpty
+          ? words
+          : words
+              .where((word) => word.toLowerCase().contains(_searchQuery))
+              .toList();
+
+      total += filteredWords.length;
+    }
+    return total;
+  }
+
   @override
   Widget build(BuildContext context) {
     bootstrapGridParameters(gutterSize: 16);
@@ -163,6 +187,28 @@ class _AllVocabScreenState extends State<AllVocabScreen> {
                   ),
                 ],
               ),
+              // เพิ่ม Row ใหม่สำหรับแสดงจำนวนคำศัพท์
+              if (!isLoading)
+                BootstrapRow(
+                  children: [
+                    BootstrapCol(
+                      sizes: 'col-xs-12 col-sm-12 col-md-8 col-lg-6',
+                      offsets:
+                          'offset-xs-0 offset-sm-0 offset-md-2 offset-lg-3',
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8.0, vertical: 4.0),
+                        child: Text(
+                          'พบคำศัพท์ทั้งหมด ${_getTotalFilteredWords()} คำ',
+                          style: AppTextStyles.body.copyWith(
+                            color: Theme.of(context).colorScheme.primary,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
             ],
           ),
           Expanded(

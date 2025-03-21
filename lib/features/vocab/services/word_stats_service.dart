@@ -124,14 +124,11 @@ class WordStatsService {
   Future<List<Map<String, dynamic>>> getTopSavedWordsByAllUsers(
       int limit) async {
     try {
-      // สร้างแม็ปเพื่อเก็บคำและจำนวนครั้งที่คำนั้นถูกบันทึก
       Map<String, int> wordCount = {};
       Map<String, Map<String, dynamic>> wordDetails = {};
 
       // ดึงรายการผู้ใช้ทั้งหมด
       final usersSnapshot = await _firestore.collection('users').get();
-
-      AppLogger.i(_tag, 'จำนวนผู้ใช้ทั้งหมด: ${usersSnapshot.docs.length}');
 
       // รวบรวมคำทั้งหมดจากทุกผู้ใช้และทุกหัวข้อ
       for (var userDoc in usersSnapshot.docs) {
@@ -144,26 +141,17 @@ class WordStatsService {
             .collection('vocabulary_progress')
             .get();
 
-        AppLogger.i(_tag,
-            'ผู้ใช้ $userId มี vocabulary_progress ${progressSnapshot.docs.length} รายการ');
-
         // วนลูปผ่านแต่ละ topic ใน vocabulary_progress
         for (var progressDoc in progressSnapshot.docs) {
           if (!progressDoc.exists) continue;
 
           final data = progressDoc.data();
-          final topicId = progressDoc.id;
 
           // ดึงรายการ review_words จากทุกหัวข้อ
           if (data.containsKey('review_words')) {
             final reviewWords = List<String>.from(data['review_words'] ?? []);
 
-            if (reviewWords.isNotEmpty) {
-              AppLogger.i(_tag,
-                  'ผู้ใช้ $userId หัวข้อ $topicId มีคำใน review_words ${reviewWords.length} คำ');
-            }
-
-            // อัปเดตจำนวนการบันทึกของแต่ละคำ
+            // นับจำนวนการบันทึกของแต่ละคำ
             for (var word in reviewWords) {
               wordCount[word] = (wordCount[word] ?? 0) + 1;
 
@@ -193,8 +181,7 @@ class WordStatsService {
                     };
                   }
                 } catch (e) {
-                  AppLogger.e(
-                      _tag, 'เกิดข้อผิดพลาดในการดึงข้อมูลคำศัพท์: $word', e);
+                  wordDetails[word] = {'type': ''};
                 }
               }
             }
@@ -209,12 +196,6 @@ class WordStatsService {
       // จำกัดจำนวนตาม limit
       final limitedWords = sortedWords.take(limit).toList();
 
-      // แสดงผลลัพธ์เพื่อตรวจสอบ
-      AppLogger.i(_tag, 'คำที่บันทึกบ่อยที่สุด ${limitedWords.length} คำ:');
-      for (var entry in limitedWords) {
-        AppLogger.i(_tag, 'คำ: ${entry.key}, บันทึก: ${entry.value} ครั้ง');
-      }
-
       // แปลงเป็นรูปแบบที่ต้องการส่งกลับ
       return limitedWords.map((entry) {
         final details = wordDetails[entry.key] ?? {'type': ''};
@@ -225,7 +206,6 @@ class WordStatsService {
         };
       }).toList();
     } catch (e) {
-      AppLogger.e(_tag, 'เกิดข้อผิดพลาดในการดึงคำที่บันทึกบ่อยที่สุด', e);
       return [];
     }
   }

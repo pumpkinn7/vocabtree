@@ -67,8 +67,11 @@ class UsernameProfileSection extends StatelessWidget {
             const EdgeInsets.symmetric(vertical: 15, horizontal: 10),
       ),
       validator: (value) {
-        if (value == null || value.isEmpty) {
+        if (value == null || value.isEmpty || value.trim().isEmpty) {
           return 'กรุณากรอกชื่อผู้ใช้งาน';
+        }
+        if (value.contains(' ')) {
+          return 'ชื่อผู้ใช้งานต้องไม่มีช่องว่าง';
         }
         return null;
       },

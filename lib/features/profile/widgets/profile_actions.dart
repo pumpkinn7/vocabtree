@@ -1,17 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bootstrap/flutter_bootstrap.dart';
 import 'package:vocabtree/core/theme/text_styles.dart';
+import '../widgets/notification_dot.dart';
 
 class ProfileActions extends StatelessWidget {
   final VoidCallback onEditFriends;
   final VoidCallback onManageAccount;
   final VoidCallback onSignOut;
+  final bool showFriendRequestNotification;
 
   const ProfileActions({
     super.key,
     required this.onEditFriends,
     required this.onManageAccount,
     required this.onSignOut,
+    this.showFriendRequestNotification = false,
   });
 
   @override
@@ -23,7 +26,11 @@ class ProfileActions extends StatelessWidget {
           children: [
             BootstrapCol(
               sizes: 'col-6',
-              child: _buildButton('แก้ไขเพื่อน', onPressed: onEditFriends),
+              child: _buildButton(
+                'แก้ไขเพื่อน',
+                onPressed: onEditFriends,
+                showNotification: showFriendRequestNotification,
+              ),
             ),
             BootstrapCol(
               sizes: 'col-6',
@@ -52,7 +59,11 @@ class ProfileActions extends StatelessWidget {
     );
   }
 
-  Widget _buildButton(String label, {required VoidCallback onPressed}) {
+  Widget _buildButton(
+    String label, {
+    required VoidCallback onPressed,
+    bool showNotification = false,
+  }) {
     return ElevatedButton(
       style: ElevatedButton.styleFrom(
         padding: const EdgeInsets.symmetric(vertical: 15),
@@ -62,7 +73,20 @@ class ProfileActions extends StatelessWidget {
         ),
       ),
       onPressed: onPressed,
-      child: Text(label, style: AppTextStyles.inputText),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(label, style: AppTextStyles.inputText),
+          if (showNotification)
+            Padding(
+              padding: const EdgeInsets.only(left: 4),
+              child: NotificationDot(
+                showDot: true,
+                size: 8,
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

@@ -3,9 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bootstrap/flutter_bootstrap.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:vocabtree/core/theme/theme_provider.dart';
 import 'package:vocabtree/features/profile/models/profile_model.dart';
 import 'package:vocabtree/features/profile/services/profile_service.dart';
+import 'package:vocabtree/features/profile/services/friend_service.dart';
 import 'package:vocabtree/features/profile/screens/edit_friend_screen.dart';
 import 'package:vocabtree/features/profile/widgets/dialogs/password_confirm_dialog.dart';
 import 'package:vocabtree/features/profile/widgets/dialogs/manage_account_dialog.dart';
@@ -23,13 +25,34 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   final ProfileService _profileService = ProfileService();
+  final FriendService _friendService = FriendService();
   late Future<ProfileModel> _profileFuture;
   bool _isLoading = false;
+
+  // ตรวจสอบคำขอเป็นเพื่อน
+  Stream<QuerySnapshot>? _friendRequestsStream;
+  bool _hasPendingFriendRequests = false;
 
   @override
   void initState() {
     super.initState();
     _profileFuture = _profileService.loadUserProfile();
+    _setupFriendRequestsListener();
+  }
+
+  void _setupFriendRequestsListener() {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser != null) {
+      _friendRequestsStream =
+          _friendService.getReceivedFriendRequests(currentUser.uid);
+      _friendRequestsStream?.listen((snapshot) {
+        if (mounted) {
+          setState(() {
+            _hasPendingFriendRequests = snapshot.docs.isNotEmpty;
+          });
+        }
+      });
+    }
   }
 
   Future<void> _uploadProfileImage(XFile imageFile) async {
@@ -278,10 +301,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             final profile = snapshot.data!;
 
             return Center(
-              // เพิ่ม Center widget ที่นี่
               child: SingleChildScrollView(
                 child: ConstrainedBox(
-                  // เพิ่ม ConstrainedBox เพื่อให้ content มีความสูงอย่างน้อยเท่ากับ viewport
                   constraints: BoxConstraints(
                     minHeight: MediaQuery.of(context).size.height -
                         MediaQuery.of(context).padding.top -
@@ -289,7 +310,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
-                    alignment: Alignment.center, // นื้อหาตรงกลางในแนวตั้ง
+                    alignment: Alignment.center,
                     child: BootstrapContainer(
                       fluid: true,
                       children: [
@@ -301,8 +322,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               offsets:
                                   'offset-xs-0 offset-sm-0 offset-md-2 offset-lg-4 offset-xl-4',
                               child: Column(
-                                mainAxisAlignment: MainAxisAlignment
-                                    .center, // จัดให้เนื้อหาอยู่ตรงกลางในแนวตั้ง
+                                mainAxisAlignment: MainAxisAlignment.center,
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   ProfileHeader(
@@ -322,6 +342,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     onEditFriends: _navigateToEditFriend,
                                     onManageAccount: _showManageAccountDialog,
                                     onSignOut: _signOut,
+                                    showFriendRequestNotification:
+                                        _hasPendingFriendRequests,
                                   ),
                                 ],
                               ),

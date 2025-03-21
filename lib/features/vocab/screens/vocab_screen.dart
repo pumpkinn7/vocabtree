@@ -6,6 +6,7 @@ import 'package:vocabtree/features/vocab/models/vocab_level_model.dart';
 import 'package:vocabtree/features/vocab/services/vocab_service.dart';
 import 'package:vocabtree/features/vocab/widgets/empty_vocab_state.dart';
 import 'package:vocabtree/features/vocab/widgets/season_section.dart';
+import 'package:vocabtree/features/vocab/widgets/top_reviewed_words.dart'; // เพิ่มบรรทัดนี้
 import '../widgets/vocab_loading.dart';
 
 class VocabScreen extends StatefulWidget {
@@ -142,7 +143,18 @@ class VocabScreenState extends State<VocabScreen> {
                 )
               else if (_hasNoReviewWords())
                 const EmptyVocabState()
-              else
+              else ...[
+                BootstrapRow(
+                  children: [
+                    BootstrapCol(
+                      sizes: 'col-xs-12 col-sm-12 col-md-8 col-lg-6',
+                      offsets:
+                          'offset-xs-0 offset-sm-0 offset-md-2 offset-lg-3',
+                      child: TopReviewedWords(userId: userId!),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
                 ...VocabLevelModel.getAllLevels().map((level) {
                   final levelTopics = reviewWords[level.level] ?? {};
                   final topicsWithWords = level.topics
@@ -171,6 +183,7 @@ class VocabScreenState extends State<VocabScreen> {
                     ],
                   );
                 }),
+              ],
             ],
           ),
         ),

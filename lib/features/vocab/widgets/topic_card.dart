@@ -1,9 +1,11 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bootstrap/flutter_bootstrap.dart';
 import 'package:vocabtree/core/theme/text_styles.dart';
 import 'package:vocabtree/features/vocab/screens/all_vocab_screen.dart';
 import 'package:vocabtree/features/vocab/screens/flashcard_for_review_screen.dart';
 import 'package:vocabtree/features/vocab/services/vocab_service.dart';
+import 'package:vocabtree/features/quiz/widgets/frequently_wrong_words_dialog.dart';
 import 'package:vocabtree/features/vocab/widgets/vocab_word_button.dart';
 
 class TopicCard extends StatelessWidget {
@@ -52,7 +54,7 @@ class TopicCard extends StatelessWidget {
             BootstrapRow(
               children: [
                 BootstrapCol(
-                  sizes: 'col-6',
+                  sizes: 'col-4',
                   child: OutlinedButton(
                     onPressed: () => Navigator.push(
                       context,
@@ -63,22 +65,32 @@ class TopicCard extends StatelessWidget {
                     style: OutlinedButton.styleFrom(
                       side: BorderSide(color: colorScheme.outline),
                     ),
-                    child: Text(
-                      'ดูทั้งหมด',
-                      style: AppTextStyles.buttonText,
-                    ),
+                    child: Text('ดูทั้งหมด', style: AppTextStyles.buttonText),
                   ),
                 ),
                 BootstrapCol(
-                  sizes: 'col-6',
+                  sizes: 'col-4',
                   child: OutlinedButton(
                     onPressed: () => _openFlashcardReview(context),
                     style: OutlinedButton.styleFrom(
                       side: BorderSide(color: colorScheme.outline),
                     ),
+                    child: Text('Flashcard', style: AppTextStyles.buttonText),
+                  ),
+                ),
+                BootstrapCol(
+                  sizes: 'col-4',
+                  child: OutlinedButton(
+                    onPressed: () => _showFrequentlyWrongWordsDialog(context),
+                    style: OutlinedButton.styleFrom(
+                      backgroundColor: colorScheme.errorContainer,
+                      foregroundColor: colorScheme.onErrorContainer,
+                    ),
                     child: Text(
-                      'Flashcard',
-                      style: AppTextStyles.buttonText,
+                      'ตอบผิดบ่อย',
+                      style: AppTextStyles.buttonText.copyWith(
+                        fontSize: 14,
+                      ),
                     ),
                   ),
                 ),
@@ -138,5 +150,23 @@ class TopicCard extends StatelessWidget {
     }
 
     onRefreshData();
+  }
+
+  void _showFrequentlyWrongWordsDialog(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('กรุณาเข้าสู่ระบบก่อนใช้งาน')),
+      );
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) => FrequentlyWrongWordsDialog(
+        userId: user.uid,
+        topic: topic,
+      ),
+    );
   }
 }

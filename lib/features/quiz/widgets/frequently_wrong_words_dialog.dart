@@ -42,26 +42,13 @@ class FrequentlyWrongWordsDialog extends StatelessWidget {
               ],
             ),
             FutureBuilder<List<Map<String, dynamic>>>(
-              future: ResultService.getTopWrongWords(
-                userId,
-                limit: 5,
-                topic: topic,
-              ),
+              future: ResultService.getTopWrongWords(userId,
+                  limit: 5, topic: topic),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Padding(
                     padding: EdgeInsets.symmetric(vertical: 20),
                     child: Center(child: CircularProgressIndicator()),
-                  );
-                }
-
-                if (snapshot.hasError) {
-                  return Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Text(
-                      'เกิดข้อผิดพลาดในการโหลดข้อมูล',
-                      style: AppTextStyles.body.copyWith(color: Colors.red),
-                    ),
                   );
                 }
 
@@ -88,52 +75,56 @@ class FrequentlyWrongWordsDialog extends StatelessWidget {
                   );
                 }
 
-                return ConstrainedBox(
-                  constraints: const BoxConstraints(maxHeight: 300),
-                  child: ListView.separated(
-                    shrinkWrap: true,
-                    itemCount: words.length,
-                    separatorBuilder: (context, index) => Divider(
-                      color: colorScheme.outlineVariant.withOpacity(0.3),
-                    ),
-                    itemBuilder: (context, index) {
-                      final word = words[index];
-                      return ListTile(
-                        title: Text(
-                          word['word'] ?? '',
-                          style: AppTextStyles.body.copyWith(
-                            fontWeight: FontWeight.w500,
-                          ),
+                return Column(
+                  children: [
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxHeight: 300),
+                      child: ListView.separated(
+                        shrinkWrap: true,
+                        itemCount: words.length,
+                        separatorBuilder: (context, index) => Divider(
+                          color: colorScheme.outlineVariant.withOpacity(0.3),
                         ),
-                        trailing: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: colorScheme.errorContainer,
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Text(
-                            'ตอบผิด ${word['wrongCount']} ครั้ง',
-                            style: AppTextStyles.caption.copyWith(
-                              color: colorScheme.onErrorContainer,
+                        itemBuilder: (context, index) {
+                          final word = words[index];
+                          return ListTile(
+                            title: Text(
+                              word['word'] ?? '',
+                              style: AppTextStyles.body.copyWith(
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
+                            trailing: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: colorScheme.errorContainer,
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: Text(
+                                'ตอบผิด ${word['wrongCount']} ครั้ง',
+                                style: AppTextStyles.caption.copyWith(
+                                  color: colorScheme.onErrorContainer,
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      child: TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: Text('ปิด', style: AppTextStyles.buttonText),
+                      ),
+                    ),
+                  ],
                 );
               },
-            ),
-            const SizedBox(height: 8),
-            SizedBox(
-              width: double.infinity,
-              child: TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text('ปิด', style: AppTextStyles.buttonText),
-              ),
             ),
           ],
         ),

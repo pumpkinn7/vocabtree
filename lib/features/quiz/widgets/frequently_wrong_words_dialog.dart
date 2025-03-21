@@ -24,22 +24,11 @@ class FrequentlyWrongWordsDialog extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Text(
-                    'คำที่ตอบผิดบ่อยสุดของฉัน',
-                    style: AppTextStyles.subtitle.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: () => Navigator.pop(context),
-                ),
-              ],
+            Text(
+              'คำที่ตอบผิดบ่อยสุดของฉัน',
+              style: AppTextStyles.subtitle.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
             ),
             FutureBuilder<List<Map<String, dynamic>>>(
               future: ResultService.getTopWrongWords(userId,

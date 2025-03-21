@@ -46,15 +46,47 @@ class TopicCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              formattedTopic,
-              style: AppTextStyles.body.copyWith(fontWeight: FontWeight.bold),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    formattedTopic,
+                    style: AppTextStyles.body
+                        .copyWith(fontWeight: FontWeight.bold),
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => _showFrequentlyWrongWordsDialog(context),
+                  icon: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: colorScheme.surfaceVariant.withOpacity(0.5),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: AppTextStyles.primaryColor,
+                        width: 1.5,
+                      ),
+                    ),
+                    child: Icon(
+                      Icons.priority_high,
+                      size: 12,
+                      color: AppTextStyles.primaryColor,
+                    ),
+                  ),
+                  tooltip: 'คำที่ตอบผิดบ่อย',
+                  constraints: const BoxConstraints(
+                    minWidth: 32,
+                    minHeight: 32,
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 12),
             BootstrapRow(
               children: [
                 BootstrapCol(
-                  sizes: 'col-4',
+                  sizes: 'col-6',
                   child: OutlinedButton(
                     onPressed: () => Navigator.push(
                       context,
@@ -69,29 +101,13 @@ class TopicCard extends StatelessWidget {
                   ),
                 ),
                 BootstrapCol(
-                  sizes: 'col-4',
+                  sizes: 'col-6',
                   child: OutlinedButton(
                     onPressed: () => _openFlashcardReview(context),
                     style: OutlinedButton.styleFrom(
                       side: BorderSide(color: colorScheme.outline),
                     ),
                     child: Text('Flashcard', style: AppTextStyles.buttonText),
-                  ),
-                ),
-                BootstrapCol(
-                  sizes: 'col-4',
-                  child: OutlinedButton(
-                    onPressed: () => _showFrequentlyWrongWordsDialog(context),
-                    style: OutlinedButton.styleFrom(
-                      backgroundColor: colorScheme.errorContainer,
-                      foregroundColor: colorScheme.onErrorContainer,
-                    ),
-                    child: Text(
-                      'ตอบผิดบ่อย',
-                      style: AppTextStyles.buttonText.copyWith(
-                        fontSize: 14,
-                      ),
-                    ),
                   ),
                 ),
               ],

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:vocabtree/core/theme/text_styles.dart';
-import 'package:vocabtree/features/vocab/models/vocab_level_model.dart';
 import 'package:vocabtree/features/vocab/services/vocab_service.dart';
 
 class FilterScreen extends StatefulWidget {
@@ -21,21 +21,49 @@ class _FilterScreenState extends State<FilterScreen> {
   // ข้อมูล Topic ทั้งหมดตามระดับ
   final Map<String, List<String>> _topicsByLevel = {};
 
+  bool _isLoading = true;
+  String? _error;
+
   @override
   void initState() {
     super.initState();
-    _initializeTopics();
+    _fetchTopics();
   }
 
-  void _initializeTopics() {
-    // ดึงข้อมูล topic ตามระดับจาก VocabLevelModel
-    for (var level in _allCefrLevels) {
-      _topicsByLevel[level] = VocabLevelModel.levelMapping[level] ?? [];
+  Future<void> _fetchTopics() async {
+    try {
+      setState(() => _isLoading = true);
+
+      final firestore = FirebaseFirestore.instance;
+
+      for (var level in _allCefrLevels) {
+        // Query word_categories collection instead
+        final snapshot = await firestore
+            .collection('word_categories')
+            .where('cefrLevel', isEqualTo: level)
+            .get();
+
+        // Extract topic IDs as they are document IDs
+        final topics = snapshot.docs.map((doc) => doc.id).toList();
+
+        _topicsByLevel[level] = topics;
+      }
+
+      setState(() => _isLoading = false);
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+        _error = 'ไม่สามารถโหลดข้อมูลได้ กรุณาลองใหม่อีกครั้ง';
+      });
     }
   }
 
   void _applyFilters() {
-    // สร้าง Filter Model เพื่อส่งกลับไปยังหน้าก่อนหน้า
+    if (_selectedCefrLevels.isEmpty && _selectedTopics.isEmpty) {
+      Navigator.pop(context); // ถ้าไม่มีการเลือกให้กลับไปหน้าเดิม
+      return;
+    }
+
     final filterParams = {
       'cefrLevels': _selectedCefrLevels.toList(),
       'topics': _selectedTopics.toList(),
@@ -47,6 +75,38 @@ class _FilterScreenState extends State<FilterScreen> {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+
+    if (_isLoading) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Text('ตัวกรองคำศัพท์', style: AppTextStyles.headline),
+        ),
+        body: const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    if (_error != null) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Text('ตัวกรองคำศัพท์', style: AppTextStyles.headline),
+        ),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(_error!, style: AppTextStyles.body),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: _fetchTopics,
+                child: const Text('ลองใหม่'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(

@@ -25,6 +25,7 @@ class _AllVocabScreenState extends State<AllVocabScreen> {
   Map<String, List<String>> topicWords = {};
   Map<String, Map<String, dynamic>> wordDetails = {};
   String _searchQuery = '';
+  Map<String, dynamic>? _activeFilters;
 
   @override
   void initState() {
@@ -114,6 +115,12 @@ class _AllVocabScreenState extends State<AllVocabScreen> {
                         onChanged: (value) {
                           setState(() => _searchQuery = value.toLowerCase());
                         },
+                        onFilterApplied: (filters) {
+                          setState(() {
+                            _activeFilters = filters;
+                          });
+                        },
+                        activeFilters: _activeFilters,
                       ),
                     ),
                   ),
@@ -138,8 +145,25 @@ class _AllVocabScreenState extends State<AllVocabScreen> {
                                 children: topicWords.entries.map((entry) {
                                   final topic = entry.key;
                                   final words = entry.value;
-                                  final formattedTopic =
-                                      _dictionaryService.formatTopicName(topic);
+
+                                  if (_activeFilters != null) {
+                                    final selectedCefrLevels =
+                                        List<String>.from(
+                                            _activeFilters!['cefrLevels']);
+                                    final selectedTopics = List<String>.from(
+                                        _activeFilters!['topics']);
+
+                                    if (selectedCefrLevels.isNotEmpty &&
+                                        !selectedCefrLevels
+                                            .contains(widget.level)) {
+                                      return const SizedBox.shrink();
+                                    }
+
+                                    if (selectedTopics.isNotEmpty &&
+                                        !selectedTopics.contains(topic)) {
+                                      return const SizedBox.shrink();
+                                    }
+                                  }
 
                                   final filteredWords = _searchQuery.isEmpty
                                       ? words
@@ -158,7 +182,8 @@ class _AllVocabScreenState extends State<AllVocabScreen> {
 
                                   return TopicWordListSection(
                                     topic: topic,
-                                    formattedTopic: formattedTopic,
+                                    formattedTopic: _dictionaryService
+                                        .formatTopicName(topic),
                                     sortedWords: sortedWords,
                                     onWordTap: (word) =>
                                         _showWordDetail(word, topic),

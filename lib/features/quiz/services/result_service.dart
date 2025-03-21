@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:vocabtree/features/quiz/models/quiz_result.dart';
 
 class ResultService {
@@ -61,40 +62,32 @@ class ResultService {
 
       var docs = snapshot.docs;
 
+      // กรองเฉพาะคำที่อยู่ใน topic ที่ระบุ
       if (topic != null) {
         docs = docs.where((doc) => doc.data()['topic'] == topic).toList();
       }
 
-      // เรียงตามจำนวนครั้งที่ตอบผิด (มากไปน้อย) และ lastWrongAt (ล่าสุดก่อน)
-      docs.sort((a, b) {
-        final aCount = a.data()['wrongCount'] as int? ?? 0;
-        final bCount = b.data()['wrongCount'] as int? ?? 0;
-        if (aCount != bCount) {
-          return bCount.compareTo(aCount);
-        }
-        final aTime =
-            (a.data()['lastWrongAt'] as Timestamp?)?.toDate() ?? DateTime(1900);
-        final bTime =
-            (b.data()['lastWrongAt'] as Timestamp?)?.toDate() ?? DateTime(1900);
-        return bTime.compareTo(aTime);
-      });
-
-      // ตัดเอาเฉพาะจำนวนที่ต้องการ
-      if (docs.length > limit) {
-        docs = docs.sublist(0, limit);
-      }
-
-      return docs.map((doc) {
+      // แปลง DocumentSnapshot เป็น Map และจัดการข้อมูล
+      final List<Map<String, dynamic>> wordStats = docs.map((doc) {
         final data = doc.data();
         return {
-          'word': doc.id,
-          'wrongCount': data['wrongCount'] as int? ?? 0,
-          'lastWrongAt':
-              (data['lastWrongAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-          'topic': data['topic'] as String? ?? 'unknown',
+          'word': data['word'] ?? '',
+          'wrongCount': data['wrongCount'] ?? 0,
+          'topic': data['topic'] ?? '',
+          'lastWrongAt': data['lastWrongAt']?.toDate() ?? DateTime.now(),
         };
       }).toList();
-    } catch (_) {
+
+      // เรียงตามจำนวนครั้งที่ตอบผิดมากไปน้อย
+      wordStats.sort(
+          (a, b) => (b['wrongCount'] as int).compareTo(a['wrongCount'] as int));
+
+      // จำกัดจำนวนผลลัพธ์
+      return wordStats.take(limit).toList();
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error getting wrong words: $e');
+      }
       return [];
     }
   }

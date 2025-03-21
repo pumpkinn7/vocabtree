@@ -52,7 +52,10 @@ class TopicSection extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => AllVocabScreen(level: level),
+                        builder: (context) => AllVocabScreen(
+                            level: level, // ใช้ level ที่รับมาจาก parameter แทน
+                            topic: topic // เพิ่ม topic เพื่อใช้ในการกรอง
+                            ),
                       ),
                     );
                   },

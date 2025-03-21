@@ -9,8 +9,13 @@ import '../widgets/vocab_detail_with_add_dialog.dart';
 
 class AllVocabScreen extends StatefulWidget {
   final String level;
+  final String? topic;
 
-  const AllVocabScreen({super.key, required this.level});
+  const AllVocabScreen({
+    super.key,
+    required this.level,
+    this.topic,
+  });
 
   @override
   State<AllVocabScreen> createState() => _AllVocabScreenState();
@@ -31,6 +36,12 @@ class _AllVocabScreenState extends State<AllVocabScreen> {
   void initState() {
     super.initState();
     _fetchAllWords();
+    if (widget.topic != null) {
+      _activeFilters = {
+        'cefrLevels': [widget.level],
+        'topics': [widget.topic!],
+      };
+    }
   }
 
   @override
@@ -153,12 +164,16 @@ class _AllVocabScreenState extends State<AllVocabScreen> {
                                     final selectedTopics = List<String>.from(
                                         _activeFilters!['topics']);
 
-                                    if (selectedCefrLevels.isNotEmpty &&
-                                        !selectedCefrLevels
-                                            .contains(widget.level)) {
-                                      return const SizedBox.shrink();
+                                    // แก้ไขเงื่อนไขในส่วนของการกรอง CEFR Level
+                                    if (selectedCefrLevels.isNotEmpty) {
+                                      // อนุญาตให้แสดงเมื่อ level ปัจจุบันอยู่ใน selectedCefrLevels
+                                      if (!selectedCefrLevels
+                                          .contains(widget.level)) {
+                                        return const SizedBox.shrink();
+                                      }
                                     }
 
+                                    // ตรวจสอบ topics ตามเดิม
                                     if (selectedTopics.isNotEmpty &&
                                         !selectedTopics.contains(topic)) {
                                       return const SizedBox.shrink();

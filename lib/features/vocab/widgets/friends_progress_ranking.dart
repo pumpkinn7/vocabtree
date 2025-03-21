@@ -66,13 +66,13 @@ class FriendsProgressRanking extends StatelessWidget {
                             vertical: 4,
                           ),
                           decoration: BoxDecoration(
-                            color: colorScheme.primaryContainer,
+                            color: _getSeasonColor(user['currentSeason']),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
                             user['currentSeason'],
                             style: AppTextStyles.caption.copyWith(
-                              color: colorScheme.onPrimaryContainer,
+                              color: Colors.white,
                             ),
                           ),
                         ),
@@ -185,5 +185,20 @@ class FriendsProgressRanking extends StatelessWidget {
     }
 
     return 'Spring';
+  }
+
+  Color _getSeasonColor(String season) {
+    switch (season) {
+      case 'Winter':
+        return const Color(0xFF89CFF0);
+      case 'Autumn':
+        return const Color(0xFFD2691E);
+      case 'Summer':
+        return const Color(0xFF90EE90);
+      case 'Spring':
+        return const Color(0xFFDDA0DD);
+      default:
+        return Colors.grey;
+    }
   }
 }

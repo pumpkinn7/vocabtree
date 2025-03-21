@@ -65,6 +65,39 @@ class SeasonHeader extends StatelessWidget {
                   description,
                   style: AppTextStyles.body,
                 ),
+                const SizedBox(height: 12),
+                // เพิ่มปุ่ม "ตอบผิดบ่อย"
+                ElevatedButton.icon(
+                  onPressed: () {
+                    // ตอนนี้ยังไม่ต้องทำอะไร
+                  },
+                  icon: Icon(
+                    Icons.error_outline,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  label: Text(
+                    'ตอบผิดบ่อย',
+                    style: AppTextStyles.caption.copyWith(
+                      color: Theme.of(context).colorScheme.primary,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(context).cardColor,
+                    elevation: 0,
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: BorderSide(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .primary
+                            .withOpacity(0.5),
+                      ),
+                    ),
+                  ),
+                ),
               ],
             ),
           ),

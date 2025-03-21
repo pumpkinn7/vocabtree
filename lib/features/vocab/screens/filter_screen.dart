@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:vocabtree/core/theme/text_styles.dart';
 import 'package:vocabtree/features/vocab/models/vocab_level_model.dart';
 import 'package:vocabtree/features/vocab/services/vocab_service.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
 class FilterScreen extends StatefulWidget {
   const FilterScreen({super.key});
@@ -15,7 +14,6 @@ class _FilterScreenState extends State<FilterScreen> {
   // ตัวแปรสำหรับเก็บตัวกรองที่เลือก
   final _selectedCefrLevels = <String>{};
   final _selectedTopics = <String>{};
-  bool _onlySavedWords = false;
 
   // รายการตัวเลือกคงที่
   final _allCefrLevels = ['B1', 'B2', 'C1', 'C2'];
@@ -41,7 +39,6 @@ class _FilterScreenState extends State<FilterScreen> {
     final filterParams = {
       'cefrLevels': _selectedCefrLevels.toList(),
       'topics': _selectedTopics.toList(),
-      'onlySavedWords': _onlySavedWords,
     };
 
     Navigator.pop(context, filterParams);
@@ -60,7 +57,6 @@ class _FilterScreenState extends State<FilterScreen> {
               setState(() {
                 _selectedCefrLevels.clear();
                 _selectedTopics.clear();
-                _onlySavedWords = false;
               });
             },
             icon: const Icon(Icons.refresh),
@@ -133,18 +129,6 @@ class _FilterScreenState extends State<FilterScreen> {
                         ),
                       ),
                     ),
-
-                    // ส่วนการแสดงเฉพาะคำที่บันทึก
-                    if (FirebaseAuth.instance.currentUser != null)
-                      Card(
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 4),
-                          child: _buildSavedWordsFilter(),
-                        ),
-                      ),
                   ],
                 ),
               ),
@@ -284,23 +268,6 @@ class _FilterScreenState extends State<FilterScreen> {
           ],
         );
       }).toList(),
-    );
-  }
-
-  Widget _buildSavedWordsFilter() {
-    return SwitchListTile(
-      title: Text('แสดงเฉพาะคำที่บันทึกไว้', style: AppTextStyles.body),
-      subtitle: Text(
-        'แสดงเฉพาะคำศัพท์ที่คุณได้บันทึกไว้เพื่อทบทวน',
-        style: AppTextStyles.caption,
-      ),
-      value: _onlySavedWords,
-      onChanged: (value) {
-        setState(() {
-          _onlySavedWords = value;
-        });
-      },
-      activeColor: Theme.of(context).colorScheme.primary,
     );
   }
 }

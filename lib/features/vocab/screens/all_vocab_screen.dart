@@ -54,27 +54,21 @@ class _AllVocabScreenState extends State<AllVocabScreen> {
     setState(() => isLoading = true);
 
     try {
-      // เริ่มโหลดคำศัพท์จาก level ปัจจุบัน
       topicWords = await _dictionaryService.fetchWordsByLevel(widget.level);
 
-      // ถ้ามีการกรองด้วย level อื่น
       if (_activeFilters != null && _activeFilters!.containsKey('cefrLevels')) {
         final selectedLevels = List<String>.from(_activeFilters!['cefrLevels']);
-        // โหลดคำศัพท์เพิ่มเติมจาก levels อื่นที่ถูกเลือก (ยกเว้น level ปัจจุบันที่โหลดไปแล้ว)
         for (final level in selectedLevels) {
           if (level != widget.level) {
             final additionalWords =
                 await _dictionaryService.fetchWordsByLevel(level);
-            // รวมคำศัพท์จาก level อื่นเข้ากับ topicWords ที่มีอยู่
             additionalWords.forEach((topic, words) {
               if (topicWords.containsKey(topic)) {
-                // กรณี topic ซ้ำกัน ให้เพิ่มคำที่ไม่ซ้ำเข้าไป
                 final existingWords = Set<String>.from(topicWords[topic]!);
                 final newWords =
                     words.where((word) => !existingWords.contains(word));
                 topicWords[topic]!.addAll(newWords);
               } else {
-                // กรณี topic ใหม่ ให้เพิ่มทั้ง topic
                 topicWords[topic] = words;
               }
             });
@@ -125,11 +119,9 @@ class _AllVocabScreenState extends State<AllVocabScreen> {
     return data;
   }
 
-  // ฟังก์ชันใหม่สำหรับโหลดคำศัพท์ใหม่เมื่อมีการกรอง
   void _applyFilters(Map<String, dynamic> filters) {
     setState(() {
       _activeFilters = filters;
-      // เรียกใช้ _fetchAllWords อีกครั้งเพื่อโหลดคำศัพท์ตาม filters ใหม่
       _fetchAllWords();
     });
   }
@@ -195,7 +187,6 @@ class _AllVocabScreenState extends State<AllVocabScreen> {
                                     final selectedTopics = List<String>.from(
                                         _activeFilters!['topics']);
 
-                                    // ตรวจสอบเฉพาะ topics เท่านั้น ไม่ต้องตรวจสอบ CEFR Levels
                                     if (selectedTopics.isNotEmpty &&
                                         !selectedTopics.contains(topic)) {
                                       return const SizedBox.shrink();

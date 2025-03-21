@@ -11,14 +11,11 @@ class FilterScreen extends StatefulWidget {
 }
 
 class _FilterScreenState extends State<FilterScreen> {
-  // ตัวแปรสำหรับเก็บตัวกรองที่เลือก
   final _selectedCefrLevels = <String>{};
   final _selectedTopics = <String>{};
 
-  // รายการตัวเลือกคงที่
   final _allCefrLevels = ['B1', 'B2', 'C1', 'C2'];
 
-  // ข้อมูล Topic ทั้งหมดตามระดับ
   final Map<String, List<String>> _topicsByLevel = {};
 
   bool _isLoading = true;
@@ -37,13 +34,11 @@ class _FilterScreenState extends State<FilterScreen> {
       final firestore = FirebaseFirestore.instance;
 
       for (var level in _allCefrLevels) {
-        // Query word_categories collection instead
         final snapshot = await firestore
             .collection('word_categories')
             .where('cefrLevel', isEqualTo: level)
             .get();
 
-        // Extract topic IDs as they are document IDs
         final topics = snapshot.docs.map((doc) => doc.id).toList();
 
         _topicsByLevel[level] = topics;
@@ -60,7 +55,7 @@ class _FilterScreenState extends State<FilterScreen> {
 
   void _applyFilters() {
     if (_selectedCefrLevels.isEmpty && _selectedTopics.isEmpty) {
-      Navigator.pop(context); // ถ้าไม่มีการเลือกให้กลับไปหน้าเดิม
+      Navigator.pop(context);
       return;
     }
 

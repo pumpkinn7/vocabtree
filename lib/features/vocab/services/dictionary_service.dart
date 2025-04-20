@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 
 class DictionaryService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -27,8 +28,41 @@ class DictionaryService {
     try {
       final wordDoc = await _firestore.collection('words').doc(wordId).get();
       if (!wordDoc.exists) return null;
-      return wordDoc.data();
+      
+      final data = wordDoc.data();
+      if (data == null) return null;
+      
+      if (!data.containsKey('partOfSpeech')) {
+        if (data.containsKey('mainPos') && data['mainPos'] != null) {
+          data['partOfSpeech'] = data['mainPos'];
+        } 
+        // ตรวจสอบจาก senses array ซึ่งมักจะมี partOfSpeech อยู่ในนั้น
+        else if (data.containsKey('senses') && data['senses'] is List && data['senses'].isNotEmpty) {
+          final firstSense = data['senses'][0];
+          if (firstSense is Map && firstSense.containsKey('partOfSpeech') && firstSense['partOfSpeech'] != null) {
+            data['partOfSpeech'] = firstSense['partOfSpeech'];
+          } else {
+            for (var sense in data['senses']) {
+              if (sense is Map && sense.containsKey('partOfSpeech') && sense['partOfSpeech'] != null) {
+                data['partOfSpeech'] = sense['partOfSpeech'];
+                break;
+              }
+            }
+            
+            if (!data.containsKey('partOfSpeech')) {
+              data['partOfSpeech'] = 'unknown';
+            }
+          }
+        } else {
+          data['partOfSpeech'] = 'unknown';
+        }
+      }
+      
+      return data;
     } catch (e) {
+      if (kDebugMode) {
+        print('Error fetching word detail: $e');
+      }
       return null;
     }
   }

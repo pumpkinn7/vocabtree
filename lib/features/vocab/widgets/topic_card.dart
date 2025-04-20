@@ -1,11 +1,9 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bootstrap/flutter_bootstrap.dart';
 import 'package:vocabtree/core/theme/text_styles.dart';
 import 'package:vocabtree/features/vocab/screens/all_vocab_screen.dart';
 import 'package:vocabtree/features/vocab/screens/flashcard_for_review_screen.dart';
 import 'package:vocabtree/features/vocab/services/vocab_service.dart';
-import 'package:vocabtree/features/quiz/widgets/frequently_wrong_words_dialog.dart';
 import 'package:vocabtree/features/vocab/widgets/vocab_word_button.dart';
 
 class TopicCard extends StatelessWidget {
@@ -46,41 +44,9 @@ class TopicCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Text(
-                    formattedTopic,
-                    style: AppTextStyles.body
-                        .copyWith(fontWeight: FontWeight.bold),
-                  ),
-                ),
-                IconButton(
-                  onPressed: () => _showFrequentlyWrongWordsDialog(context),
-                  icon: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: colorScheme.surfaceVariant.withOpacity(0.5),
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: AppTextStyles.primaryColor,
-                        width: 1.5,
-                      ),
-                    ),
-                    child: Icon(
-                      Icons.priority_high,
-                      size: 12,
-                      color: AppTextStyles.primaryColor,
-                    ),
-                  ),
-                  tooltip: 'คำที่ตอบผิดบ่อย',
-                  constraints: const BoxConstraints(
-                    minWidth: 32,
-                    minHeight: 32,
-                  ),
-                ),
-              ],
+            Text(
+              formattedTopic,
+              style: AppTextStyles.body.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
             BootstrapRow(
@@ -166,23 +132,5 @@ class TopicCard extends StatelessWidget {
     }
 
     onRefreshData();
-  }
-
-  void _showFrequentlyWrongWordsDialog(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('กรุณาเข้าสู่ระบบก่อนใช้งาน')),
-      );
-      return;
-    }
-
-    showDialog(
-      context: context,
-      builder: (context) => FrequentlyWrongWordsDialog(
-        userId: user.uid,
-        topic: topic,
-      ),
-    );
   }
 }

@@ -70,68 +70,41 @@ class DictionarySearchBar extends StatelessWidget {
             }
           },
           borderRadius: BorderRadius.circular(12),
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              Container(
-                margin: const EdgeInsets.only(right: 8.0),
-                padding: const EdgeInsets.all(12.0),
-                decoration: BoxDecoration(
-                  color: activeFilterCount > 0
-                      ? colorScheme.primary
-                      : colorScheme.surfaceVariant,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  Icons.filter_list,
-                  color: activeFilterCount > 0
-                      ? colorScheme.onPrimary
-                      : colorScheme.primary,
-                ),
-              ),
-              if (activeFilterCount > 0)
-                Positioned(
-                  top: 0,
-                  right: 8,
-                  child: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: colorScheme.error,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Text(
-                      activeFilterCount.toString(),
-                      style: TextStyle(
-                        color: colorScheme.onError,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-            ],
+          child: Container(
+            margin: const EdgeInsets.only(right: 8.0),
+            padding: const EdgeInsets.all(12.0),
+            decoration: BoxDecoration(
+              color: activeFilterCount > 0
+                  ? colorScheme.primary
+                  : colorScheme.surfaceVariant,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              Icons.filter_list,
+              color: activeFilterCount > 0
+                  ? colorScheme.onPrimary
+                  : colorScheme.primary,
+            ),
           ),
         ),
       ],
     );
   }
 
+  // คำนวณจำนวนของตัวกรองที่เลือก
   int _getActiveFilterCount() {
     if (activeFilters == null) return 0;
 
     int count = 0;
-    if (activeFilters!['cefrLevels'] is List &&
-        (activeFilters!['cefrLevels'] as List).isNotEmpty) {
-      count++;
+    if (activeFilters!.containsKey('cefrLevels')) {
+      count += (activeFilters!['cefrLevels'] as List).isNotEmpty ? 1 : 0;
     }
-    if (activeFilters!['topics'] is List &&
-        (activeFilters!['topics'] as List).isNotEmpty) {
-      count++;
+    if (activeFilters!.containsKey('topics')) {
+      count += (activeFilters!['topics'] as List).isNotEmpty ? 1 : 0;
     }
-    if (activeFilters!['onlySavedWords'] == true) {
-      count++;
+    if (activeFilters!.containsKey('partOfSpeech')) {
+      count += (activeFilters!['partOfSpeech'] as List).isNotEmpty ? 1 : 0;
     }
-
     return count;
   }
 }

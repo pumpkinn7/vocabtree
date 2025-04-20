@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_bootstrap/flutter_bootstrap.dart';
@@ -40,6 +41,7 @@ class _AllVocabScreenState extends State<AllVocabScreen> {
       _activeFilters = {
         'cefrLevels': [widget.level],
         'topics': [widget.topic!],
+        'partOfSpeech': [], // เพิ่มตัวกรองประเภทของคำว่าง
       };
     }
   }
@@ -56,6 +58,7 @@ class _AllVocabScreenState extends State<AllVocabScreen> {
     try {
       topicWords = await _dictionaryService.fetchWordsByLevel(widget.level);
 
+      // โหลดข้อมูลเพิ่มเติมจากระดับอื่นๆ (ถ้ามี)
       if (_activeFilters != null && _activeFilters!.containsKey('cefrLevels')) {
         final selectedLevels = List<String>.from(_activeFilters!['cefrLevels']);
         for (final level in selectedLevels) {
@@ -76,9 +79,61 @@ class _AllVocabScreenState extends State<AllVocabScreen> {
         }
       }
 
+      // เพิ่มการโหลดรายละเอียดคำศัพท์ทั้งหมดล่วงหน้า
+      // เพื่อให้สามารถกรองได้ถูกต้อง
+      await _preloadWordDetails();
+
       setState(() => isLoading = false);
     } catch (e) {
       setState(() => isLoading = false);
+      if (kDebugMode) {
+        print('Error fetching words: $e');
+      }
+    }
+  }
+
+  // เพิ่มฟังก์ชันโหลดรายละเอียดคำศัพท์ล่วงหน้า
+  Future<void> _preloadWordDetails() async {
+    // โหลดเฉพาะคำศัพท์ที่เกี่ยวข้องกับการกรอง
+    List<String> wordsToLoad = [];
+
+    for (var entry in topicWords.entries) {
+      final topic = entry.key;
+      final words = entry.value;
+
+      // ตรวจสอบว่าผ่านการกรองหัวข้อ (topic) หรือไม่
+      bool includeThisTopic = true;
+      if (_activeFilters != null && _activeFilters!.containsKey('topics')) {
+        final selectedTopics = List<String>.from(_activeFilters!['topics']);
+        if (selectedTopics.isNotEmpty && !selectedTopics.contains(topic)) {
+          includeThisTopic = false;
+        }
+      }
+
+      if (includeThisTopic) {
+        // กรองคำศัพท์ตามการค้นหา
+        final filteredWords = _searchQuery.isEmpty
+            ? words
+            : words
+                .where((word) => word.toLowerCase().contains(_searchQuery))
+                .toList();
+
+        wordsToLoad.addAll(filteredWords);
+      }
+    }
+
+    // โหลดรายละเอียดคำศัพท์แบบแบตช์ (ทีละหลายคำ)
+    const int batchSize = 10;
+    for (int i = 0; i < wordsToLoad.length; i += batchSize) {
+      final batch = wordsToLoad.skip(i).take(batchSize);
+      await Future.wait(batch.map((word) async {
+        if (!wordDetails.containsKey(word)) {
+          final details = await _dictionaryService.fetchWordDetail(word);
+          if (details != null) {
+            wordDetails[word] = details;
+          }
+        }
+      }));
     }
   }
 
@@ -126,27 +181,49 @@ class _AllVocabScreenState extends State<AllVocabScreen> {
     });
   }
 
+  // ปรับปรุงวิธีการนับคำศัพท์ที่ผ่านการกรอง
   int _getTotalFilteredWords() {
     int total = 0;
+
+    // ตรวจสอบว่ามีการเลือกประเภทคำหรือไม่
+    bool hasPartOfSpeechFilter = _activeFilters != null &&
+        _activeFilters!.containsKey('partOfSpeech') &&
+        (_activeFilters!['partOfSpeech'] as List).isNotEmpty;
+
     for (var entry in topicWords.entries) {
       final topic = entry.key;
       final words = entry.value;
 
-      if (_activeFilters != null) {
+      // กรองตามหัวข้อ (topic)
+      if (_activeFilters != null && _activeFilters!.containsKey('topics')) {
         final selectedTopics = List<String>.from(_activeFilters!['topics']);
         if (selectedTopics.isNotEmpty && !selectedTopics.contains(topic)) {
           continue;
         }
       }
 
+      // กรองตามคำค้นหา
       final filteredWords = _searchQuery.isEmpty
           ? words
           : words
               .where((word) => word.toLowerCase().contains(_searchQuery))
               .toList();
 
-      total += filteredWords.length;
+      if (filteredWords.isEmpty) continue;
+
+      // ถ้ามีการกรองตามประเภทของคำ
+      if (hasPartOfSpeechFilter) {
+        final selectedPartOfSpeech =
+            List<String>.from(_activeFilters!['partOfSpeech']);
+        final posFilteredWords =
+            _filterWordsByPartOfSpeech(filteredWords, selectedPartOfSpeech);
+        total += posFilteredWords.length;
+      } else {
+        // ไม่มีการกรองตามประเภทของคำ
+        total += filteredWords.length;
+      }
     }
+
     return total;
   }
 
@@ -239,6 +316,7 @@ class _AllVocabScreenState extends State<AllVocabScreen> {
                                     }
                                   }
 
+                                  // กรองคำตามคำค้นหา
                                   final filteredWords = _searchQuery.isEmpty
                                       ? words
                                       : words
@@ -251,8 +329,26 @@ class _AllVocabScreenState extends State<AllVocabScreen> {
                                     return const SizedBox.shrink();
                                   }
 
+                                  // เพิ่มการกรองตามประเภทของคำ
+                                  List<String> finalFilteredWords =
+                                      filteredWords;
+                                  if (_activeFilters != null &&
+                                      _activeFilters!
+                                          .containsKey('partOfSpeech') &&
+                                      _activeFilters!['partOfSpeech']
+                                          .isNotEmpty) {
+                                    finalFilteredWords =
+                                        _filterWordsByPartOfSpeech(
+                                            filteredWords,
+                                            List<String>.from(_activeFilters![
+                                                'partOfSpeech']));
+                                    if (finalFilteredWords.isEmpty) {
+                                      return const SizedBox.shrink();
+                                    }
+                                  }
+
                                   final sortedWords = _dictionaryService
-                                      .getSortedWords(filteredWords);
+                                      .getSortedWords(finalFilteredWords);
 
                                   return TopicWordListSection(
                                     topic: topic,
@@ -274,5 +370,60 @@ class _AllVocabScreenState extends State<AllVocabScreen> {
         ],
       ),
     );
+  }
+
+  // ปรับปรุงฟังก์ชันกรองประเภทของคำให้มีความยืดหยุ่นมากขึ้น
+  List<String> _filterWordsByPartOfSpeech(
+      List<String> words, List<String> partOfSpeech) {
+    if (partOfSpeech.isEmpty) return words;
+
+    List<String> filteredWords = [];
+
+    for (var word in words) {
+      if (wordDetails.containsKey(word)) {
+        final details = wordDetails[word];
+        if (details == null) continue;
+
+        bool matchesPartOfSpeech = false;
+
+        // ตรวจสอบจากฟิลด์ 'partOfSpeech' โดยตรง
+        if (details.containsKey('partOfSpeech')) {
+          final pos = details['partOfSpeech'] as String?;
+          if (pos != null && partOfSpeech.contains(pos)) {
+            matchesPartOfSpeech = true;
+          }
+        }
+
+        // ตรวจสอบจาก 'mainPos'
+        if (!matchesPartOfSpeech && details.containsKey('mainPos')) {
+          final mainPos = details['mainPos'] as String?;
+          if (mainPos != null && partOfSpeech.contains(mainPos)) {
+            matchesPartOfSpeech = true;
+          }
+        }
+
+        // ตรวจสอบจาก 'senses'
+        if (!matchesPartOfSpeech && details.containsKey('senses')) {
+          final senses = details['senses'];
+          if (senses is List && senses.isNotEmpty) {
+            for (var sense in senses) {
+              if (sense is Map && sense.containsKey('partOfSpeech')) {
+                final sensePos = sense['partOfSpeech'] as String?;
+                if (sensePos != null && partOfSpeech.contains(sensePos)) {
+                  matchesPartOfSpeech = true;
+                  break;
+                }
+              }
+            }
+          }
+        }
+
+        if (matchesPartOfSpeech) {
+          filteredWords.add(word);
+        }
+      }
+    }
+
+    return filteredWords;
   }
 }
